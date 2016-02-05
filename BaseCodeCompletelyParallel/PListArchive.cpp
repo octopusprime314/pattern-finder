@@ -27,7 +27,12 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 		{
 			file.append(fileName);
 		}
-		fd =  open(file.c_str(), O_RDWR );
+		fd = open(file.c_str(), O_RDWR );
+		if(fd < 0)
+		{
+			cout << file.c_str() << " file not found!" << endl;
+			return;
+		}
 		this->fileName = file;
 
 		fileSize = -1;
@@ -332,6 +337,18 @@ bool PListArchive::IsEndOfFile()
 
 	//if fileIndex is larger than the file size we are done here.
 	if(fileIndex >= fileSize - 1 || fileSize == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool PListArchive::Exists()
+{
+	if(fd > 0)
 	{
 		return true;
 	}

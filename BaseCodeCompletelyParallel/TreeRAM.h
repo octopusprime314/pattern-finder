@@ -16,7 +16,6 @@ class TreeRAM
 {
 private:
 	vector<PListType> *pList;
-	map<char, TreeRAM*> leaves;
 
 public:
 	TreeRAM();
@@ -30,4 +29,5 @@ public:
 	map<char, TreeRAM*> GetMap();
 	static void displayTree(vector<TreeRAM*> tree, string buffer, int level);
 	static vector<PListType>* GetMostCommonPattern(vector<vector<PListType>*>* pLists, string buffer, int level);
+	map<char, TreeRAM*> leaves;
 };

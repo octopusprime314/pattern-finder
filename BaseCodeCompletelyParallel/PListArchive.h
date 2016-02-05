@@ -45,6 +45,7 @@ public:
 	unsigned long long GetFileChunkSize(PListType chunkSizeInBytes);
 	vector<vector<PListType>*>* GetPListArchiveMMAP(PListType chunkSizeInMB = 0);
 	bool IsEndOfFile();
+	bool Exists();
 	void DumpContents();
 
 	//Open archive
