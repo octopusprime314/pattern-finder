@@ -19,13 +19,20 @@ FileReader::FileReader(string fileName)
 	// Make sure we have something to read.
 	if (!copyBuffer->is_open()) 
 	{
-		cout << "Could not open file!" << endl;
+		cout << "Could not open file: " << fileName << endl;
 
 		return;
 	}
 
 	fileStringSize = MemoryUtils::FileSize(fileName);
 
+}
+
+void FileReader::LoadFile()
+{
+	fileString.clear();
+	fileString.resize(fileStringSize);
+	copyBuffer->read( &fileString[0], fileStringSize);
 }
 
 void FileReader::DeleteBuffer()
@@ -39,5 +46,9 @@ void FileReader::DeleteBuffer()
 FileReader::~FileReader()
 {
 	//force deallocation of global string
+	DeleteBuffer();
+
+	fileString.clear();
+	fileString.resize(0);
 	fileString = "";
 }

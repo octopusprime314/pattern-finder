@@ -15,6 +15,7 @@ public:
 	FileReader(string fileName);
 	~FileReader();
 	void DeleteBuffer();
+	void LoadFile();
 	string fileString;
 	PListType fileStringSize;
 	string fileName;

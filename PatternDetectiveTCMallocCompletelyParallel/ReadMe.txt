@@ -1,0 +1,41 @@
+USAGE:
+	PatternDetective.exe [-help                            
+		   /?                                              
+		   -f       [filename]                             
+		   -min     [minimum pattern length]                
+		   -max     [maximum pattern length]		  
+		   -d                                              
+		   -c                                              
+		   -threads [number of threads]                    
+		   -mem     [memory limit in MB]                   
+		   -lev     [first level to being output display]  
+		   -his     [first level to write history to disk] 
+		   -ram                                            
+		   -hd                                             
+		   -start   [level to begin searching]              
+			 
+Options:
+	-help                   Displays this help page 
+	/?                      Displays this help page    
+	-f [string]             Sets file name to be processed  
+	-min [unsigned long]    Sets the minimum pattern length to be searched
+	-max [unsigned long]    Sets the maximum pattern length to be searched
+	-d                      Outputs pattern count per level
+	-c                      Finds the best threading scheme for computer 
+	-threads [unsigned int] Sets thread count to be used                 
+	-mem [unsigned long]    Sets the maximum RAM memory that can be used MB
+	-lev [unsigned long]    Sets the first level to start output  
+	-his [unsigned long]    Sets the first level to write history to disk
+	-ram                    Forces program to use only RAM 
+	-hd                     Forces program to use Hard Disk based on -mem
+	-start [unsigned long]  Level to begin searching (not used currently)
+	
+Examples:
+	The example below processes a file for patterns of size 1 to
+	100.  The program will use 9 threads for processing and is capped
+	at 1 GB for RAM processing. Each level will be output starting at 
+	level 1 and history gets saved from level 0.  The program is 
+	forced to use hard disk for all processing.		
+
+	-f TPB.avi -min 1 -max 100 -d -threads 9 -mem 1000 -lev 1 -his 0 -hd	   
+			  		
