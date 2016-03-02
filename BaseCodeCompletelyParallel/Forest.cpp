@@ -1065,7 +1065,7 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 	}
 }
 
-vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, vector<string> prevFileNameList)
+vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, vector<string> prevFileNames)
 {
 	vector<vector<string>> newFileList;
 	//chunk files
@@ -1073,6 +1073,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 	stringstream threadFilesNames;
 	unsigned int threadNumber = 0;
 
+	newFileList.resize(threadsToDispatch);
 	for(int a = 0; a < threadsToDispatch; a++)
 	{
 		threadFilesNames.str("");
@@ -1088,9 +1089,9 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 		newFileList[a].push_back(threadFilesNames.str());
 	}
 	
-	for(PListType prevChunkCount = 0; prevChunkCount < prevFileNameList.size(); prevChunkCount++)
+	for(PListType prevChunkCount = 0; prevChunkCount < prevFileNames.size(); prevChunkCount++)
 	{
-		PListArchive archive(prevFileNameList[prevChunkCount]);
+		PListArchive archive(prevFileNames[prevChunkCount]);
 		while(archive.Exists() && !archive.IsEndOfFile())
 		{
 			//Just use 100 GB to say we want the whole file for now
@@ -1916,101 +1917,101 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 
 
 
-	//bool alreadyUnlocked = false;
-	//countMutex->lock();
+	bool alreadyUnlocked = false;
+	countMutex->lock();
 
-	//int threadsToDispatch = numThreads - 1;
-	//int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
-	//if(newPatternCount < unusedCores && unusedCores > 1)
-	//{
-	//	unusedCores = newPatternCount;
-	//}
-	////Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
-	//if(unusedCores > 1 && morePatternsToFind && newPatternCount > 1)
-	//{
-	//	unsigned int levelCount = 1000000000;
-	//	vector<int> threadPriority;
+	int threadsToDispatch = numThreads - 1;
+	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
+	if(newPatternCount < unusedCores && unusedCores > 1)
+	{
+		unusedCores = newPatternCount;
+	}
+	//Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
+	if(unusedCores > 1 && morePatternsToFind && newPatternCount > 1)
+	{
+		unsigned int levelCount = 1000000000;
+		vector<int> threadPriority;
 
-	//	for(int z = 0; z < currentLevelVector.size(); z++)
-	//	{
-	//		if(activeThreads[z])
-	//		{
-	//			if(currentLevelVector[z] < levelCount && activeThreads[z])
-	//			{
-	//				levelCount = currentLevelVector[z];
-	//				threadPriority.push_back(z);
-	//			}
-	//		}
-	//	}
+		for(int z = 0; z < currentLevelVector.size(); z++)
+		{
+			if(activeThreads[z])
+			{
+				if(currentLevelVector[z] < levelCount && activeThreads[z])
+				{
+					levelCount = currentLevelVector[z];
+					threadPriority.push_back(z);
+				}
+			}
+		}
 
-	//	bool spawnThreads = false;
-	//	for(int z = 0; z < threadPriority.size(); z++)
-	//	{
-	//		if(threadPriority[z] == levelInfo.threadIndex && currentLevelVector[threadPriority[z]] == levelCount)
-	//		{
-	//			spawnThreads = true;
-	//		}
-	//	}
-	//	//If this thread is at the lowest level of progress spawn new threads
-	//	if(spawnThreads)
-	//	{
-	//		
-	//		vector<vector<string>> balancedTruncList = ProcessThreadsWorkLoadHD(unusedCores, fileList);
-	//		vector<unsigned int> localWorkingThreads;
-	//		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
-	//		{
-	//			localWorkingThreads.push_back(i);
-	//		}
+		bool spawnThreads = false;
+		for(int z = 0; z < threadPriority.size(); z++)
+		{
+			if(threadPriority[z] == levelInfo.threadIndex && currentLevelVector[threadPriority[z]] == levelCount)
+			{
+				spawnThreads = true;
+			}
+		}
+		//If this thread is at the lowest level of progress spawn new threads
+		if(spawnThreads)
+		{
+			
+			vector<vector<string>> balancedTruncList = ProcessThreadsWorkLoadHD(unusedCores, fileList);
+			vector<unsigned int> localWorkingThreads;
+			for(unsigned int i = 0; i < balancedTruncList.size(); i++)
+			{
+				localWorkingThreads.push_back(i);
+			}
 
-	//		if(localWorkingThreads.size() > 1)
-	//		{
-	//			int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
-	//			if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
-	//			{
-	//					
-	//				cout << "Thread " << levelInfo.threadIndex << " has priority and is at level " << levelInfo.currLevel << endl;
+			if(localWorkingThreads.size() > 1)
+			{
+				int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
+				if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
+				{
+						
+					cout << "Thread " << levelInfo.threadIndex << " has priority and is at level " << levelInfo.currLevel << endl;
 
-	//				LevelPackage levelInfoRecursion;
-	//				levelInfoRecursion.currLevel = levelInfo.currLevel;
-	//				levelInfoRecursion.threadIndex = levelInfo.threadIndex;
-	//				levelInfoRecursion.inceptionLevelLOL = levelInfo.inceptionLevelLOL + 1;
-	//				levelInfoRecursion.useRAM = false;
+					LevelPackage levelInfoRecursion;
+					levelInfoRecursion.currLevel = levelInfo.currLevel;
+					levelInfoRecursion.threadIndex = levelInfo.threadIndex;
+					levelInfoRecursion.inceptionLevelLOL = levelInfo.inceptionLevelLOL + 1;
+					levelInfoRecursion.useRAM = false;
 
-	//				cout << "Current threads in use: " << threadsDispatched - threadsDefuncted + localWorkingThreads.size() - 1 << endl;
+					cout << "Current threads in use: " << threadsDispatched - threadsDefuncted + localWorkingThreads.size() - 1 << endl;
 
-	//				threadsDefuncted++;
-	//				isThreadDefuncted = true;
+					threadsDefuncted++;
+					isThreadDefuncted = true;
 
-	//				vector<future<void>> *localThreadPool = new vector<future<void>>();
-	//				for (PListType i = 0; i < localWorkingThreads.size(); i++)
-	//				{
-	//					threadsDispatched++;
-	//					//NEED TO FIX
-	//					vector<PListType> temp;
-	//					localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
-	//					//END OF FIX					
-	//				}
-	//				countMutex->unlock();
-	//					
-	//				alreadyUnlocked = true;
-	//				WaitForThreads(localWorkingThreads, localThreadPool, true);
+					vector<future<void>> *localThreadPool = new vector<future<void>>();
+					for (PListType i = 0; i < localWorkingThreads.size(); i++)
+					{
+						threadsDispatched++;
+						//NEED TO FIX
+						vector<PListType> temp;
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+						//END OF FIX					
+					}
+					countMutex->unlock();
+						
+					alreadyUnlocked = true;
+					WaitForThreads(localWorkingThreads, localThreadPool, true);
 
-	//				localThreadPool->erase(localThreadPool->begin(), localThreadPool->end());
-	//				(*localThreadPool).clear();
-	//				delete localThreadPool;
-	//				morePatternsToFind = false;
-	//			}
-	//		}
-	//	}
-	//	else
-	//	{
-	//			
-	//	}
-	//}
-	//if(!alreadyUnlocked)
-	//{
-	//	countMutex->unlock();
-	//}
+					localThreadPool->erase(localThreadPool->begin(), localThreadPool->end());
+					(*localThreadPool).clear();
+					delete localThreadPool;
+					morePatternsToFind = false;
+				}
+			}
+		}
+		else
+		{
+				
+		}
+	}
+	if(!alreadyUnlocked)
+	{
+		countMutex->unlock();
+	}
 
 
 

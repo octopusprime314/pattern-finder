@@ -100,7 +100,7 @@ private:
 	void PrepData(bool prediction, int threadNum, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
 
 	vector<vector<PListType>> ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
-	vector<vector<string>> ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, vector<string> prevFileNameList);
+	vector<vector<string>> ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, vector<string> prevFileNames);
 
 	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false);
 
