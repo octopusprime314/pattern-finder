@@ -32,6 +32,7 @@ class Forest
 {
 private:
 	std::map<string, vector<PListType>*> globalMap;
+	PListType fileID;
 	vector<mutex*> gatedMutexes;
 	vector<int> currentLevelVector;
 	vector<bool> activeThreads;
@@ -56,6 +57,7 @@ private:
 	bool findBestThreadNumber;
 	unsigned long long levelCountPatterns;
 	mutex *countMutex;
+	mutex *fileIDMutex;
 	bool usingMemoryBandwidth;
 	unsigned int testIterations;
 	bool usingPureRAM;
@@ -89,6 +91,7 @@ private:
 	string CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threadNum, PListType currLevel);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
+	void DeleteArchives(vector<string> fileNames, string folderLocation);
 
 	PListType ProcessChunks(vector<string> fileNamesToReOpen, PListType memDivisor);
 	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);

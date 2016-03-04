@@ -148,6 +148,7 @@ string Logger::GetFormattedTime()
 		timeBuff << "0";	
 	}
 	timeBuff << now->tm_sec /*<< " " << amorpm*/;
+	srand (time(NULL));
 	timeBuff << rand();
 
 	return timeBuff.str();

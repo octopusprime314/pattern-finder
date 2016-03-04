@@ -28,12 +28,15 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 			file.append(fileName);
 		}
 		fd = open(file.c_str(), O_RDWR );
+		this->fileName = file;
 		if(fd < 0)
 		{
-			cout << file.c_str() << " file not found!" << endl;
+			stringstream stringbuilder;
+			stringbuilder << file.c_str() << " file not found!" << endl;
+			Logger::WriteLog(stringbuilder.str());
 			return;
 		}
-		this->fileName = file;
+		
 
 		fileSize = -1;
 		fileIndex = 0;
@@ -258,7 +261,7 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 									startingIndex = prevStartingIndex;
 									delete (*stuffedPListBuffer)[pListGlobalIndex];
 									stuffedPListBuffer->pop_back();
-									cout << "Didn't make it to the end of file: " << fileName << endl;
+									//cout << "Didn't make it to the end of file: " << fileName << endl;
 									break;
 								}
 							}
@@ -299,7 +302,7 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 						startingIndex = prevStartingIndex;
 						delete (*stuffedPListBuffer)[pListGlobalIndex];
 						stuffedPListBuffer->pop_back();
-						cout << "Didn't make it to the end of file: " << fileName << endl;
+						//cout << "Didn't make it to the end of file: " << fileName << endl;
 					}
 				}
 				//if size of chunk is less than hdSector size
