@@ -92,6 +92,7 @@ private:
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);
+	void DeleteArchive(string fileNames, string folderLocation);
 
 	PListType ProcessChunks(vector<string> fileNamesToReOpen, PListType memDivisor);
 	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);

@@ -5,7 +5,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>/f StargateClip.mp4 /min 1 /max 100000000 /d /threads 9 /mem 1200 /lev 1 /his 0 </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f TaleOfTwoCities.txt -min 1 -max 100 -d -threads 9 -mem 150 -lev 1 -his 0 -hd </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -13,7 +13,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>/f StargateClip.mp4 /min 1 /max 100000000 /d /threads 9 /mem 1500 /lev 1 /his 0</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f StargateClip.mp4 -min 1 -max 100 -d -threads 9 -mem 150 -lev 1 -his 0 -hd </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>

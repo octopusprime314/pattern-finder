@@ -224,6 +224,11 @@ Forest::Forest(int argc, char **argv)
 					}
 				}
 			}
+
+			for(int a = 0; a < newFileNameList.size(); a++)
+			{
+				newFileNameList[a].clear();
+			}
 			
 		}
 
@@ -729,7 +734,7 @@ void Forest::PrepData(bool prediction, int threadNum, vector<vector<PListType>*>
 						threadFilesNames.str("");
 						fileIDMutex->lock();
 						fileID++;
-						threadFilesNames << "PListArchive" << fileID;
+						threadFilesNames << "PListChunks" << fileID;
 						fileIDMutex->unlock();
 
 						string fileNameage(threadFilesNames.str());
@@ -775,7 +780,7 @@ void Forest::PrepData(bool prediction, int threadNum, vector<vector<PListType>*>
 				fileIDMutex->lock();
 				fileID++;
 				threadFilesNames.str("");
-				threadFilesNames << "PListArchive" << fileID;
+				threadFilesNames << "PListChunks" << fileID;
 				fileIDMutex->unlock();
 
 				string fileNameage(threadFilesNames.str());
@@ -1108,10 +1113,9 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 		for(int a = 0; a < threadsToDispatch; a++)
 		{
 			threadFilesNames.str("");
-			string formattedTime = Logger::GetFormattedTime();
 			fileIDMutex->lock();
 			fileID++;
-			threadFilesNames << "PListArchiveInceptionDist" << fileID;
+			threadFilesNames << "PListChunksInceptionDist" << fileID;
 			fileIDMutex->unlock();
 
 			string fileNameage(threadFilesNames.str());
@@ -1154,6 +1158,9 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 				delete packedPListArray;
 			}
 			archive.CloseArchiveMMAP();
+			//Now delete it
+			DeleteArchive(prevFileNames[prevChunkCount], ARCHIVE_FOLDER);
+		
 		}
 
 		for(int a = 0; a < threadsToDispatch; a++)
@@ -1420,6 +1427,7 @@ PListType Forest::ProcessChunks(vector<string> fileNamesToReOpen, PListType memD
 PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel)
 {
 	int currentFile = 0;
+	int prevCurrentFile = currentFile;
 	bool memoryOverflow = false;
 	PListType interimCount = 0;
 	unsigned int threadNumber = 0;
@@ -1567,12 +1575,11 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				if(firstLevel)
 				{
 					stringstream fileNameage;
-					string formattedTime = Logger::GetFormattedTime();
 					fileIDMutex->lock();
 					fileID++;
-					fileNameage << ARCHIVE_FOLDER << "PListArchive" << fileID << ".txt";
+					fileNameage << ARCHIVE_FOLDER << "PListChunks" << fileID << ".txt";
 					stringstream fileNameForPrevList;
-					fileNameForPrevList << "PListArchive" << fileID;
+					fileNameForPrevList << "PListChunks" << fileID;
 					fileIDMutex->unlock();
 					 
 					ofstream outputFile(fileNameage.str());
@@ -1590,12 +1597,11 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				else
 				{
 					stringstream fileNameage;
-					string formattedTime = Logger::GetFormattedTime();
 					fileIDMutex->lock();
 					fileID++;
-					fileNameage << ARCHIVE_FOLDER << "PListArchive" << fileID << ".txt";
+					fileNameage << ARCHIVE_FOLDER << "PListChunks" << fileID << ".txt";
 					stringstream fileNameForPrevList;
-					fileNameForPrevList << "PListArchive" << fileID;
+					fileNameForPrevList << "PListChunks" << fileID;
 					fileIDMutex->unlock();
 					
 					ofstream outputFile(fileNameage.str());
@@ -1637,10 +1643,11 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 		eradicatedPatterns += removedPatterns;
 		countMutex->unlock();
 
-		for(int a = 0; a < currentFile; a++)
+		for(int a = prevCurrentFile; a < currentFile; a++)
 		{
 			DeleteChunk(fileNamesBackup[a], ARCHIVE_FOLDER);
 		}
+		prevCurrentFile = currentFile;
 
 		//cout << "Thread " << threadNum << " has encountered " << interimCount << " patterns!" << endl;
 	}
@@ -1848,13 +1855,11 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 								sizeOfPreviousLevelMB += currentTreeSizeMB;
 								
 								justPassedMemorySize = true;
-								string formattedTime = Logger::GetFormattedTime();
 								stringstream stringBuilder;
 								fileIDMutex->lock();
 								fileID++;
 								stringBuilder << fileID;
 								fileIDMutex->unlock();
-								//stringBuilder << threadNum << j << fileIterationLevel << internalCount << formattedTime << initTime.GetTime() << MemoryUtils::GetProgramMemoryConsumption();
 								fileNamesToReOpen.push_back(CreateChunkFile(stringBuilder.str(), leaf, threadNum, currLevel));
 								internalCount++;
 
@@ -1871,7 +1876,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 						}
 					}
 
-					if(packedListSize > 0)
+					if(packedListSize > 0 && leaf.leaves.size() > 0)
 					{
 						//cout << "Prior memory to dump: " << MemoryUtils::GetProgramMemoryConsumption() << endl;
 
@@ -1882,13 +1887,11 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 						//cout << "Dumping off a leaf load of " << patterns << " patterns at level " << currLevel << endl;
 						sizeOfPreviousLevelMB += currentTreeSizeMB;
 
-						string formattedTime = Logger::GetFormattedTime();
 						stringstream stringBuilder;
 						fileIDMutex->lock();
 						fileID++;
 						stringBuilder << fileID;
 						fileIDMutex->unlock();
-						//stringBuilder << threadNum << j << fileIterationLevel << internalCount << formattedTime << initTime.GetTime() << MemoryUtils::GetProgramMemoryConsumption();
 						fileNamesToReOpen.push_back(CreateChunkFile(stringBuilder.str(), leaf, threadNum, currLevel));
 						delete leaf.GetPList();
 						internalCount++;
@@ -1946,11 +1949,15 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 		{
 			if( remove( fileNameToBeRemoved.c_str() ) != 0 )
 			{
-				cout << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+				stringstream builder;
+				builder << "Adding new failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
+				Logger::WriteLog(builder.str());
 			}
 			else
 			{
-				//cout << fileNameToBeRemoved << " successfully deleted" << endl;
+				stringstream builder;
+				builder << "Adding new succesfully deleted " << fileNameToBeRemoved << '\n';
+				Logger::WriteLog(builder.str());
 			}
 		}
 	}
@@ -2378,23 +2385,36 @@ TreeHD* Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startP
 		
 		if(MemoryUtils::IsOverMemoryCount(MemoryUsedPriorToThread, /*memDivisorInMB*/memoryBandwidthMB/3.0f))
 		{
-			string formattedTime = Logger::GetFormattedTime();
 			stringstream stringBuilder;
-			stringBuilder << threadNum << formattedTime << initTime.GetTime();
+			fileIDMutex->lock();
+			fileID++;
+			stringBuilder << fileID;
+			fileIDMutex->unlock();
+
 			countMutex->lock();
 			newFileNameList[threadNum].push_back(CreateChunkFile(stringBuilder.str(), leaf, threadNum, globalLevel));
 			countMutex->unlock();
+
+		
+
+
 		}
 #endif
 	}
 
 	
-	string formattedTime = Logger::GetFormattedTime();
-	stringstream stringBuilder;
-	stringBuilder << threadNum << formattedTime << initTime.GetTime();
-	countMutex->lock();
-	newFileNameList[threadNum].push_back(CreateChunkFile(stringBuilder.str(), leaf, threadNum, globalLevel));
-	countMutex->unlock();
+	if(leaf.leaves.size() > 0)
+	{
+		stringstream stringBuilder;
+		fileIDMutex->lock();
+		fileID++;
+		stringBuilder << fileID;
+		fileIDMutex->unlock();
+
+		countMutex->lock();
+		newFileNameList[threadNum].push_back(CreateChunkFile(stringBuilder.str(), leaf, threadNum, globalLevel));
+		countMutex->unlock();
+	}
 	
 	
 	delete leaf.GetPList();
@@ -2613,13 +2633,14 @@ void Forest::DeleteChunks(vector<string> fileNames, string folderLocation)
 		if( remove( fileNameToBeRemoved.c_str() ) != 0 )
 		{
 			stringstream builder;
-			builder << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+			builder << "Chunks Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
 			Logger::WriteLog(builder.str());
-			//cout << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
 		}
 		else
 		{
-			//cout << fileNameToBeRemoved << " successfully deleted" << endl;
+			stringstream builder;
+			builder << "Chunk succesfully deleted " << fileNameToBeRemoved << '\n';
+			Logger::WriteLog(builder.str());
 		}
 
 		string fileNameToBeRemovedPatterns = folderLocation;
@@ -2629,13 +2650,15 @@ void Forest::DeleteChunks(vector<string> fileNames, string folderLocation)
 		if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0 )
 		{
 			stringstream builder;
-			builder << "Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
+			builder << "Chunks Failed to delete " << fileNameToBeRemovedPatterns << ": " << strerror(errno) << '\n';
 			Logger::WriteLog(builder.str());
-			//cout << "Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
+			
 		}
 		else
 		{
-			//cout << fileNameToBeRemovedPatterns << " successfully deleted" << endl;
+			stringstream builder;
+			builder << "Chunk succesfully deleted " << fileNameToBeRemovedPatterns << '\n';
+			Logger::WriteLog(builder.str());
 		}
 	}
 }
@@ -2651,14 +2674,35 @@ void Forest::DeleteArchives(vector<string> fileNames, string folderLocation)
 		if( remove( fileNameToBeRemoved.c_str() ) != 0 )
 		{
 			stringstream builder;
-			builder << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+			builder << "Archives Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
 			Logger::WriteLog(builder.str());
-			//cout << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
 		}
 		else
 		{
-			//cout << fileNameToBeRemoved << " successfully deleted" << endl;
+			stringstream builder;
+			builder << "Archives succesfully deleted " << fileNameToBeRemoved << '\n';
+			Logger::WriteLog(builder.str());
 		}
+	}
+}
+
+void Forest::DeleteArchive(string fileNames, string folderLocation)
+{
+	string fileNameToBeRemoved = folderLocation;
+	fileNameToBeRemoved.append(fileNames.c_str());
+	fileNameToBeRemoved.append(".txt");
+	
+	if( remove( fileNameToBeRemoved.c_str() ) != 0 )
+	{
+		stringstream builder;
+		builder << "Archive Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+		Logger::WriteLog(builder.str());
+	}
+	else
+	{
+		stringstream builder;
+		builder << "Archive succesfully deleted " << fileNameToBeRemoved << '\n';
+		Logger::WriteLog(builder.str());
 	}
 }
 void Forest::DeleteChunk(string fileChunkName, string folderLocation)
@@ -2671,13 +2715,14 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 	if( remove( fileNameToBeRemoved.c_str() ) != 0 )
 	{
 		stringstream builder;
-		builder << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+		builder << "Chunk Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
 		Logger::WriteLog(builder.str());
-		//cout << "Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
 	}
 	else
 	{
-		//cout << fileNameToBeRemoved << " successfully deleted" << endl;
+		stringstream builder;
+		builder << "Chunk succesfully deleted " << fileNameToBeRemoved << '\n';
+		Logger::WriteLog(builder.str());
 	}
 
 	string fileNameToBeRemovedPatterns = folderLocation;
@@ -2687,13 +2732,14 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 	if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0 )
 	{
 		stringstream builder;
-		builder << "Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
+		builder << "Chunk Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
 		Logger::WriteLog(builder.str());
-		//cout << "Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
 	}
 	else
 	{
-		//cout << fileNameToBeRemovedPatterns << " successfully deleted" << endl;
+		stringstream builder;
+		builder << "Chunk succesfully deleted " << fileNameToBeRemovedPatterns << '\n';
+		Logger::WriteLog(builder.str());
 	}
 	
 }
