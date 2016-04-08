@@ -62,8 +62,11 @@ public:
 	PListType fileIndex;
 	map<PatternType, PListType> pListMetaData;
 	string fileName;
+	string patternName;
 	int fd;
 	vector<string> stringBuffer;
+	PListType startingIndex;
+	PListType mappingIndex;
 
 private:
 	
@@ -74,12 +77,16 @@ private:
 
 	//for mmap writing
 	PListType hdSectorSize;
-	PListType startingIndex;
 	PListType prevListIndex;
 	PListType prevStartingIndex;
 
-	PListType mappingIndex;
+	
 	PListType prevMappingIndex;
+
+	void MappingError(int& fileDescriptor, string fileName);
+	void UnMappingError(int& fileDescriptor, string fileName);
+	void SeekingError(int& fileDescriptor, string fileName);
+	void ExtendingFileError(int& fileDescriptor, string fileName);
 
 };
 

@@ -10,6 +10,7 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 {
 	try
 	{
+		patternName = fileName;
 		string file;
 		if(IsPList && !isBackup)
 		{
@@ -31,9 +32,11 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 		this->fileName = file;
 		if(fd < 0)
 		{
+			
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " file not found!" << endl;
 			Logger::WriteLog(stringbuilder.str());
+			
 			return;
 		}
 		
@@ -52,6 +55,42 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 }
 PListArchive::~PListArchive(void)
 {
+}
+
+void PListArchive::MappingError(int& fileDescriptor, string fileName)
+{
+	close(fileDescriptor);
+	fileDescriptor = -1;
+	stringstream handle;
+	handle << "error mapping the file " << fileName << endl;
+	Logger::WriteLog(handle.str());
+}
+	
+void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
+{
+	close(fileDescriptor);
+	fileDescriptor = -1;
+	stringstream handle;
+	handle << "error un-mapping the file " << fileName << endl;
+	Logger::WriteLog(handle.str());
+}
+
+void PListArchive::SeekingError(int& fileDescriptor, string fileName)
+{
+	close(fileDescriptor);
+	fileDescriptor = -1;
+	stringstream handle;
+	handle << "error calling lseek() to 'stretch' the file " << fileName << endl;
+	Logger::WriteLog(handle.str());
+}
+
+void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
+{
+	close(fileDescriptor);
+	fileDescriptor = -1;
+	stringstream handle;
+	handle << "error writing last byte of the file " << fileName << endl;
+	Logger::WriteLog(handle.str());
 }
 
 unsigned long long PListArchive::GetFileChunkSize(PListType chunkSizeInBytes)
@@ -134,8 +173,8 @@ string PListArchive::GetFileChunk(PListType index, PListType chunkSizeInBytes)
 	
 			if (map == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return "";
 			}
 		
 			unsigned long long PListBuffSize = hdSectorSize/sizeof(char);
@@ -152,7 +191,8 @@ string PListArchive::GetFileChunk(PListType index, PListType chunkSizeInBytes)
 
 			if (munmap(map, PListBuffSize) == -1) 
 			{
-				perror("Error un-mmapping the file");
+				UnMappingError(fd, this->fileName);
+				return "";
 			}
 		
 			chunkIndex += hdSectorSize;
@@ -223,8 +263,8 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 	
 			if (map == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return NULL;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
@@ -253,7 +293,9 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 
 							if(chunkSizeInMB != 0)
 							{
+								
 								double CurrentMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - InitMemoryMB;
+								//double CurrentMemoryMB = MemoryUtils::SizeOfVector(stuffedPListBuffer);
 								if(CurrentMemoryMB >= chunkSizeInMB)
 								{
 									finishedFlag = true;
@@ -312,7 +354,8 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 				}
 				if (munmap(map, PListBuffSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
+					UnMappingError(fd, this->fileName);
+					return NULL;
 				}
 			}
 		
@@ -368,8 +411,16 @@ void PListArchive::DumpContents()
 		if(fd != -1)
 		{
 			close(fd);
+			fd = -1;
 			fd =  open(fileName.c_str(), O_RDWR | O_TRUNC);
+			if(fd == -1)
+			{
+				fd = -1;
+				Logger::WriteLog("error opening the file");
+				return;
+			}
 		}
+
 	}
 	catch(exception e)
 	{
@@ -428,9 +479,8 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
 		
 			if (result == -1) 
 			{
-				close(fd);
-				perror("error calling lseek() to 'stretch' the file");
-				exit(0);
+				SeekingError(fd, this->fileName);
+				return;
 			}
     
 			/* something needs to be written at the end of the file to
@@ -446,9 +496,8 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
 			result = write(fd, "", 1);
 			if (result != 1) 
 			{
-				close(fd);
-				perror("error writing last byte of the file");
-				exit(0);
+				ExtendingFileError(fd, this->fileName);
+				return;
 			}
 
 			/* Now the file is ready to be mmapped.
@@ -464,9 +513,8 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
 
 				if (map == MAP_FAILED) 
 				{
-					close(fd);
-					perror("Error mmapping the file");
-					exit(0);
+					MappingError(fd, this->fileName);
+					return;
 				}
     
 				/* Now write unsigned longs's to the file as if it were memory (an array of longs).
@@ -496,10 +544,8 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
 
 				if (munmap(map, hdSectorSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
-					/* Decide here whether to close(fd) and exit() or not. Depends... */
-					close(fd);
-					exit(0);
+					UnMappingError(fd, this->fileName);
+					return;
 				}
 			}
 
@@ -533,6 +579,11 @@ void PListArchive::OpenArchiveMMAP()
 	try
 	{
 		fd =  open(fileName.c_str(), O_RDWR );
+		if(fd == -1)
+		{
+			Logger::WriteLog("error opening the file");
+			return;
+		}
 	}
 	catch(exception e)
 	{
@@ -592,9 +643,8 @@ void PListArchive::WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, strin
 		
 			if (result == -1) 
 			{
-				close(fd);
-				perror("error calling lseek() to 'stretch' the file");
-				exit(0);
+				SeekingError(fd, this->fileName);
+				return;
 			}
     
 			/* something needs to be written at the end of the file to
@@ -610,9 +660,8 @@ void PListArchive::WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, strin
 			result = write(fd, "", 1);
 			if (result != 1) 
 			{
-				close(fd);
-				perror("error writing last byte of the file");
-				exit(0);
+				ExtendingFileError(fd, this->fileName);
+				return;
 			}
 
 			/* Now the file is ready to be mmapped.
@@ -628,9 +677,8 @@ void PListArchive::WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, strin
 
 				if (map == MAP_FAILED) 
 				{
-					close(fd);
-					perror("Error mmapping the file");
-					exit(0);
+					MappingError(fd, this->fileName);
+					return;
 				}
     
 				/* Now write unsigned longs's to the file as if it were memory (an array of longs).
@@ -660,10 +708,8 @@ void PListArchive::WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, strin
 
 				if (munmap(map, hdSectorSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
-					/* Decide here whether to close(fd) and exit() or not. Depends... */
-					close(fd);
-					exit(0);
+					UnMappingError(fd, this->fileName);
+					return;
 				}
 			}
 
@@ -707,10 +753,29 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	//Add plus two to account for patternLength and mapEntries.
 	PListType sizeToReadForPatterns = count*level;
 	PListType totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize)) + 1;
-	vector<string> *newStringBuffer = new vector<string>(count);
+	vector<string> *newStringBuffer = NULL;
 	PListType newStringBufferIndex = 0;
 	PListType offstep = 0;
 	unsigned int prevIndexForChar = 0;
+
+	//If file size hasn't been found yet grab it once
+	if(fileSize == -1)
+	{
+		fileSize = MemoryUtils::FileSize(this->fileName);
+	}
+
+	PListType sizeToRead = 0;
+	if(count == 0)
+	{
+		PListType predictionCount = fileSize/level;
+		newStringBuffer = new vector<string>(predictionCount);
+		sizeToReadForPatterns = fileSize;
+		totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize)) + 1;
+	}
+	else
+	{
+		newStringBuffer = new vector<string>(count);
+	}
 
 	string completePattern( level, ' ');
 
@@ -728,8 +793,8 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 
 			if (mapChar == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return NULL;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(char);
@@ -771,7 +836,8 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 
 				if (munmap(mapChar, PListBuffSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
+					UnMappingError(fd, this->fileName);
+					return NULL;
 				}
 			}
 		
@@ -820,7 +886,8 @@ void PListArchive::ReadMemoryMapMMAPFromDisk()
 
 		if (munmap(mapPListType, hdSectorSize/sizeof(PListType)) == -1) 
 		{
-			perror("Error un-mmapping the file");
+			UnMappingError(fd, this->fileName);
+			return;
 		}
 
 		//Add plus two to account for patternLength and mapEntries.
@@ -851,8 +918,8 @@ void PListArchive::ReadMemoryMapMMAPFromDisk()
 
 			if (mapPListType == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
@@ -877,7 +944,8 @@ void PListArchive::ReadMemoryMapMMAPFromDisk()
 			
 				if (munmap(mapPListType, PListBuffSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
+					UnMappingError(fd, this->fileName);
+					return;
 				}
 			}
 		
@@ -904,8 +972,8 @@ void PListArchive::ReadMemoryMapMMAPFromDisk()
 	
 			if (mapChar == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(char);
@@ -952,7 +1020,8 @@ void PListArchive::ReadMemoryMapMMAPFromDisk()
 
 				if (munmap(mapChar, PListBuffSize) == -1) 
 				{
-					perror("Error un-mmapping the file");
+					UnMappingError(fd, this->fileName);
+					return;
 				}
 			}
 			fileIndex += hdSectorSize;
@@ -981,8 +1050,12 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		std::string::size_type i = fileName.find(".txt");
 		string tempString = fileName;
 		tempString.erase(i, 4);
-		file.append(tempString);
-		file.append("Patterns.txt");
+		stringstream temp;
+		temp << tempString;
+		temp << "Patterns";
+		//temp << stringBuffer.size();
+		temp << ".txt";
+		file = temp.str();
 
 		ofstream outputFile(file);
 		outputFile.close();
@@ -1017,9 +1090,8 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		
 		if (result == -1) 
 		{
-			close(mapFD);
-			perror("error calling lseek() to 'stretch' the file");
-			exit(0);
+			SeekingError(mapFD, file);
+			return;
 		}
     
 		/* something needs to be written at the end of the file to
@@ -1035,9 +1107,8 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		result = write(mapFD, "", 1);
 		if (result != 1) 
 		{
-			close(mapFD);
-			perror("error writing last byte of the file");
-			exit(0);
+			ExtendingFileError(mapFD, file);
+			return;
 		}
 
 		bool firstWritePatternLength = false;
@@ -1054,9 +1125,8 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		
 			if (mapForChars == MAP_FAILED) 
 			{
-				close(mapFD);
-				perror("Error mmapping the file");
-				exit(0);
+				MappingError(mapFD, file);
+				return;
 			}
 
 			stringIndex = prevIndexForString;
@@ -1102,10 +1172,8 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 			if (munmap(mapForChars, hdSectorSize) == -1) 
 			{
-				perror("Error un-mmapping the file");
-				/* Decide here whether to close(fd) and exit() or not. Depends... */
-				close(mapFD);
-				exit(0);
+				UnMappingError(mapFD, file);
+				return;
 			}
 		}
 		
@@ -1194,9 +1262,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 		
 		if (result == -1) 
 		{
-			close(mapFD);
-			perror("error calling lseek() to 'stretch' the file");
-			exit(0);
+			SeekingError(mapFD, file);
+			return;
 		}
     
 		/* something needs to be written at the end of the file to
@@ -1212,9 +1279,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 		result = write(mapFD, "", 1);
 		if (result != 1) 
 		{
-			close(mapFD);
-			perror("error writing last byte of the file");
-			exit(0);
+			ExtendingFileError(mapFD, file);
+			return;
 		}
 
 		bool firstWritePatternLength = false;
@@ -1225,9 +1291,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 			mapForPListType = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, mapFD, fileIndex);
 			if (mapForPListType == MAP_FAILED) 
 			{
-				close(mapFD);
-				perror("Error mmapping the file");
-				exit(0);
+				MappingError(mapFD, file);
+				return;
 			}
 
 			unsigned int z = 0;
@@ -1264,10 +1329,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 
 			if (munmap(mapForPListType, hdSectorSize) == -1) 
 			{
-				perror("Error un-mmapping the file");
-				/* Decide here whether to close(fd) and exit() or not. Depends... */
-				close(mapFD);
-				exit(0);
+				UnMappingError(mapFD, file);
+				return;
 			}
 		}
 
@@ -1286,9 +1349,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 
 			if (mapForChars == MAP_FAILED) 
 			{
-				close(mapFD);
-				perror("Error mmapping the file");
-				exit(0);
+				MappingError(mapFD, file);
+				return;
 			}
 
 			globalMapIterator = prevItForChar;
@@ -1335,10 +1397,8 @@ void PListArchive::DumpMemoryMapMMAPToDisk()
 
 			if (munmap(mapForChars, hdSectorSize) == -1) 
 			{
-				perror("Error un-mmapping the file");
-				/* Decide here whether to close(fd) and exit() or not. Depends... */
-				close(mapFD);
-				exit(0);
+				UnMappingError(mapFD, file);
+				return;
 			}
 		}
 		close(mapFD);
@@ -1374,15 +1434,16 @@ vector<PListType>* PListArchive::GetListFromIndex(PListType index)
 
 		if (map == MAP_FAILED) 
 		{
-			close(fd);
-			perror("Error mmapping the file");
+			MappingError(fd, this->fileName);
+			return NULL;
 		}
 	
 		pListsToRead = map[offSetOfPlacement];
 
 		if (munmap(map, hdSectorSize) == -1) 
 		{
-			perror("Error un-mmapping the file");
+			UnMappingError(fd, this->fileName);
+			return NULL;
 		}
 	
 		//If file size hasn't been found yet grab it once
@@ -1414,8 +1475,8 @@ vector<PListType>* PListArchive::GetListFromIndex(PListType index)
 
 			if (map == MAP_FAILED) 
 			{
-				close(fd);
-				perror("Error mmapping the file");
+				MappingError(fd, this->fileName);
+				return NULL;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
@@ -1453,7 +1514,8 @@ vector<PListType>* PListArchive::GetListFromIndex(PListType index)
 
 			if (munmap(map, PListBuffSize) == -1) 
 			{
-				perror("Error un-mmapping the file");
+				UnMappingError(fd, this->fileName);
+				return NULL;
 			}
 		
 			if(!doneProcessing)

@@ -20,6 +20,7 @@ typedef std::vector<map<PatternType, PListType>>::iterator it_type;
 typedef std::map<PatternType, PListType>::iterator it_map_type;
 typedef std::map<PatternType, vector<PListType>>::iterator it_map_list_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
+typedef std::map<PatternType, PListArchive*>::iterator it_map_plistarchive_type;
 struct LevelPackage
 {
 	unsigned int currLevel;
@@ -31,6 +32,8 @@ struct LevelPackage
 class Forest
 {
 private:
+	double mostMemoryOverflow;
+	double currMemoryOverflow;
 	std::map<string, vector<PListType>*> globalMap;
 	PListType fileID;
 	vector<mutex*> gatedMutexes;
@@ -55,7 +58,6 @@ private:
 	bool displayEachLevelSearch;
 	//If /c is in commands then cycle from 1 thread to MAX threads on machine and output best thread scheme
 	bool findBestThreadNumber;
-	unsigned long long levelCountPatterns;
 	mutex *countMutex;
 	mutex *fileIDMutex;
 	bool usingMemoryBandwidth;
@@ -73,7 +75,14 @@ private:
 	vector<vector<PListType>*>* globalPListArray;
 	PListType eradicatedPatterns;
 	vector<PListType> levelRecordings;
+	vector<PListType> mostCommonPatternCount;
+	vector<string> mostCommonPattern;
 	StopWatch initTime;
+	bool globalUsingRAM;
+	bool overMemoryCount;
+	bool processingFinished;
+
+	void MemoryQuery();
 
 	TreeHD RAMToHDLeafConverter(TreeRAM leaf);
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);
@@ -108,6 +117,8 @@ private:
 	vector<vector<string>> ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, LevelPackage levelInfo, vector<string> prevFileNames);
 
 	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false);
+
+	bool DispatchNewThreads(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
 
 	void DisplayPatternsFound();
 	void DisplayHelpMessage();

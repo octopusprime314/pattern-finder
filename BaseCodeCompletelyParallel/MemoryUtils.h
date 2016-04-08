@@ -106,18 +106,35 @@ public:
 
 	}
 
-	static bool IsOverMemoryCount(unsigned long initialMemoryInMB, unsigned long memoryBandwidthInMB)
+	static double SizeOfVector(vector<vector<PListType>*>* vectorArray)
+	{
+		
+		PListType totalMemoryInBytes = 0;
+		for(int i = 0; i < vectorArray->size(); i++)
+		{
+			totalMemoryInBytes = (*vectorArray)[i]->capacity() * sizeof(PListType) + sizeof(vector<PListType>*);
+		}
+		double sizeInMB = totalMemoryInBytes/1000000.0f;
+		return sizeInMB;
+	}
+
+	static bool IsOverMemoryCount(unsigned long initialMemoryInMB, unsigned long memoryBandwidthInMB, double& memoryOverflow)
 	{
 		double currMemory = GetProgramMemoryConsumption();
-
-		if(currMemory - initialMemoryInMB >= memoryBandwidthInMB)
+		stringstream stringbuilder;
+		
+		double usedMemory = currMemory - initialMemoryInMB;
+		if(usedMemory >= memoryBandwidthInMB)
 		{
-			//cout << "Over memory bandwidth" << endl;
+			
+			memoryOverflow = usedMemory - memoryBandwidthInMB;
+			stringbuilder << "Memory overused is " << memoryOverflow << " MB" << endl;
+			Logger::WriteLog(stringbuilder.str());
+			
 			return true;
 		}
 		else
 		{
-			//cout << "Under memory bandwidth" << endl;
 			return false;
 		}
 	}

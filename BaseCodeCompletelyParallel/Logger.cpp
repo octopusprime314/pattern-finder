@@ -10,39 +10,42 @@ mutex* Logger::scrollLogMutex = new mutex();
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
-	if(!disableLogging)
+	if(VERBOSITY_LEVEL)
 	{
-		logMutex->lock();
-
-		//String gets written live to log while 
-		//log.txt gets written to at certain hard disk size blocks
-		if(cmdEnabled)
+		if(!disableLogging )
 		{
-			cout << miniBuff;
-		}
+			logMutex->lock();
 
-		if(scrollEnabled)
-		{
-			//Write to the scrolling log
-			WriteScrollingLog(miniBuff);
-		}
+			//String gets written live to log while 
+			//log.txt gets written to at certain hard disk size blocks
+			if(cmdEnabled)
+			{
+				cout << miniBuff;
+			}
+
+			if(scrollEnabled)
+			{
+				//Write to the scrolling log
+				WriteScrollingLog(miniBuff);
+			}
 	
 
-		stringBuffer.append(/*GetFormattedTime() + ": " +*/ miniBuff);
+			stringBuffer.append(/*GetFormattedTime() + ": " +*/ miniBuff);
 
-		//Write to disk only if byte length is greater than 512
-		//this is more efficient when writing to disk to do it in blocks
-		//if(stringBuffer.length() >= 64)
-		//{
-			(*outputFile) << stringBuffer;
-			//If written clear the string out
-			stringBuffer.clear();
+			//Write to disk only if byte length is greater than 512
+			//this is more efficient when writing to disk to do it in blocks
+			//if(stringBuffer.length() >= 64)
+			//{
+				(*outputFile) << stringBuffer;
+				//If written clear the string out
+				stringBuffer.clear();
 
-			//refresh
-			(*outputFile).flush();
-		//}
+				//refresh
+				(*outputFile).flush();
+			//}
 
-		logMutex->unlock();
+			logMutex->unlock();
+		}
 	}
 }
 
