@@ -9,7 +9,6 @@
 using namespace std;
 
 #define SCROLLCOUNT 25
-#define VERBOSITY_LEVEL 1
 const string LOGGERPATH = "../Log/";
 const bool cmdEnabled = false;
 const bool scrollEnabled = false;
@@ -34,6 +33,8 @@ public:
 	//static void DisplayScrollingLog();
 
 	static string GetFormattedTime();
+
+	static bool verbosity;
 
 private:
 	static string stringBuffer;

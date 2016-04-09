@@ -54,3 +54,9 @@ Temporary Items
 *.exe
 *.pdb
 *.dll
+*.ilk
+*.lib
+*.sdf
+*.lastbuildstate
+*.idb
+*.opensdf

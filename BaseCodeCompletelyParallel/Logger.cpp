@@ -6,11 +6,12 @@ mutex* Logger::logMutex = new mutex();
 string Logger::scroll[SCROLLCOUNT];
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
+bool Logger::verbosity = false;
 
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
-	if(VERBOSITY_LEVEL)
+	if(verbosity)
 	{
 		if(!disableLogging )
 		{
