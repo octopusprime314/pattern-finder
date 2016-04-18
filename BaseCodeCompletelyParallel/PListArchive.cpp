@@ -39,6 +39,12 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 			
 			return;
 		}
+		/*else
+		{
+			stringstream stringbuilder;
+			stringbuilder << file.c_str() << " is open!" << endl;
+			Logger::WriteLog(stringbuilder.str());
+		}*/
 		
 
 		fileSize = -1;
@@ -246,7 +252,7 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 	}
 	
 	vector<vector<PListType>*>* stuffedPListBuffer = new vector<vector<PListType>*>();
-	
+	PListType totalCount = 0;
 	try
 	{
 		bool finishedFlag = false;
@@ -310,6 +316,7 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 						}
 
 						listCount = (PListType) map[i];
+						totalCount = listCount;
 						//cout << "List count: " << listCount << endl;
 						prevListIndex = fileIndex;
 						prevStartingIndex = i;
@@ -320,7 +327,11 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 							break;
 						}
 						stuffedPListBuffer->push_back(new vector<PListType>());
+						
 						pListGlobalIndex++;
+						//
+						(*stuffedPListBuffer)[pListGlobalIndex]->reserve(listCount);
+						//
 					}
 					else
 					{
@@ -1547,8 +1558,17 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
+			/*stringstream stringbuilder;
+			stringbuilder << fileName.c_str() << " closed!" << endl;
+			Logger::WriteLog(stringbuilder.str());*/
 			close(fd);
 		}
+		/*else
+		{
+			stringstream stringbuilder;
+			stringbuilder << fileName.c_str() << " already closed!" << endl;
+			Logger::WriteLog(stringbuilder.str());
+		}*/
 	}
 	catch(exception e)
 	{

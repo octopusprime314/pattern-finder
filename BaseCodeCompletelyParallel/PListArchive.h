@@ -67,13 +67,14 @@ public:
 	vector<string> stringBuffer;
 	PListType startingIndex;
 	PListType mappingIndex;
+	PListType fileSize;
 
 private:
 	
 	//map<PListType, string> pListInverseMetaData;
 	vector<PListType> pListBuffer;
 	ofstream *outputFile;
-	PListType fileSize;
+	
 
 	//for mmap writing
 	PListType hdSectorSize;
