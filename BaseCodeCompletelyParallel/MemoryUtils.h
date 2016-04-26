@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include "TypeDefines.h"
 using namespace std;
-
+typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 
 class MemoryUtils
 {
@@ -114,6 +114,32 @@ public:
 		{
 			totalMemoryInBytes = (*vectorArray)[i]->capacity() * sizeof(PListType) + sizeof(vector<PListType>*);
 		}
+		double sizeInMB = totalMemoryInBytes/1000000.0f;
+		return sizeInMB;
+	}
+
+	static double SizeOfMap(map<PatternType, vector<PListType>*> mapFile)
+	{
+		
+		//16 bytes for map itself
+		PListType totalMemoryInBytes = 16;
+		//Size needed for each node in the map overhead essentially
+		totalMemoryInBytes += (mapFile.size() + 1)*32;
+
+		unsigned int mapHashSize = 0;
+		if(mapFile.size() > 0)
+		{
+			mapHashSize = mapFile.begin()->first.length();
+			totalMemoryInBytes += (mapFile.size() + 1)*mapHashSize;
+
+			for(it_map_list_p_type iterator = mapFile.begin(); iterator != mapFile.end(); iterator++)
+			{
+				//Add 24 for the overhead storage for a vector in addition to its capacity
+				totalMemoryInBytes += iterator->second->capacity()*sizeof(PListType) + 24;
+			}
+		}
+		
+		
 		double sizeInMB = totalMemoryInBytes/1000000.0f;
 		return sizeInMB;
 	}

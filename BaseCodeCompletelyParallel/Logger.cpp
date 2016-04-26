@@ -3,7 +3,7 @@
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
-string Logger::scroll[SCROLLCOUNT];
+//string Logger::scroll[SCROLLCOUNT];
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
 bool Logger::verbosity = false;
@@ -27,7 +27,7 @@ void Logger::WriteLog(string miniBuff)
 			if(scrollEnabled)
 			{
 				//Write to the scrolling log
-				WriteScrollingLog(miniBuff);
+				//WriteScrollingLog(miniBuff);
 			}
 	
 
@@ -71,27 +71,31 @@ void Logger::CloseLog()
 	ClearLog(); 
 	(*outputFile).close();
 	logMutex->unlock();
+
+	delete outputFile;
+	delete scrollLogMutex;
+	delete logMutex;
 }
 
 
-void Logger::WriteScrollingLog(string subject)
-{
-	scrollLogMutex->lock();
-	if(index < SCROLLCOUNT)
-	{
-		scroll[index] = subject;
-		index++;
-	}
-	else
-	{
-		for(int i = 0; i < SCROLLCOUNT-1; i++)
-		{
-			scroll[i] = scroll[i+1];
-		}
-		scroll[SCROLLCOUNT-1] = subject;
-	}
-	scrollLogMutex->unlock();
-}
+//void Logger::WriteScrollingLog(string subject)
+//{
+//	scrollLogMutex->lock();
+//	if(index < SCROLLCOUNT)
+//	{
+//		scroll[index] = subject;
+//		index++;
+//	}
+//	else
+//	{
+//		for(int i = 0; i < SCROLLCOUNT-1; i++)
+//		{
+//			scroll[i] = scroll[i+1];
+//		}
+//		scroll[SCROLLCOUNT-1] = subject;
+//	}
+//	scrollLogMutex->unlock();
+//}
 
 //void Logger::DisplayScrollingLog()
 //{

@@ -27,7 +27,7 @@ public:
 	static void CloseLog();
 
 	//Display on scrolling logger
-	static void WriteScrollingLog(string subject);
+	//static void WriteScrollingLog(string subject);
 
 	//Display on scrolling logger
 	//static void DisplayScrollingLog();
@@ -40,7 +40,7 @@ private:
 	static string stringBuffer;
 	static ofstream *outputFile;
 	static mutex* logMutex;
-	static string scroll[SCROLLCOUNT];
+	//static string scroll[SCROLLCOUNT];
 	static mutex* scrollLogMutex;
 	static int index;
 };

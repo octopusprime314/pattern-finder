@@ -21,6 +21,7 @@ typedef std::map<PatternType, PListType>::iterator it_map_type;
 typedef std::map<PatternType, vector<PListType>>::iterator it_map_list_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 typedef std::map<PatternType, PListArchive*>::iterator it_map_plistarchive_type;
+typedef std::map<string, TreeHD*>::iterator it_vector_type;
 struct LevelPackage
 {
 	unsigned int currLevel;
@@ -34,7 +35,6 @@ class Forest
 private:
 	double mostMemoryOverflow;
 	double currMemoryOverflow;
-	std::map<string, vector<PListType>*> globalMap;
 	PListType fileID;
 	vector<mutex*> gatedMutexes;
 	vector<int> currentLevelVector;
@@ -51,7 +51,6 @@ private:
 	bool history;
 	PListType minimum, maximum;
 	PListType memoryBandwidthMB;
-	PListType memoryPerCycle;
 	PListType memoryPerThread;
 	PListType globalLevel;
 	//If /d is in commands then display number of patterns found at each level
@@ -87,6 +86,7 @@ private:
 	TreeHD RAMToHDLeafConverter(TreeRAM leaf);
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);
 	TreeHD* PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
+	TreeRAMExperiment* PlantTreeSeedThreadHDTest(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
 	
 	bool NextLevelTreeSearch(PListType level);
 	bool NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, vector<string>& fileList, LevelPackage& levelInfo);
@@ -98,6 +98,7 @@ private:
 	void FirstLevelRAMProcessing();
 
 	string CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threadNum, PListType currLevel);
+	string CreateChunkFile(string fileName, TreeRAMExperiment& leaf, unsigned int threadNum, PListType currLevel);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);

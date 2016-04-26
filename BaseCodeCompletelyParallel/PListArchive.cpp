@@ -755,12 +755,6 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	long long result;
 	char *mapChar;  /* mmapped array of char's */
 
-	//If file size hasn't been found yet grab it once
-	if(fileSize == -1)
-	{
-		fileSize = MemoryUtils::FileSize(this->fileName);
-	}
-
 	//Add plus two to account for patternLength and mapEntries.
 	PListType sizeToReadForPatterns = count*level;
 	PListType totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize)) + 1;
@@ -778,10 +772,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	PListType sizeToRead = 0;
 	if(count == 0)
 	{
-		PListType predictionCount = fileSize/level;
-		newStringBuffer = new vector<string>(predictionCount);
-		sizeToReadForPatterns = fileSize;
-		totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize)) + 1;
+		return NULL;
 	}
 	else
 	{

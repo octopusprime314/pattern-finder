@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include "MemoryUtils.h"
+//#include "vld.h"
 
 FileReader::FileReader(string fileName)
 {
@@ -49,6 +50,6 @@ FileReader::~FileReader()
 	DeleteBuffer();
 
 	fileString.clear();
-	fileString.resize(0);
+	fileString.reserve(0);
 	fileString = "";
 }

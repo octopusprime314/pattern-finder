@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>/f TaleOfTwoCities.txt /min 1 /max 100000 /d /threads 48</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f StargateClip.mp4 -min 1 -max 1000 -d -threads 2 -mem 100 -lev 1 -his 0 -v 1 -RAM</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-f TaleOfTwoCities.txt -min 1 -max 100 -d -threads 9 -mem 150 -lev 1 -his 0 -hd </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f StargateClip.mp4 -min 1 -max 1000 -d -threads 9 -mem 300 -lev 1 -his 0 -v 1 -RAM</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -13,7 +13,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-f StargateClip.mp4 -min 1 -max 100 -d -threads 9 -mem 150 -lev 1 -his 0 -hd </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -max 1000 -d -threads 9 -mem 1000 -lev 1 -his 0 -v 0 -RAM</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>

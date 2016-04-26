@@ -15,19 +15,18 @@ using namespace std;
 class TreeRAMExperiment
 {
 private:
-	vector<PListType> *pList;
-	map<string, TreeRAMExperiment*> leaves;
+	
+	
 
 public:
 	TreeRAMExperiment();
 	~TreeRAMExperiment();
 	TreeRAMExperiment(PListType pIndex);
-	vector<vector<PListType>*>* GetLeafPLists(PListType& eradicatedPatterns);
 	void addLeaf(string uniquestring, PListType pIndex);
 	void addPIndex(PListType pIndex);
-	vector<PListType>* GetPList();
-	PListType GetPListCount();
-	map<string, TreeRAMExperiment*> GetMap();
-	static void displayTree(vector<TreeRAMExperiment*> tree, string buffer, int level);
-	static vector<PListType>* GetMostCommonPattern(vector<vector<PListType>*>* pLists, string buffer, int level);
+	
+
+	vector<string> *patterns;
+	vector<TreeRAMExperiment*> *leaves;
+	vector<PListType> *pList;
 };
