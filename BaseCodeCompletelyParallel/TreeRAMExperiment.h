@@ -22,11 +22,9 @@ public:
 	TreeRAMExperiment();
 	~TreeRAMExperiment();
 	TreeRAMExperiment(PListType pIndex);
-	void addLeaf(string uniquestring, PListType pIndex);
+	void addLeaf(PListType pIndex, string uniquestring);
 	void addPIndex(PListType pIndex);
 	
-
-	vector<string> *patterns;
-	vector<TreeRAMExperiment*> *leaves;
-	vector<PListType> *pList;
+	map<string, TreeRAMExperiment> leaves;
+	vector<PListType> pList;
 };

@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	//_CrtSetBreakAlloc(5381067);
+	//_CrtSetBreakAlloc(3223);
 	//_CrtSetBreakAlloc(3372082);
 	//_CrtSetBreakAlloc(3292);
 #endif
@@ -26,22 +26,19 @@ int main(int argc, char **argv)
 	double MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
 	Forest *Ent = new Forest(argc, argv);
 
+	delete Ent;
+
 	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
 	stringstream crappy;
 	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
 	Logger::WriteLog(crappy.str());
-
-	delete Ent;
-
-	threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
+	cout << crappy.str() << endl;
 	crappy.str("");
-	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
-	Logger::WriteLog(crappy.str());
 
-	do
+	/*do
 	{
 		cout << '\n' <<"Press the Enter key to continue." << endl;
-	} while (cin.get() != '\n');
+	} while (cin.get() != '\n');*/
 
 	Logger::CloseLog();
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)

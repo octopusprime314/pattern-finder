@@ -4,7 +4,6 @@
 #include <sstream>
 #include <fstream>
 #include "MemoryUtils.h"
-//#include "vld.h"
 
 FileReader::FileReader(string fileName)
 {

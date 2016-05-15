@@ -21,7 +21,7 @@ public:
 	TreeRAM();
 	~TreeRAM();
 	TreeRAM(PListType pIndex);
-	vector<vector<PListType>*>* GetLeafPLists(PListType& eradicatedPatterns);
+	vector<vector<PListType>*>* GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence);
 	void addLeaf(unsigned char uniqueChar, PListType pIndex);
 	void addPIndex(PListType pIndex);
 	vector<PListType>* GetPList();

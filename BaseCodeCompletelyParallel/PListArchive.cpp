@@ -1,42 +1,48 @@
 #include "PListArchive.h"
 #include "MemoryUtils.h"
 #include <exception>
+#include <thread>
 
 PListArchive::PListArchive(void)
 {
 }
 
-PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
+PListArchive::PListArchive(string fileName, bool IsPList, bool create)
 {
 	try
 	{
+		begMapIndex = NULL;
+		endOfFileReached = false;
 		patternName = fileName;
 		string file;
-		if(IsPList && !isBackup)
+		
+		file.append("../Log/");
+		file.append(fileName);
+		file.append(".txt");
+		fd = -1;
+
+		if(create)
 		{
-			file.append("../Log/");
-			file.append(fileName);
-			file.append(".txt");
-		}
-		else if(IsPList && isBackup)
-		{
-			file.append("../Log/BackupLog/");
-			file.append(fileName);
-			file.append(".txt");
+			fd = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+			if(fd == -1)
+			{
+				fd = open(file.c_str(), O_RDWR | O_TRUNC);
+			}
 		}
 		else
 		{
-			file.append(fileName);
+			fd = open(file.c_str(), O_RDWR);
 		}
-		fd = open(file.c_str(), O_RDWR );
+
 		this->fileName = file;
 		if(fd < 0)
 		{
 			
 			stringstream stringbuilder;
-			stringbuilder << file.c_str() << " file not found!" << endl;
+			stringbuilder << file.c_str() << " file not found!";
+			stringbuilder << " and errno is "<< errno << endl;
 			Logger::WriteLog(stringbuilder.str());
-			
+			endOfFileReached = true;
 			return;
 		}
 		/*else
@@ -49,7 +55,7 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool isBackup)
 
 		fileSize = -1;
 		fileIndex = 0;
-		hdSectorSize = 2097152;
+		//hdSectorSize = 2097152;
 		startingIndex = 0;
 		mappingIndex = 0;
 		prevMappingIndex = 0;
@@ -211,6 +217,168 @@ string PListArchive::GetFileChunk(PListType index, PListType chunkSizeInBytes)
 	return fileString; 
 }
 
+void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, PListType chunkSizeInMB)
+{
+	long long result;
+	PListType *map;  /* mmapped array of char's */
+
+	double InitMemoryMB = MemoryUtils::GetProgramMemoryConsumption();
+	
+	PListType sizeToRead = 0;
+	if(chunkSizeInMB == 0)
+	{
+		sizeToRead = fileSize;
+	}
+	else
+	{
+		sizeToRead = chunkSizeInMB*1000000;
+	}
+
+	if(sizeToRead > fileSize - fileIndex)
+	{
+		sizeToRead = fileSize - fileIndex;
+	}
+	PListType totalReads = ((double)sizeToRead)/((double)hdSectorSize);
+	PListType pListGlobalIndex = -1;
+	PListType listCount = 0;
+
+	if(totalReads < 1 && fileSize > 0)
+	{
+		totalReads = 1;
+	}
+	else if(totalReads < 1 && fileSize == 0)
+	{
+		totalReads = 0;
+	}
+	
+	//vector<vector<PListType>*> stuffedPListBuffer; = new vector<vector<PListType>*>();
+	PListType totalCount = 0;
+	try
+	{
+		bool finishedFlag = false;
+
+		for(PListType piss = 0; piss < totalReads && !finishedFlag; piss++)
+		{
+			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
+	
+			if (map == MAP_FAILED) 
+			{
+				MappingError(fd, this->fileName);
+				return;
+			}
+		
+			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
+			/* Now do something with the information. */
+
+			if(piss < totalReads)
+			{
+				PListBuffSize = hdSectorSize/sizeof(PListType);
+
+				if((sizeToRead - (piss*hdSectorSize)) < hdSectorSize)
+				{
+					PListBuffSize = ((sizeToRead - (piss*hdSectorSize)))/sizeof(PListType);
+				}
+				if(startingIndex != 0)
+				{
+					PListBuffSize = hdSectorSize/sizeof(PListType) - startingIndex;
+				}
+			
+				for (PListType i = startingIndex; i < PListBuffSize + startingIndex; i++) 
+				{
+					if(listCount == 0)
+					{
+						if(pListGlobalIndex != -1)
+						{
+							stuffedPListBuffer[pListGlobalIndex]->shrink_to_fit();
+
+							if(chunkSizeInMB != 0)
+							{
+								
+								double CurrentMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - InitMemoryMB;
+								//double CurrentMemoryMB = MemoryUtils::SizeOfVector(stuffedPListBuffer);
+								if(CurrentMemoryMB >= chunkSizeInMB)
+								{
+									finishedFlag = true;
+									fileIndex = prevListIndex;
+									startingIndex = prevStartingIndex;
+									delete stuffedPListBuffer[pListGlobalIndex];
+									stuffedPListBuffer.pop_back();
+									//cout << "Didn't make it to the end of file: " << fileName << endl;
+									break;
+								}
+							}
+						}
+
+						listCount = (PListType) map[i];
+						totalCount = listCount;
+						//cout << "List count: " << listCount << endl;
+						prevListIndex = fileIndex;
+						prevStartingIndex = i;
+
+						//If listCount equals zero then we are at the end of the pList data stream bam bitches
+						if(listCount == 0)
+						{
+							finishedFlag = true;
+							endOfFileReached = true;
+							break;
+						}
+						stuffedPListBuffer.push_back(new vector<PListType>());
+						
+						pListGlobalIndex++;
+						//
+						stuffedPListBuffer[pListGlobalIndex]->reserve(listCount);
+						//
+					}
+					else
+					{
+						stuffedPListBuffer[pListGlobalIndex]->push_back(map[i]);
+						listCount--;
+					}
+				}
+
+				if(startingIndex != 0 && !finishedFlag)
+				{
+					startingIndex = 0;
+				}
+
+				//If pattern is not done we have to resize again
+				if(listCount > 0 && piss == totalReads - 1 && !finishedFlag)
+				{
+					if(chunkSizeInMB != 0)
+					{
+						finishedFlag = true;
+						fileIndex = prevListIndex;
+						startingIndex = prevStartingIndex;
+						delete stuffedPListBuffer[pListGlobalIndex];
+						stuffedPListBuffer.pop_back();
+						//cout << "Didn't make it to the end of file: " << fileName << endl;
+					}
+				}
+				//if size of chunk is less than hdSector size
+				else if(sizeToRead <= hdSectorSize)
+				{
+					fileIndex += hdSectorSize;
+				}
+				if (munmap(map, PListBuffSize) == -1) 
+				{
+					UnMappingError(fd, this->fileName);
+					return;
+				}
+			}
+		
+			if(!finishedFlag)
+			{
+				fileIndex += hdSectorSize;
+			}
+		
+		}
+	}
+	catch(exception e)
+	{
+		cout << "Exception occurred in method GetPListArchiveMMAP -> " << e.what() << endl;
+	}
+}
+
 vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSizeInMB)
 {
 	long long result;
@@ -218,12 +386,6 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 
 	double InitMemoryMB = MemoryUtils::GetProgramMemoryConsumption();
 	
-	//If file size hasn't been found yet grab it once
-	if(fileSize == -1)
-	{
-		fileSize = MemoryUtils::FileSize(this->fileName);
-	}
-
 	PListType sizeToRead = 0;
 	if(chunkSizeInMB == 0)
 	{
@@ -259,18 +421,12 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 
 		for(PListType piss = 0; piss < totalReads && !finishedFlag; piss++)
 		{
-
-	#if defined(_WIN64) || defined(_WIN32)
-			result = _lseeki64(fd, fileIndex, SEEK_SET);
-	#elif defined(__linux__)
-			result = lseek64(fd, fileIndex, SEEK_SET);
-	#endif
 			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 	
 			if (map == MAP_FAILED) 
 			{
 				MappingError(fd, this->fileName);
-				return NULL;
+				return stuffedPListBuffer;
 			}
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
@@ -324,6 +480,8 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 						//If listCount equals zero then we are at the end of the pList data stream bam bitches
 						if(listCount == 0)
 						{
+							finishedFlag = true;
+							endOfFileReached = true;
 							break;
 						}
 						stuffedPListBuffer->push_back(new vector<PListType>());
@@ -386,21 +544,7 @@ vector<vector<PListType>*>* PListArchive::GetPListArchiveMMAP(PListType chunkSiz
 
 bool PListArchive::IsEndOfFile()
 {
-	//If file size hasn't been found yet grab it once
-	if(fileSize == -1)
-	{
-		fileSize = MemoryUtils::FileSize(this->fileName);
-	}
-
-	//if fileIndex is larger than the file size we are done here.
-	if(fileIndex >= fileSize - 1 || fileSize == 0)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return endOfFileReached;
 }
 
 bool PListArchive::Exists()
@@ -439,10 +583,376 @@ void PListArchive::DumpContents()
 	}
 }
 
+//void PListArchive::WriteArchiveMapMMAP(vector<PListType> pListVector, PatternType pattern, bool flush)
+//{
+//	try
+//	{
+//		long long result;
+//		PListType totalLoops = hdSectorSize/sizeof(PListType);
+//		PListType *map = NULL;  /* mmapped array of char's */
+//		if(pListVector.size() > 0)
+//		{
+//			if(pattern.size() > 0)
+//			{
+//				stringBuffer.push_back(pattern);
+//			}
+//			mappingIndex += ((pListVector.size() + 1)*sizeof(PListType));
+//			pListBuffer.push_back(pListVector.size());
+//			pListBuffer.insert(pListBuffer.end(), pListVector.begin(), pListVector.end());
+//		}
+//
+//		if(pListBuffer.size()*sizeof(PListType) > hdSectorSize || (flush && pListBuffer.size() > 0))
+//		{
+//			PListType startPoint = (prevMappingIndex % hdSectorSize)/sizeof(PListType);
+//			PListType tempMapIndex = mappingIndex;
+//			mappingIndex = prevMappingIndex;
+//			prevMappingIndex = tempMapIndex;
+//		
+//			fileIndex = (mappingIndex/hdSectorSize)*hdSectorSize;
+//
+//			bool doneWithThisShit = false;
+//
+//			//overshoot how much we are going to write just in case by adding one extra to the offset
+//			// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
+//			// who fucking knows but baby does it work now!
+//			PListType offset = ceil(((double)(pListBuffer.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
+//
+//			//If offset is less than disk write size then write whatever can be done
+//			if(offset <= 0)
+//			{
+//				offset = 1;
+//			}
+//
+//			/* stretch the file size to the size of the (mmapped) array of unsigned char
+//				*/
+//		
+//		#if defined(_WIN64) || defined(_WIN32)
+//			//cout << "file id: " << fd << " write position: " << fileIndex + (offset*hdSectorSize) - 1 << endl;
+//			result = _lseeki64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+//		#elif defined(__linux__)
+//			result = lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+//		#endif
+//		
+//			if (result == -1) 
+//			{
+//				SeekingError(fd, this->fileName);
+//				return;
+//			}
+//    
+//			/* something needs to be written at the end of the file to
+//				* have the file actually have the new size.
+//				* just writing an empty string at the current file position will do.
+//				*
+//				* note:
+//				*  - the current position in the file is at the end of the stretched 
+//				*    file due to the call to lseek().
+//				*  - an empty string is actually a single '\0' character, so a zero-byte
+//				*    will be written at the last byte of the file.
+//				*/
+//			result = write(fd, "", 1);
+//			if (result != 1) 
+//			{
+//				ExtendingFileError(fd, this->fileName);
+//				return;
+//			}
+//
+//			/* Now the file is ready to be mmapped.
+//				*/
+//			PListType offsetStep = 0;
+//		
+//			PListType pListSize = pListBuffer.size();
+//
+//			PListType offSetMax = offset*totalLoops;
+//
+//			for(int i = 0; i < offset && !doneWithThisShit; i++)
+//			{
+//
+//				map = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
+//
+//				if (map == MAP_FAILED) 
+//				{
+//					MappingError(fd, this->fileName);
+//					return;
+//				}
+//    
+//				/* Now write unsigned longs's to the file as if it were memory (an array of longs).
+//					*/
+//				for (int z = startPoint; z < totalLoops && offsetStep < offSetMax; ++z) 
+//				{
+//					map[z] = pListBuffer[offsetStep];
+//					offsetStep++;
+//
+//					if(offsetStep >= pListBuffer.size())
+//					{
+//						doneWithThisShit = true;
+//						break;
+//					}
+//				}
+//
+//				//No longer need to use a starting point after first write hehe :)
+//				startPoint = 0;
+//
+//				//Flush pages to hard disk
+//				msync(map, hdSectorSize, MS_SYNC);
+//
+//				fileIndex += hdSectorSize;
+//		
+//				/* Don't forget to free the mmapped memory
+//					*/
+//
+//				if (munmap(map, hdSectorSize) == -1) 
+//				{
+//					UnMappingError(fd, this->fileName);
+//					return;
+//				}
+//			}
+//
+//			vector<PListType>::const_iterator first = pListBuffer.begin() + offsetStep;
+//			vector<PListType>::const_iterator last = pListBuffer.end();
+//			vector<PListType> tempPListBuffer(first, last);
+//			//If written clear the pList out
+//			pListBuffer.clear();
+//			//append rest of buffer if not empty
+//			if(!tempPListBuffer.empty())
+//			{
+//				pListBuffer.insert(pListBuffer.end(), tempPListBuffer.begin(), tempPListBuffer.end());
+//				tempPListBuffer.clear();
+//			}
+//			mappingIndex = prevMappingIndex;
+//		}
+//		if(flush)
+//		{
+//			pListBuffer.shrink_to_fit();
+//		}
+//	}
+//	catch(exception e)
+//	{
+//		cout << "Exception occurred in method WriteArchiveMapMMAP -> " << e.what() << endl;
+//		cout << "Vector size man! " << pListVector.size() << endl;
+//	}
+//}
+
+void PListArchive::FlushMapList(list<PListType*> memLocalList)
+{
+	memLocalList.unique();
+	for(PListType* temp : memLocalList)
+	{
+		msync(temp, hdSectorSize, MS_SYNC);
+	}
+	
+}
+
+void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern, bool flush)
+{
+	try
+	{
+		if(flush)
+		{
+			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad lol
+			PListType len = (mappingIndex/hdSectorSize)*hdSectorSize;
+			if(mappingIndex%hdSectorSize != 0)
+			{
+				len += hdSectorSize;
+			}
+			cout << "Number of memory locations to flush: " << memLocals.size() << endl;
+			list<PListType*> memLocalsCopy = memLocals;
+			thread *memoryQueryThread = new thread(&PListArchive::FlushMapList, this, memLocalsCopy);
+			memLocalsCopy.clear();
+			return;
+		}
+		long long result;
+		PListType totalLoops = hdSectorSize/sizeof(PListType);
+		PListType *map = NULL;  /* mmapped array of char's */
+		if(pListVector.size() > 0)
+		{
+			if(pattern.size() > 0)
+			{
+				stringBuffer.push_back(pattern);
+			}
+			mappingIndex += ((pListVector.size() + 1)*sizeof(PListType));
+			//pListBuffer.push_back(pListVector.size());
+			//pListBuffer.insert(pListBuffer.end(), pListVector.begin(), pListVector.end());
+		}
+
+		/*if(pListBuffer.size()*sizeof(PListType) > hdSectorSize || (flush && pListBuffer.size() > 0))
+		{*/
+		PListType startPoint = ((prevMappingIndex/sizeof(PListType)) % totalLoops);
+		PListType tempMapIndex = mappingIndex;
+		mappingIndex = prevMappingIndex;
+		prevMappingIndex = tempMapIndex;
+
+		
+		fileIndex = (mappingIndex/hdSectorSize)*hdSectorSize;
+
+		bool doneWithThisShit = false;
+
+		//overshoot how much we are going to write just in case by adding one extra to the offset
+		// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
+		// who fucking knows but baby does it work now!
+		//PListType offset = ceil(((double)(pListBuffer.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
+		PListType offset = ceil(((double)(pListVector.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
+
+		//If offset is less than disk write size then write whatever can be done
+		if(offset <= 0)
+		{
+			offset = 1;
+		}
+
+		/* stretch the file size to the size of the (mmapped) array of unsigned char
+			*/
+		
+	#if defined(_WIN64) || defined(_WIN32)
+		//cout << "file id: " << fd << " write position: " << fileIndex + (offset*hdSectorSize) - 1 << endl;
+		result = _lseeki64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+	#elif defined(__linux__)
+		result = lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+	#endif
+		
+		if (result == -1) 
+		{
+			SeekingError(fd, this->fileName);
+			return;
+		}
+    
+		/* something needs to be written at the end of the file to
+			* have the file actually have the new size.
+			* just writing an empty string at the current file position will do.
+			*
+			* note:
+			*  - the current position in the file is at the end of the stretched 
+			*    file due to the call to lseek().
+			*  - an empty string is actually a single '\0' character, so a zero-byte
+			*    will be written at the last byte of the file.
+			*/
+		result = write(fd, "", 1);
+		if (result != 1) 
+		{
+			ExtendingFileError(fd, this->fileName);
+			return;
+		}
+
+		
+		PListType pListSize = pListVector.size();
+
+		PListType offsetStep = 0;
+
+		bool grabbedCount = false;
+
+		int i;
+		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)
+		{
+
+			map = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
+			if(begMapIndex == NULL)
+			{
+				begMapIndex = map;
+			}
+			memLocals.push_back(map);
+
+			if (map == MAP_FAILED) 
+			{
+				MappingError(fd, this->fileName);
+				return;
+			}
+    
+			/* Now write unsigned longs's to the file as if it were memory (an array of longs).
+				*/
+
+			PListType listVectorSize = pListVector.size();
+			int z;
+			for (z = startPoint; z < totalLoops && offsetStep < listVectorSize; ++z) 
+			{
+				if(!grabbedCount)
+				{
+					grabbedCount = true;
+					map[z] = pListVector.size();
+				}
+				else
+				{
+					map[z] = pListVector[offsetStep];
+					offsetStep++;
+				}
+
+				if(offsetStep >= listVectorSize)
+				{
+					doneWithThisShit = true;
+					break;
+				}
+			}
+
+
+			//No longer need to use a starting point after first write hehe :)
+			startPoint = 0;
+
+			//Flush pages to hard disk
+			//msync(map, hdSectorSize, MS_SYNC);
+
+			if(z == totalLoops)
+			{
+				fileIndex += hdSectorSize;
+			}
+		
+			/* Don't forget to free the mmapped memory
+				*/
+
+			if (munmap(map, hdSectorSize) == -1) 
+			{
+				UnMappingError(fd, this->fileName);
+				return;
+			}
+		}
+
+		//vector<PListType>::const_iterator first = pListBuffer.begin() + offsetStep;
+		//vector<PListType>::const_iterator last = pListBuffer.end();
+		//vector<PListType> tempPListBuffer(first, last);
+		////If written clear the pList out
+		//pListBuffer.clear();
+		////append rest of buffer if not empty
+		//if(!tempPListBuffer.empty())
+		//{
+		//	pListBuffer.insert(pListBuffer.end(), tempPListBuffer.begin(), tempPListBuffer.end());
+		//	tempPListBuffer.clear();
+		//}
+		mappingIndex = prevMappingIndex;
+		/*}
+		if(flush)
+		{
+			pListBuffer.shrink_to_fit();
+		}*/
+
+		//if(flush)
+		//{
+		//	//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad lol
+		//	PListType len = (mappingIndex/hdSectorSize)*hdSectorSize;
+		//	if(mappingIndex%hdSectorSize != 0)
+		//	{
+		//		len += hdSectorSize;
+		//	}
+		//	thread *memoryQueryThread = new thread(&PListArchive::FlushMapAsync, this, begMapIndex, len);
+		//}
+		
+
+	}
+	catch(exception e)
+	{
+		cout << "Exception occurred in method WriteArchiveMapMMAP -> " << e.what() << endl;
+		cout << "Vector size man! " << pListVector.size() << endl;
+	}
+
+	
+}
+
+void PListArchive::FlushMapAsync(PListType *begMapIndex, PListType len)
+{
+	//flush map to hard drive
+	msync(begMapIndex, len, MS_SYNC);
+}
+
 void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pattern, bool flush)
 {
 	try
 	{
+		PListType totalLoops = hdSectorSize/sizeof(PListType);
 		long long result;
 		PListType *map = NULL;  /* mmapped array of char's */
 		if(pListVector != NULL)
@@ -517,6 +1027,8 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
 		
 			PListType pListSize = pListBuffer.size();
 
+			PListType offSetMax = offset*totalLoops;
+
 			for(int i = 0; i < offset && !doneWithThisShit; i++)
 			{
 
@@ -530,7 +1042,7 @@ void PListArchive::WriteArchiveMapMMAP(vector<PListType> *pListVector, string pa
     
 				/* Now write unsigned longs's to the file as if it were memory (an array of longs).
 					*/
-				for (int z = startPoint; z < (hdSectorSize/sizeof(PListType)) && offsetStep < (offset*hdSectorSize/sizeof(PListType)); ++z) 
+				for (int z = startPoint; z < totalLoops && offsetStep < offSetMax; ++z) 
 				{
 					map[z] = pListBuffer[offsetStep];
 					offsetStep++;
@@ -602,152 +1114,6 @@ void PListArchive::OpenArchiveMMAP()
 	}
 }
 
-void PListArchive::WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, string pattern, bool flush)
-{
-	try
-	{
-		long long result;
-		PListType *map = NULL;  /* mmapped array of char's */
-		if(pListVector != NULL)
-		{
-			if(pattern.size() > 0)
-			{
-				pListMetaData[pattern] = mappingIndex;
-				stringBuffer.push_back(pattern);
-			}
-			mappingIndex += ((pListVector->size() + 1)*sizeof(PListType));
-			pListBuffer.push_back(pListVector->size());
-			pListBuffer.insert(pListBuffer.end(), pListVector->begin(), pListVector->end());
-		}
-
-		if(pListBuffer.size()*sizeof(PListType) > hdSectorSize || (flush && pListBuffer.size() > 0))
-		{
-			PListType startPoint = (prevMappingIndex % hdSectorSize)/sizeof(PListType);
-			PListType tempMapIndex = mappingIndex;
-			mappingIndex = prevMappingIndex;
-			prevMappingIndex = tempMapIndex;
-		
-			fileIndex = (mappingIndex/hdSectorSize)*hdSectorSize;
-
-			bool doneWithThisShit = false;
-
-			//overshoot how much we are going to write just in case by adding one extra to the offset
-			// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
-			// who fucking knows but baby does it work now!
-			PListType offset = ceil(((double)(pListBuffer.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
-
-			//If offset is less than disk write size then write whatever can be done
-			if(offset <= 0)
-			{
-				offset = 1;
-			}
-
-			/* stretch the file size to the size of the (mmapped) array of unsigned char
-				*/
-		
-		#if defined(_WIN64) || defined(_WIN32)
-			//cout << "file id: " << fd << " write position: " << fileIndex + (offset*hdSectorSize) - 1 << endl;
-			result = _lseeki64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
-		#elif defined(__linux__)
-			result = lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
-		#endif
-		
-			if (result == -1) 
-			{
-				SeekingError(fd, this->fileName);
-				return;
-			}
-    
-			/* something needs to be written at the end of the file to
-				* have the file actually have the new size.
-				* just writing an empty string at the current file position will do.
-				*
-				* note:
-				*  - the current position in the file is at the end of the stretched 
-				*    file due to the call to lseek().
-				*  - an empty string is actually a single '\0' character, so a zero-byte
-				*    will be written at the last byte of the file.
-				*/
-			result = write(fd, "", 1);
-			if (result != 1) 
-			{
-				ExtendingFileError(fd, this->fileName);
-				return;
-			}
-
-			/* Now the file is ready to be mmapped.
-				*/
-			PListType offsetStep = 0;
-		
-			PListType pListSize = pListBuffer.size();
-
-			for(int i = 0; i < offset && !doneWithThisShit; i++)
-			{
-
-				map = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
-
-				if (map == MAP_FAILED) 
-				{
-					MappingError(fd, this->fileName);
-					return;
-				}
-    
-				/* Now write unsigned longs's to the file as if it were memory (an array of longs).
-					*/
-				for (int z = startPoint; z < (hdSectorSize/sizeof(PListType)) && offsetStep < (offset*hdSectorSize/sizeof(PListType)); ++z) 
-				{
-					map[z] = pListBuffer[offsetStep];
-					offsetStep++;
-
-					if(offsetStep >= pListBuffer.size())
-					{
-						doneWithThisShit = true;
-						break;
-					}
-				}
-
-				//No longer need to use a starting point after first write hehe :)
-				startPoint = 0;
-
-				//Flush pages to hard disk
-				msync(map, hdSectorSize, MS_SYNC);
-
-				fileIndex += hdSectorSize;
-		
-				/* Don't forget to free the mmapped memory
-					*/
-
-				if (munmap(map, hdSectorSize) == -1) 
-				{
-					UnMappingError(fd, this->fileName);
-					return;
-				}
-			}
-
-			vector<PListType>::const_iterator first = pListBuffer.begin() + offsetStep;
-			vector<PListType>::const_iterator last = pListBuffer.end();
-			vector<PListType> tempPListBuffer(first, last);
-			//If written clear the pList out
-			pListBuffer.clear();
-			//append rest of buffer if not empty
-			if(!tempPListBuffer.empty())
-			{
-				pListBuffer.insert(pListBuffer.end(), tempPListBuffer.begin(), tempPListBuffer.end());
-				tempPListBuffer.clear();
-			}
-			mappingIndex = prevMappingIndex;
-		}
-		if(flush)
-		{
-			pListBuffer.shrink_to_fit();
-		}
-	}
-	catch(exception e)
-	{
-		cout << "Exception occurred in method WriteArchiveMapMMAPMeta -> " << e.what() << endl;
-	}
-}
-
 vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 {
 	PListType preservedFileIndex = fileIndex;
@@ -763,11 +1129,11 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	PListType offstep = 0;
 	unsigned int prevIndexForChar = 0;
 
-	//If file size hasn't been found yet grab it once
-	if(fileSize == -1)
-	{
-		fileSize = MemoryUtils::FileSize(this->fileName);
-	}
+	////If file size hasn't been found yet grab it once
+	//if(fileSize == -1)
+	//{
+	//	fileSize = MemoryUtils::FileSize(this->fileName);
+	//}
 
 	PListType sizeToRead = 0;
 	if(count == 0)
@@ -1055,14 +1421,10 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		stringstream temp;
 		temp << tempString;
 		temp << "Patterns";
-		//temp << stringBuffer.size();
 		temp << ".txt";
 		file = temp.str();
 
-		ofstream outputFile(file);
-		outputFile.close();
-
-		int mapFD =  open(file.c_str(), O_RDWR );
+		int mapFD =  open(file.c_str(),O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 	
 		bool doneWithThisShit = false;
 

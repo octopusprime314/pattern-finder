@@ -12,8 +12,11 @@ USAGE:
 		   -his     [first level to write history to disk] 
 		   -ram                                            
 		   -hd                                             
-		   -start   [level to begin searching]              
-			 
+		   -start   [level to begin searching] 
+		   -p       ["string to search for"]	
+		   -o       [minimum times a pattern has to occur in order to keep track of it]
+		   -s       [tells program to only look for scans ie patterns that only occur 1 time]
+		   -cov		[tells program to keep track of pattern coverage per level]
 Options:
 	-help                   Displays this help page 
 	/?                      Displays this help page    
@@ -23,12 +26,16 @@ Options:
 	-d                      Outputs pattern count per level
 	-c                      Finds the best threading scheme for computer 
 	-threads [unsigned int] Sets thread count to be used                 
-	-mem [unsigned long]    Sets the maximum RAM memory that can be used MB
+	-mem [unsigned long]    Sets the maximum RAM memory that can be used in MB
 	-lev [unsigned long]    Sets the first level to start output  
 	-his [unsigned long]    Sets the first level to write history to disk
 	-ram                    Forces program to use only RAM 
 	-hd                     Forces program to use Hard Disk based on -mem
 	-start [unsigned long]  Level to begin searching (not used currently)
+	-p [string]             String to search for in file
+	-o [unsigned long]      Mimimum occurrences to consider a pattern (Default occurences will be 2)
+	-s                      Only searches for patterns that occur once ie outliers patterns of a file
+	-cov 					Coverage means how much of the calculated patterns covered the entirety of the file
 	
 Examples:
 	The example below processes a file for patterns of size 1 to

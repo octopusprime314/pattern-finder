@@ -86,7 +86,6 @@ public:
 		PROCESS_MEMORY_COUNTERS pmc;
 		GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 		PListType physMemUsedByMe = pmc.WorkingSetSize;
-		//stringstream buff;
 		return physMemUsedByMe/1000000.0f;
 
 	#elif defined(__linux__)
@@ -150,6 +149,7 @@ public:
 		stringstream stringbuilder;
 		
 		double usedMemory = currMemory - initialMemoryInMB;
+		//cout << usedMemory << endl;
 		if(usedMemory >= memoryBandwidthInMB)
 		{
 			
@@ -188,7 +188,6 @@ public:
 #if defined(_WIN64) || defined(_WIN32)
 		
 		struct _stat64 st;
-		fileName.c_str();
 		_stat64((char*)fileName.c_str(), &st );
 		fileSize = st.st_size;
 		

@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include "TypeDefines.h"
+#include <list>
 #if defined(_WIN64) || defined(_WIN32)
 	#include "mman.h"
 	#include <io.h>
@@ -23,27 +24,30 @@
 #endif
 
 using namespace std;
-
+const static PListType hdSectorSize = 2097152;
 
 class PListArchive
 {
 public:
 	PListArchive(void);
 	~PListArchive(void);
-	PListArchive(string fileName, bool IsPList = true, bool isBackup = false);
+	PListArchive(string fileName, bool IsPList = true, bool create = false);
 
 	//Load in pList
 	void WriteArchiveMapMMAP(vector<PListType> *pListVector, PatternType pattern = "", bool flush = false);
-	void WriteArchiveMapMMAPMeta(vector<PListType> *pListVector, PatternType pattern = "", bool flush = false);
+	//void WriteArchiveMapMMAP(vector<PListType> pListVector, PatternType pattern = "", bool flush = false);
+	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
 	//Write map to hard disk 
 	void DumpMemoryMapMMAPToDisk();
 	void DumpPatternsToDisk(unsigned int level);
 	void ReadMemoryMapMMAPFromDisk();
 
+
 	vector<string>* GetPatterns(unsigned int level, PListType count);
 	string GetFileChunk(PListType index, PListType chunkSizeInBytes);
 	unsigned long long GetFileChunkSize(PListType chunkSizeInBytes);
 	vector<vector<PListType>*>* GetPListArchiveMMAP(PListType chunkSizeInMB = 0);
+	void GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, PListType chunkSizeInMB = 0);
 	bool IsEndOfFile();
 	bool Exists();
 	void DumpContents();
@@ -69,20 +73,22 @@ public:
 	PListType mappingIndex;
 	PListType fileSize;
 
-private:
-	
-	//map<PListType, string> pListInverseMetaData;
 	vector<PListType> pListBuffer;
-	ofstream *outputFile;
+	PListType prevMappingIndex;
 	
+private:
 
+	bool endOfFileReached;
+	ofstream *outputFile;
+	PListType *begMapIndex;
+	list<PListType*> memLocals;
+	
 	//for mmap writing
-	PListType hdSectorSize;
 	PListType prevListIndex;
 	PListType prevStartingIndex;
 
-	
-	PListType prevMappingIndex;
+	void FlushMapAsync(PListType *begMapIndex, PListType len);
+	void FlushMapList(list<PListType*> memLocalList);
 
 	void MappingError(int& fileDescriptor, string fileName);
 	void UnMappingError(int& fileDescriptor, string fileName);

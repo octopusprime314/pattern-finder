@@ -7,7 +7,7 @@ mutex* Logger::logMutex = new mutex();
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
 bool Logger::verbosity = false;
-
+#include "Windows.h"
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
@@ -23,15 +23,10 @@ void Logger::WriteLog(string miniBuff)
 			{
 				cout << miniBuff;
 			}
-
-			if(scrollEnabled)
-			{
-				//Write to the scrolling log
-				//WriteScrollingLog(miniBuff);
-			}
-	
-
-			stringBuffer.append(/*GetFormattedTime() + ": " +*/ miniBuff);
+//#if defined(_WIN64) || defined(_WIN32) 
+//			OutputDebugString(miniBuff.c_str());
+//#endif		
+			stringBuffer.append(miniBuff);
 
 			//Write to disk only if byte length is greater than 512
 			//this is more efficient when writing to disk to do it in blocks
@@ -43,6 +38,7 @@ void Logger::WriteLog(string miniBuff)
 
 				//refresh
 				(*outputFile).flush();
+				(*outputFile).clear();
 			//}
 
 			logMutex->unlock();

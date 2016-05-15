@@ -2,6 +2,7 @@
 #include "TreeRAM.h"
 #include "Logger.h"
 #include <sstream>
+#include "Forest.h"
 //#include "vld.h"
 
 TreeRAM::TreeRAM()
@@ -34,14 +35,14 @@ map<char, TreeRAM*> TreeRAM::GetMap()
 	return leaves;
 }
 
-vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns)
+vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence)
 {
 	vector<vector<PListType>*>* list = NULL;
 	typedef std::map<char, TreeRAM*>::iterator it_type;
 	for (it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
 	{
 		vector<PListType>* pList = (*iterator).second->GetPList();
-		if (pList->size() > 1)
+		if (pList->size() >= minOccurence/* || (Forest::outlierScans && pList->size() == 1)*/)
 		{
 			if(list == NULL)
 			{

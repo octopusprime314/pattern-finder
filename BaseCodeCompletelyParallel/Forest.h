@@ -22,17 +22,20 @@ typedef std::map<PatternType, vector<PListType>>::iterator it_map_list_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 typedef std::map<PatternType, PListArchive*>::iterator it_map_plistarchive_type;
 typedef std::map<string, TreeHD*>::iterator it_vector_type;
+typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
 struct LevelPackage
 {
 	unsigned int currLevel;
 	unsigned int threadIndex;
 	unsigned int inceptionLevelLOL;
 	unsigned int useRAM;
+	PListType previousPatternsFound;
 };
 
 class Forest
 {
 private:
+	PListType memoryCeiling;
 	double mostMemoryOverflow;
 	double currMemoryOverflow;
 	PListType fileID;
@@ -53,6 +56,7 @@ private:
 	PListType memoryBandwidthMB;
 	PListType memoryPerThread;
 	PListType globalLevel;
+	string patternToSearchFor;
 	//If /d is in commands then display number of patterns found at each level
 	bool displayEachLevelSearch;
 	//If /c is in commands then cycle from 1 thread to MAX threads on machine and output best thread scheme
@@ -80,6 +84,18 @@ private:
 	bool globalUsingRAM;
 	bool overMemoryCount;
 	bool processingFinished;
+	PListType minOccurrence;
+	
+	vector<float> coverage;
+	//-1 indicates the thread is not using any file chunk at the moment
+	vector<signed long> usingFileChunk;
+	vector<signed long> chunkOrigin;
+	//thread using which threads data ie it could be its own or another thread's file data
+	map<unsigned int, unsigned int> chunksBeingUsed;
+
+	map<unsigned int, unsigned int> chunkIndexToFileChunk;
+
+	vector<string> fileChunks;
 
 	void MemoryQuery();
 
@@ -120,7 +136,8 @@ private:
 
 	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false);
 
-	bool DispatchNewThreads(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
+	bool DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
+	bool DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<vector<PListType>*>* prevLocalPListArray, LevelPackage levelInfo, bool& isThreadDefuncted);
 
 	void DisplayPatternsFound();
 	void DisplayHelpMessage();
@@ -128,6 +145,7 @@ private:
 
 
 public:
+	static bool outlierScans;
 	Forest(int argc, char **argv);
 	~Forest();
 
