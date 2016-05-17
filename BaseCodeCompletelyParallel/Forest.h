@@ -84,6 +84,7 @@ private:
 	bool globalUsingRAM;
 	bool overMemoryCount;
 	bool processingFinished;
+	bool processingMSYNCFinished;
 	PListType minOccurrence;
 	
 	vector<float> coverage;
@@ -98,6 +99,7 @@ private:
 	vector<string> fileChunks;
 
 	void MemoryQuery();
+	void MonitorMSYNCThreads();
 
 	TreeHD RAMToHDLeafConverter(TreeRAM leaf);
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);

@@ -8,6 +8,8 @@
 #include <string>
 #include "TypeDefines.h"
 #include <list>
+#include <thread>
+#include <deque>
 #if defined(_WIN64) || defined(_WIN32)
 	#include "mman.h"
 	#include <io.h>
@@ -34,7 +36,7 @@ public:
 	PListArchive(string fileName, bool IsPList = true, bool create = false);
 
 	//Load in pList
-	void WriteArchiveMapMMAP(vector<PListType> *pListVector, PatternType pattern = "", bool flush = false);
+	//void WriteArchiveMapMMAP(const vector<PListType> *pListVector, PatternType pattern = "", bool flush = false);
 	//void WriteArchiveMapMMAP(vector<PListType> pListVector, PatternType pattern = "", bool flush = false);
 	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
 	//Write map to hard disk 
@@ -76,6 +78,9 @@ public:
 	vector<PListType> pListBuffer;
 	PListType prevMappingIndex;
 	
+	static vector<thread*> threadKillList;
+	static mutex syncLock;
+
 private:
 
 	bool endOfFileReached;
