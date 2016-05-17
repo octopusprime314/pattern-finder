@@ -13,7 +13,6 @@ PListArchive::PListArchive(string fileName, bool IsPList, bool create)
 {
 	try
 	{
-		begMapIndex = NULL;
 		endOfFileReached = false;
 		patternName = fileName;
 		string file;
@@ -836,10 +835,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		{
 
 			map = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
-			if(begMapIndex == NULL)
-			{
-				begMapIndex = map;
-			}
+			
 			memLocals.push_back(map);
 
 			if (map == MAP_FAILED) 
@@ -902,12 +898,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 	}
 
 	
-}
-
-void PListArchive::FlushMapAsync(PListType *begMapIndex, PListType len)
-{
-	//flush map to hard drive
-	msync(begMapIndex, len, MS_SYNC);
 }
 
 //void PListArchive::WriteArchiveMapMMAP(const vector<PListType> *pListVector, string pattern, bool flush)

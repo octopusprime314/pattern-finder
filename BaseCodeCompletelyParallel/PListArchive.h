@@ -85,7 +85,6 @@ private:
 
 	bool endOfFileReached;
 	ofstream *outputFile;
-	PListType *begMapIndex;
 	list<PListType*> memLocals;
 	
 	//for mmap writing
