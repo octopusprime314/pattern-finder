@@ -5,13 +5,6 @@
 #include "TypeDefines.h"
 using namespace std;
 
-#define INCREMENTSIZE 256
-#define TREENODE_ARRAY 0
-#define UNIQUEELEMENTS 256
-
-#define ALLOC_SIZE 1024/sizeof(PListType)
-#define PRE_ALLOC_TC_MALLOC 0
-
 class TreeRAM
 {
 private:

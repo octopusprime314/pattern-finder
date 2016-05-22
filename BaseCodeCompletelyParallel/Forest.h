@@ -3,9 +3,8 @@
 #include <vector>
 #include <map>
 #include <future>
-#include "TreeHD.h"
 #include "TreeRAM.h"
-#include "TreeRAMExperiment.h"
+#include "TreeHD.h"
 #include "FileReader.h"
 #include <sstream>
 #include <ctime>
@@ -21,8 +20,8 @@ typedef std::map<PatternType, PListType>::iterator it_map_type;
 typedef std::map<PatternType, vector<PListType>>::iterator it_map_list_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 typedef std::map<PatternType, PListArchive*>::iterator it_map_plistarchive_type;
-typedef std::map<string, TreeHD*>::iterator it_vector_type;
 typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
+typedef std::list<PatternType>::iterator string_it_type;
 struct LevelPackage
 {
 	unsigned int currLevel;
@@ -45,7 +44,7 @@ private:
 	PListType threadsDispatched;
 	PListType threadsDefuncted;
 	vector<future<void>> *threadPool;
-	vector<future<TreeHD*>> *threadPlantSeedPoolHD;
+	vector<future<void>> *threadPlantSeedPoolHD;
 	vector<future<TreeRAM*>> *threadPlantSeedPoolRAM;
 	FileReader *file;
 	std::string::size_type sz;
@@ -82,7 +81,7 @@ private:
 	vector<string> mostCommonPattern;
 	StopWatch initTime;
 	bool globalUsingRAM;
-	bool overMemoryCount;
+	
 	bool processingFinished;
 	bool processingMSYNCFinished;
 	PListType minOccurrence;
@@ -101,10 +100,8 @@ private:
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
 
-	TreeHD RAMToHDLeafConverter(TreeRAM leaf);
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);
-	TreeHD* PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
-	TreeRAMExperiment* PlantTreeSeedThreadHDTest(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
+	void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
 	
 	bool NextLevelTreeSearch(PListType level);
 	bool NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, vector<string>& fileList, LevelPackage& levelInfo);
@@ -116,20 +113,16 @@ private:
 	void FirstLevelRAMProcessing();
 
 	string CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threadNum, PListType currLevel);
-	string CreateChunkFile(string fileName, TreeRAMExperiment& leaf, unsigned int threadNum, PListType currLevel);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);
 	void DeleteArchive(string fileNames, string folderLocation);
 
-	PListType ProcessChunks(vector<string> fileNamesToReOpen, PListType memDivisor);
 	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 	PListType ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 
 	bool ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &isThreadDefuncted);
 	bool ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool& isThreadDefuncted);
-	void PrepRAMData(bool prediction, int threadNum, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
-	void PrepHDData(bool prediction, int threadNum, vector<string> fileList);
 	void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
 	void PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
 
@@ -148,6 +141,7 @@ private:
 
 public:
 	static bool outlierScans;
+	static bool overMemoryCount;
 	Forest(int argc, char **argv);
 	~Forest();
 
