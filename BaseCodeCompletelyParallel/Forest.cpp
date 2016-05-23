@@ -2,6 +2,7 @@
 #include "MemoryUtils.h"
 #include <locale>
 #include <list>
+#include <algorithm>
 #if defined(_WIN64) || defined(_WIN32)
 	#include <direct.h>
 #elif defined(__linux__)

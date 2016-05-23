@@ -7,7 +7,7 @@ mutex* Logger::logMutex = new mutex();
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
 bool Logger::verbosity = false;
-#include "Windows.h"
+//#include "Windows.h"
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {

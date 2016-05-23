@@ -29,7 +29,11 @@ PListArchive::PListArchive(string fileName, bool create)
 
 		if(create)
 		{
+	#if defined(_WIN64) || defined(_WIN32)
 			fd = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+	#elif defined(__linux__)
+			fd = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+	#endif
 			if(fd == -1)
 			{
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
@@ -324,10 +328,10 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 		totalReads = 0;
 	}
 
-	if(((startingIndex + (sizeToRead/sizeof(PListType))) > (hdSectorSize/sizeof(PListType))) && ((startingIndex + (sizeToRead/sizeof(PListType))) <  (2*hdSectorSize/sizeof(PListType))))
+	/*if(((startingIndex + (sizeToRead/sizeof(PListType))) > (hdSectorSize/sizeof(PListType))) && ((startingIndex + (sizeToRead/sizeof(PListType))) <  (2*hdSectorSize/sizeof(PListType))))
 	{
 		totalReads++;
-	}
+	}*/
 
 	PListType globalTotalMemoryInBytes = 0;
 	
@@ -349,7 +353,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 		
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
 			/* Now do something with the information. */
-
+			PListType i;
 			if(piss < totalReads)
 			{
 				PListBuffSize = hdSectorSize/sizeof(PListType);
@@ -363,7 +367,8 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 					PListBuffSize = hdSectorSize/sizeof(PListType) - startingIndex;
 				}
 			
-				for (PListType i = startingIndex; i < PListBuffSize + startingIndex; i++) 
+				
+				for (i = startingIndex; i < PListBuffSize + startingIndex; i++) 
 				{
 					if(listCount == 0)
 					{
@@ -438,25 +443,25 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				//If pattern is not done we have to resize again
 				if(listCount > 0 && piss == totalReads - 1 && !finishedFlag)
 				{
-					if(chunkSizeInMB != 0)
+					totalReads++;
+					/*if(chunkSizeInMB != 0)
 					{
-						
-						finishedFlag = true;
 						if(stuffedPListBuffer.size() > 1)
 						{
+							finishedFlag = true;
 							fileIndex = prevListIndex;
 							startingIndex = prevStartingIndex;
 							delete stuffedPListBuffer[pListGlobalIndex];
 							stuffedPListBuffer.pop_back();
 						}
-						//cout << "Didn't make it to the end of file: " << fileName << endl;
-					}
+						cout << "Didn't make it to the end of file: " << fileName << endl;
+					}*/
 				}
 				//if size of chunk is less than hdSector size
-				else if(prevStartingIndex == 0)
+				/*else if(prevStartingIndex == 0)
 				{
 					fileIndex += hdSectorSize;
-				}
+				}*/
 				if (munmap(map, PListBuffSize) == -1) 
 				{
 					UnMappingError(fd, this->fileName);
@@ -464,7 +469,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				}
 			}
 		
-			if(!finishedFlag)
+			if(/*!finishedFlag*/i == (hdSectorSize/sizeof(PListType)))
 			{
 				fileIndex += hdSectorSize;
 			}
@@ -693,6 +698,11 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 
 		bool grabbedCount = false;
 
+	#if defined(__linux__)
+		result = lseek64(fd, fileIndex + offset*hdSectorSize - 1, SEEK_SET);
+		write(fd, "" 1);
+	#endif
+
 		int i;
 		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)
 		{
@@ -806,6 +816,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 		newStringBuffer = new vector<string>(count);
 	}
 
+
 	string completePattern( level, ' ');
 
 	try
@@ -903,8 +914,13 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		temp << ".txt";
 		file = temp.str();
 
-		int mapFD =  open(file.c_str(),O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
-	
+	#if defined(_WIN64) || defined(_WIN32)
+		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+	#elif defined(__linux__)
+		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+	#endif
+
+
 		bool doneWithThisShit = false;
 
 		//overshoot how much we are going to write just in case by adding one extra to the offset
@@ -929,6 +945,12 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		PListType prevIndexForString = 0;
 		bool unfinished = false;
 		PListType stringIndex = 0;
+
+	#if defined(__linux__)
+		result = lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
+		write(mapFD, "" 1);
+	#endif
+	
 		
 		for(int i = 0; i < totalWritesForCharTypes && !doneWithThisShit; i++)
 		{
