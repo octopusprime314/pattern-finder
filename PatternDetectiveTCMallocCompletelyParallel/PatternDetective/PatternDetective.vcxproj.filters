@@ -39,9 +39,6 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAM.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAMExperiment.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\StopWatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -69,9 +66,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAM.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAMExperiment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TypeDefines.h">

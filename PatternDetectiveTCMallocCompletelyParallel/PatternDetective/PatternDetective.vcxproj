@@ -28,7 +28,6 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\StopWatch.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeHD.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAM.cpp" />
-    <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAMExperiment.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\FileReader.h" />
@@ -40,7 +39,6 @@
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\StopWatch.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeHD.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAM.h" />
-    <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAMExperiment.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TypeDefines.h" />
   </ItemGroup>
   <ItemGroup>

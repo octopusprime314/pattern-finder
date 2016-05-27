@@ -83,10 +83,11 @@ Forest::Forest(int argc, char **argv)
 	}
 
 	memoryCeiling = MemoryUtils::GetAvailableRAMMB() - 1000;
-	
+
 	//If memory bandwidth not an input
 	if(!usingMemoryBandwidth)
 	{
+		
 		//Leave 1 GB to spare for operating system in case our calculations suck
 		memoryBandwidthMB = memoryCeiling - 1000;
 	}
@@ -730,10 +731,10 @@ void Forest::CommandLineParser(int argc, char **argv)
 		maximum = -1;
 	}
 
-	if(!usingPureHD && !usingPureRAM)
+	/*if(!usingPureHD && !usingPureRAM)
 	{
 		usingMemoryBandwidth = false;
-	}
+	}*/
 
 	if(outlierScans)
 	{
@@ -1546,7 +1547,7 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAM(unsigned int threads
 			//cout << " Pattern size: " << (*patterns)[i]->size() << endl;
 			bool found = false;
 			PListType smallestIndex = 0;
-			PListType smallestAmount = 10000000000000000000;
+			PListType smallestAmount = -1;
 			for(PListType z = 0; z < threadsToDispatch; z++)
 			{
 				if(balancedSizeList[z] < smallestAmount && (*patterns)[i]->size() > 0)

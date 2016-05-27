@@ -1,8 +1,8 @@
 all: PatternFinder
 
 
-PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o
-	g++ main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o -o PatternFinder -pthread -O3 -s -DNDEBUG
+PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o
+	g++ main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o -o PatternFinder -pthread -O3 -s -DNDEBUG
 main.o: main.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG main.cpp -pthread
 Forest.o: Forest.cpp
@@ -17,10 +17,10 @@ PListArchive.o: PListArchive.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG PListArchive.cpp -pthread
 FileReader.o: FileReader.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG FileReader.cpp -pthread
+StopWatch.o: StopWatch.cpp
+	g++ -c -std=c++11 -O3 -s -DNDEBUG StopWatch.cpp -pthread
 clean:
 	rm *o
 #Clean command: make -f gccmallocmakefile.mak clean
 #Make Command: make -f gccmallocmakefile.mak
-#Debug: g++ -std=c++11 main.cpp TreeNode.cpp -pthread -o Debug/PatternFinder
-#Release: g++ -std=c++11 -O3 -s -DNDEBUG main.cpp TreeNode.cpp -pthread -o Debug/PatternFinder
-##./PatternFinder -f TaleOfTwoCities.txt -min 1 -max 1000000 -d -threads 5 -mem 40 -lev 1 -his 0 -HD
+#./PatternFinder -f TaleOfTwoCities.txt -min 1 -max 1000000 -d -threads 5 -mem 40 -lev 1 -his 0 -v 1 -HD
