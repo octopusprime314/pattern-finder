@@ -25,4 +25,4 @@ clean:
 #Make Command: make clean -f tcmallocmakefile.mak
 #Debug: g++ -std=c++11 main.cpp TreeNode.cpp -pthread -o Debug/PatternFinder
 #Release: g++ -std=c++11 -O3 -s -DNDEBUG main.cpp TreeNode.cpp -pthread -o Debug/PatternFinder
-#./PatternFinder /f my.client02.pc1 /min 1 /max 100000000 /d /threads 33 /mem 12000 /lev 1 /his 0 /RAM
+#./PatternFinder -f TaleOfTwoCities.txt -min 1 -max 1000000 -d -threads 5 -mem 40 -lev 1 -his 0 -HD

@@ -699,8 +699,8 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		bool grabbedCount = false;
 
 	#if defined(__linux__)
-		result = lseek64(fd, fileIndex + offset*hdSectorSize - 1, SEEK_SET);
-		write(fd, "" 1);
+		result = lseek64(fd, fileIndex + tempMapIndex - 1, SEEK_SET);
+		write(fd, "", 1);
 	#endif
 
 		int i;
@@ -948,7 +948,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 	#if defined(__linux__)
 		result = lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
-		write(mapFD, "" 1);
+		write(mapFD, "", 1);
 	#endif
 	
 		

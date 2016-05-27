@@ -560,9 +560,9 @@ void Forest::FirstLevelRAMProcessing()
 		else 
 		{
 			
-			stringstream builder;
+			/*stringstream builder;
 			builder << "Pattern " << (*iterator).first << " occurs " << pList->size() << endl;
-			Logger::WriteLog(builder.str());
+			Logger::WriteLog(builder.str());*/
 			
 			prevPListArray->push_back(pList);
 		}
@@ -4007,9 +4007,9 @@ string Forest::CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threa
 	fileNameToReOpen = archiveName.str();
 	typedef std::map<string, TreeHD>::iterator it_type;
 
-	stringstream patternsToWrite;
+	/*stringstream patternsToWrite;
 	patternsToWrite << "Patterns to write to disk: " << leaf.leaves.size() << endl;
-	Logger::WriteLog(patternsToWrite.str());
+	Logger::WriteLog(patternsToWrite.str());*/
 	it_type iterator = leaf.leaves.begin();
 	while(iterator != leaf.leaves.end()) 
 	{
