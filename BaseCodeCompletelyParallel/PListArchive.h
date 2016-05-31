@@ -37,6 +37,7 @@ public:
 
 	//Load in pList
 	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
+	void WriteArchiveMapMMAPLargeFile(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
 	
 	//Write map to hard disk 
 	void DumpPatternsToDisk(unsigned int level);
@@ -64,6 +65,8 @@ public:
 
 private:
 
+	PListType predictedFutureMemoryLocation;
+	bool alreadyWrittenLargeFile;
 	bool endOfFileReached;
 	ofstream *outputFile;
 	list<PListType*> memLocals;

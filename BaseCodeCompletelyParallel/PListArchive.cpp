@@ -61,6 +61,7 @@ PListArchive::PListArchive(string fileName, bool create)
 		startingIndex = 0;
 		mappingIndex = 0;
 		prevMappingIndex = 0;
+		predictedFutureMemoryLocation = 0;
 	}
 	catch(exception e)
 	{
@@ -409,6 +410,23 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 						}
 
 						listCount = (PListType) map[i];
+
+						//if(predictedFutureMemoryLocation != fileIndex + (i*sizeof(PListType)))
+						//{
+						//	PListType woAdjustment = i;
+						//	cout << "Prediction conflict at file " << this->fileName << endl;
+						//	cout << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (i*sizeof(PListType)) << endl;
+						//	i = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
+						//	//fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
+						//	cout << "Adjusted location: " << i << endl;
+						//	cout << "List count with adjustment: " << (PListType) map[i] << " and without adjustment: " << (PListType) map[woAdjustment] << endl;
+						//}
+
+						//listCount = (PListType) map[i];
+
+						//predictedFutureMemoryLocation = fileIndex + ((i+1+listCount)*sizeof(PListType));
+
+
 						totalCount = listCount;
 						//cout << "List count: " << listCount << endl;
 						prevListIndex = fileIndex;
@@ -707,6 +725,18 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		}
 	#endif
 
+		//if(predictedFutureMemoryLocation != fileIndex + (startPoint*sizeof(PListType)))
+		//{
+		//	PListType woAdjustment = startPoint;
+		//	cout << "Prediction conflict at file " << this->fileName << endl;
+		//	cout << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (startPoint*sizeof(PListType)) << endl;
+		//	startPoint = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
+		//	//fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
+		//	cout << "Adjusted location: " << startPoint << endl;
+		//}
+
+		//predictedFutureMemoryLocation = fileIndex + ((startPoint+1+pListSize)*sizeof(PListType));
+
 		int i;
 		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)
 		{
@@ -793,6 +823,11 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 
 vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 {
+	if(fd == -1)
+	{
+		return NULL;
+	}
+
 	PListType preservedFileIndex = fileIndex;
 
 	long long result;
