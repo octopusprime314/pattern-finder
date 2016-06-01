@@ -5,7 +5,7 @@
 
 vector<thread*> PListArchive::threadKillList;
 mutex PListArchive::syncLock;
-
+mutex PListArchive::listCountMutex;
 
 PListArchive::PListArchive(void)
 {
@@ -15,6 +15,7 @@ PListArchive::PListArchive(string fileName, bool create)
 {
 	try
 	{
+		iteration = 0;
 		mapper = NULL;
 		prevFileIndex = 0;
 
@@ -343,6 +344,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 
 		for(PListType piss = 0; piss < totalReads && !finishedFlag; piss++)
 		{
+			
 			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 	
 			if (map == MAP_FAILED) 
@@ -400,6 +402,9 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 									{
 										fileIndex = prevListIndex;
 										startingIndex = prevStartingIndex;
+
+										//cout << "BACKTRACK File index is : " << fileIndex << " and start index is : " << startingIndex << endl;
+
 										delete stuffedPListBuffer[pListGlobalIndex];
 										stuffedPListBuffer.pop_back();
 									}
@@ -409,22 +414,41 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 							}
 						}
 
-						listCount = (PListType) map[i];
-
-						//if(predictedFutureMemoryLocation != fileIndex + (i*sizeof(PListType)))
-						//{
-						//	PListType woAdjustment = i;
-						//	cout << "Prediction conflict at file " << this->fileName << endl;
-						//	cout << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (i*sizeof(PListType)) << endl;
-						//	i = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
-						//	//fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
-						//	cout << "Adjusted location: " << i << endl;
-						//	cout << "List count with adjustment: " << (PListType) map[i] << " and without adjustment: " << (PListType) map[woAdjustment] << endl;
-						//}
-
 						//listCount = (PListType) map[i];
 
-						//predictedFutureMemoryLocation = fileIndex + ((i+1+listCount)*sizeof(PListType));
+						if(predictedFutureMemoryLocation != fileIndex + (i*sizeof(PListType)))
+						{
+							stringstream crap;
+							PListType woAdjustment = i;
+							crap << "Prediction conflict at file " << this->fileName << endl;
+							crap << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (i*sizeof(PListType)) << endl;
+							i = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
+							fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
+							crap << "Adjusted location: " << i << endl;
+							PListType tempHolder = map[woAdjustment];
+
+							map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
+	
+							if (map == MAP_FAILED) 
+							{
+								//endOfFileReached = true;
+								MappingError(fd, this->fileName);
+								return;
+							}
+
+							crap << "List count with adjustment: " << (PListType) map[i] << " and without adjustment: " << (PListType) tempHolder << endl;
+							Logger::WriteLog(crap.str());
+							cout << crap.str() << endl;
+						}
+
+						
+
+						listCount = (PListType) map[i];
+						listCountMutex.lock();
+						//cout << "Iteration access is : " << iteration << " and list Count is : " << listCount << " File index is : " << fileIndex << " and start index is : " << prevStartingIndex << endl;
+						listCountMutex.unlock();
+
+						predictedFutureMemoryLocation = fileIndex + ((i+1+listCount)*sizeof(PListType));
 
 
 						totalCount = listCount;
@@ -493,6 +517,8 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 			}
 		
 		}
+		
+		iteration++;
 	}
 	catch(exception e)
 	{
@@ -725,17 +751,17 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		}
 	#endif
 
-		//if(predictedFutureMemoryLocation != fileIndex + (startPoint*sizeof(PListType)))
-		//{
-		//	PListType woAdjustment = startPoint;
-		//	cout << "Prediction conflict at file " << this->fileName << endl;
-		//	cout << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (startPoint*sizeof(PListType)) << endl;
-		//	startPoint = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
-		//	//fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
-		//	cout << "Adjusted location: " << startPoint << endl;
-		//}
+		if(predictedFutureMemoryLocation != fileIndex + (startPoint*sizeof(PListType)))
+		{
+			PListType woAdjustment = startPoint;
+			cout << "Prediction conflict at file " << this->fileName << endl;
+			cout << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (startPoint*sizeof(PListType)) << endl;
+			startPoint = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
+			//fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
+			cout << "Adjusted location: " << startPoint << endl;
+		}
 
-		//predictedFutureMemoryLocation = fileIndex + ((startPoint+1+pListSize)*sizeof(PListType));
+		predictedFutureMemoryLocation = fileIndex + ((startPoint+1+pListSize)*sizeof(PListType));
 
 		int i;
 		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)

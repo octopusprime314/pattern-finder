@@ -85,6 +85,8 @@ private:
 	bool processingFinished;
 	bool processingMSYNCFinished;
 	PListType minOccurrence;
+
+	bool writingFlag;
 	
 	vector<float> coverage;
 	//-1 indicates the thread is not using any file chunk at the moment

@@ -16,6 +16,7 @@ Forest::Forest(int argc, char **argv)
 	system("rm -r ../Log/PList*");
 	//mkdir("../Log/BackupLog");
 
+	writingFlag = false;
 	globalUsingRAM = false;
 	fileID = 0;
 	fileIDMutex = new mutex();
@@ -172,7 +173,7 @@ Forest::Forest(int argc, char **argv)
 			}
 
 			//load in the entire file
-			if(usingPureRAM)
+			if(usingPureRAM || !prediction)
 			{
 				patternCount = file->fileStringSize;
 			}
@@ -248,6 +249,7 @@ Forest::Forest(int argc, char **argv)
 				{
 					if((*prevPListArray)[i] != nullptr)
 					{
+						
 						levelRecordings[0]++;
 						if( (*prevPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
 						{
@@ -2079,14 +2081,14 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				globalTotalLeafSizeInBytes += finalMetaDataMap.size() * 32;
 			}
 
-			if((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) > 2.0f*memDivisor/1000000.0f/* || overMemoryCount*/)
-			{
-				//stringstream crap;
-				//crap << "Actual overflow " << MemoryUtils::GetProgramMemoryConsumption() - threadMemoryConsumptionInMB << " in MB!\n";
-				//crap << "Quick approximation at Process Chunks And Generate of " << (globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) << " in MB!\n";
-				//Logger::WriteLog(crap.str());
-				memoryOverflow = true;
-			}
+			//if((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) > 2.0f*memDivisor/1000000.0f/* || overMemoryCount*/)
+			//{
+			//	//stringstream crap;
+			//	//crap << "Actual overflow " << MemoryUtils::GetProgramMemoryConsumption() - threadMemoryConsumptionInMB << " in MB!\n";
+			//	//crap << "Quick approximation at Process Chunks And Generate of " << (globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) << " in MB!\n";
+			//	//Logger::WriteLog(crap.str());
+			//	memoryOverflow = true;
+			//}
 
 			if(!memoryOverflow)
 			{
@@ -3045,6 +3047,8 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 										}
 									}
 								}*/
+								writingFlag = true;
+
 								//Shared file space test
 								fileChunks.push_back("");
 								fileChunks[fileChunks.size() - 1].resize(patternCount);
@@ -3059,6 +3063,8 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 								threadChunkToUse = fileChunks.size() - 1;
 
 								chunkIndexToFileChunk[j] = fileChunks.size() - 1;
+
+								writingFlag = false;
 							
 							}
 							else
@@ -3112,6 +3118,8 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 								PListType indexForString = 0;
 								while( k < pListLength && ((*pList)[k]) < (j+1)*memDivisor )
 								{
+									if(!writingFlag)
+									{
 									//if((globalTotalLeafSizeInBytes + globalTotalMemoryInBytes < memDivisor) /*&& !overMemoryCount*/)
 									//{
 										try
@@ -3188,6 +3196,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 											cout << "Exception at global index: " << (*pList)[k] << "Exception at relative index: " << ((((*pList)[k]) - memDivisor*j) - (currLevel-1)) << " and computed relative index: " << relativeIndex << " and index for string: " << indexForString << " System exception: " << e.what() << endl;
 										}
 										k++;
+									}
 									//}
 									//else
 									//{
@@ -3972,7 +3981,7 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		string value = file->fileString.substr(i, 1);
 		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
 		{
-			leaf->addLeaf(file->fileString[i], i+positionInFile+1);
+			leaf->addLeaf(file->fileString[i], i+1);
 		}
 #endif
 	}
@@ -3986,6 +3995,7 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		
 		vector<PListType>* pList = iterator->second->GetPList();
 		unsigned char index = ((unsigned char)iterator->first);
+		
 		if((*prevPListArray)[index] == NULL)
 		{
 			if(gatedMutexes[index]->try_lock())

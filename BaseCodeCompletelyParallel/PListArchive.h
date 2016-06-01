@@ -64,7 +64,7 @@ public:
 	static mutex syncLock;
 
 private:
-
+	static mutex listCountMutex;
 	PListType predictedFutureMemoryLocation;
 	bool alreadyWrittenLargeFile;
 	bool endOfFileReached;
@@ -84,7 +84,7 @@ private:
 	void ExtendingFileError(int& fileDescriptor, string fileName);
 
 
-
+	int iteration;
 	PListType *mapper;
 	PListType prevFileIndex;
 	bool dumpDeleted;
