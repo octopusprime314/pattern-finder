@@ -15,7 +15,6 @@ PListArchive::PListArchive(string fileName, bool create)
 {
 	try
 	{
-		iteration = 0;
 		mapper = NULL;
 		prevFileIndex = 0;
 
@@ -300,40 +299,9 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 {
 	long long result;
 	PListType *map;  /* mmapped array of char's */
-
-	double InitMemoryMB = MemoryUtils::GetProgramMemoryConsumption();
 	
-	PListType sizeToRead = 0;
-	if(chunkSizeInMB == 0)
-	{
-		sizeToRead = fileSize;
-	}
-	else
-	{
-		sizeToRead = chunkSizeInMB*1000000;
-	}
-
-	if(sizeToRead > fileSize - fileIndex)
-	{
-		sizeToRead = fileSize - fileIndex;
-	}
-	PListType totalReads = ((double)sizeToRead)/((double)hdSectorSize);
 	PListType pListGlobalIndex = -1;
 	PListType listCount = 0;
-
-	if(totalReads < 1 && fileSize > 0)
-	{
-		totalReads = 1;
-	}
-	else if(totalReads < 1 && fileSize == 0)
-	{
-		totalReads = 0;
-	}
-
-	/*if(((startingIndex + (sizeToRead/sizeof(PListType))) > (hdSectorSize/sizeof(PListType))) && ((startingIndex + (sizeToRead/sizeof(PListType))) <  (2*hdSectorSize/sizeof(PListType))))
-	{
-		totalReads++;
-	}*/
 
 	PListType globalTotalMemoryInBytes = 0;
 	
@@ -341,15 +309,15 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 	try
 	{
 		bool finishedFlag = false;
+		bool trimPList = false;
 
-		for(PListType piss = 0; piss < totalReads && !finishedFlag; piss++)
+		while(!finishedFlag)
 		{
 			
 			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 	
 			if (map == MAP_FAILED) 
 			{
-				//endOfFileReached = true;
 				MappingError(fd, this->fileName);
 				return;
 			}
@@ -357,168 +325,93 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 			PListType PListBuffSize = hdSectorSize/sizeof(PListType);
 			/* Now do something with the information. */
 			PListType i;
-			if(piss < totalReads)
-			{
-				PListBuffSize = hdSectorSize/sizeof(PListType);
-
-				if((sizeToRead - (piss*hdSectorSize)) < hdSectorSize)
-				{
-					PListBuffSize = ((sizeToRead - (piss*hdSectorSize)))/sizeof(PListType);
-				}
-				if(startingIndex != 0)
-				{
-					PListBuffSize = hdSectorSize/sizeof(PListType) - startingIndex;
-				}
 			
-				
-				for (i = startingIndex; i < PListBuffSize + startingIndex; i++) 
+			for (i = startingIndex; i < PListBuffSize; i++) 
+			{
+				if(listCount == 0)
 				{
+					if(pListGlobalIndex != -1)
+					{
+						stuffedPListBuffer[pListGlobalIndex]->shrink_to_fit();
+
+						if(chunkSizeInMB != 0)
+						{
+
+							//size of vector container
+							globalTotalMemoryInBytes += 32;
+							//Size of total vector on the heap
+							globalTotalMemoryInBytes += stuffedPListBuffer[pListGlobalIndex]->capacity()*sizeof(PListType);
+
+							if(/*Forest::overMemoryCount || */((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) >= chunkSizeInMB)
+							{
+								stringstream strim;
+								strim << "Approximated size of vector: " << ((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) << " in MB!" << endl;
+								Logger::WriteLog(strim.str());
+								finishedFlag = true;
+								
+									
+								if(stuffedPListBuffer.size() > 1)
+								{
+									trimPList = true;
+
+									fileIndex = prevListIndex;
+									startingIndex = prevStartingIndex;
+
+									delete stuffedPListBuffer[pListGlobalIndex];
+									stuffedPListBuffer.pop_back();
+								}
+								//cout << "Didn't make it to the end of file: " << fileName << endl;
+								break;
+							}
+						}
+					}
+
+					prevStartingIndex = i;
+					prevListIndex = fileIndex;
+
+					listCount = (PListType) map[i];
+
+					//If listCount equals zero then we are at the end of the pList data stream bam bitches
 					if(listCount == 0)
 					{
-						if(pListGlobalIndex != -1)
-						{
-							stuffedPListBuffer[pListGlobalIndex]->shrink_to_fit();
-
-							if(chunkSizeInMB != 0)
-							{
-
-								//size of vector container
-								globalTotalMemoryInBytes += 24;
-								//Pointer size
-								globalTotalMemoryInBytes += 8;
-								//Size of total vector on the heap
-								globalTotalMemoryInBytes += stuffedPListBuffer[pListGlobalIndex]->capacity()*sizeof(PListType);
-
-								//double CurrentMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - InitMemoryMB;
-								//if(CurrentMemoryMB >= chunkSizeInMB)
-								if(/*Forest::overMemoryCount || */((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) >= chunkSizeInMB)
-								{
-									stringstream strim;
-									strim << "Approximated size of vector: " << ((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) << " in MB!" << endl;
-									Logger::WriteLog(strim.str());
-									finishedFlag = true;
-									
-									if(stuffedPListBuffer.size() > 1)
-									{
-										fileIndex = prevListIndex;
-										startingIndex = prevStartingIndex;
-
-										//cout << "BACKTRACK File index is : " << fileIndex << " and start index is : " << startingIndex << endl;
-
-										delete stuffedPListBuffer[pListGlobalIndex];
-										stuffedPListBuffer.pop_back();
-									}
-									//cout << "Didn't make it to the end of file: " << fileName << endl;
-									break;
-								}
-							}
-						}
-
-						//listCount = (PListType) map[i];
-
-						if(predictedFutureMemoryLocation != fileIndex + (i*sizeof(PListType)))
-						{
-							stringstream crap;
-							PListType woAdjustment = i;
-							crap << "Prediction conflict at file " << this->fileName << endl;
-							crap << "Predicted location " << predictedFutureMemoryLocation << " and actual " << fileIndex + (i*sizeof(PListType)) << endl;
-							i = (predictedFutureMemoryLocation%hdSectorSize)/(sizeof(PListType));
-							fileIndex = (predictedFutureMemoryLocation/hdSectorSize)*hdSectorSize;
-							crap << "Adjusted location: " << i << endl;
-							PListType tempHolder = map[woAdjustment];
-
-							map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
-	
-							if (map == MAP_FAILED) 
-							{
-								//endOfFileReached = true;
-								MappingError(fd, this->fileName);
-								return;
-							}
-
-							crap << "List count with adjustment: " << (PListType) map[i] << " and without adjustment: " << (PListType) tempHolder << endl;
-							Logger::WriteLog(crap.str());
-							cout << crap.str() << endl;
-						}
-
-						
-
-						listCount = (PListType) map[i];
-						listCountMutex.lock();
-						//cout << "Iteration access is : " << iteration << " and list Count is : " << listCount << " File index is : " << fileIndex << " and start index is : " << prevStartingIndex << endl;
-						listCountMutex.unlock();
-
-						predictedFutureMemoryLocation = fileIndex + ((i+1+listCount)*sizeof(PListType));
-
-
-						totalCount = listCount;
-						//cout << "List count: " << listCount << endl;
-						prevListIndex = fileIndex;
-						prevStartingIndex = i;
-
-						//If listCount equals zero then we are at the end of the pList data stream bam bitches
-						if(listCount == 0)
-						{
-							finishedFlag = true;
-							endOfFileReached = true;
-							break;
-						}
-						stuffedPListBuffer.push_back(new vector<PListType>());
-						
-						pListGlobalIndex++;
-						//
-						stuffedPListBuffer[pListGlobalIndex]->reserve(listCount);
-						//
+						finishedFlag = true;
+						endOfFileReached = true;
+						break;
 					}
-					else
-					{
-						stuffedPListBuffer[pListGlobalIndex]->push_back(map[i]);
-						listCount--;
-					}
+					stuffedPListBuffer.push_back(new vector<PListType>());
+						
+					pListGlobalIndex++;
+					//
+					stuffedPListBuffer[pListGlobalIndex]->reserve(listCount);
+					//
 				}
+				else
+				{
+					stuffedPListBuffer[pListGlobalIndex]->push_back(map[i]);
+					listCount--;
+				}
+			}
 
-				if(startingIndex != 0 && !finishedFlag)
+			if(!trimPList)
+			{
+				if(i == PListBuffSize)
 				{
 					startingIndex = 0;
-				}
-
-				//If pattern is not done we have to resize again
-				if(listCount > 0 && piss == totalReads - 1 && !finishedFlag)
-				{
-					totalReads++;
-					/*if(chunkSizeInMB != 0)
-					{
-						if(stuffedPListBuffer.size() > 1)
-						{
-							finishedFlag = true;
-							fileIndex = prevListIndex;
-							startingIndex = prevStartingIndex;
-							delete stuffedPListBuffer[pListGlobalIndex];
-							stuffedPListBuffer.pop_back();
-						}
-						cout << "Didn't make it to the end of file: " << fileName << endl;
-					}*/
-				}
-				//if size of chunk is less than hdSector size
-				/*else if(prevStartingIndex == 0)
-				{
 					fileIndex += hdSectorSize;
-				}*/
-				if (munmap(map, PListBuffSize) == -1) 
+				}
+				else
 				{
-					UnMappingError(fd, this->fileName);
-					return;
+					startingIndex = i;
 				}
 			}
-		
-			if(/*!finishedFlag*/i == (hdSectorSize/sizeof(PListType)))
+
+
+			if (munmap(map, PListBuffSize) == -1) 
 			{
-				fileIndex += hdSectorSize;
+				UnMappingError(fd, this->fileName);
+				return;
 			}
-		
 		}
-		
-		iteration++;
 	}
 	catch(exception e)
 	{

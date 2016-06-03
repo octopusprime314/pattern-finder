@@ -83,8 +83,6 @@ private:
 	void SeekingError(int& fileDescriptor, string fileName);
 	void ExtendingFileError(int& fileDescriptor, string fileName);
 
-
-	int iteration;
 	PListType *mapper;
 	PListType prevFileIndex;
 	bool dumpDeleted;
