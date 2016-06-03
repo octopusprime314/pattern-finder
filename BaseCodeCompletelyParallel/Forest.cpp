@@ -857,7 +857,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	//	}
 	//}
 
-	previousLevelMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
+	//previousLevelMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
 
 	//cout << "Size used for previous level " << levelInfo.currLevel - 1 << " is " << previousLevelMemoryMB << " MB" << endl;
 	
@@ -2081,14 +2081,14 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				globalTotalLeafSizeInBytes += finalMetaDataMap.size() * 32;
 			}
 
-			//if((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) > 2.0f*memDivisor/1000000.0f/* || overMemoryCount*/)
-			//{
-			//	//stringstream crap;
-			//	//crap << "Actual overflow " << MemoryUtils::GetProgramMemoryConsumption() - threadMemoryConsumptionInMB << " in MB!\n";
-			//	//crap << "Quick approximation at Process Chunks And Generate of " << (globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) << " in MB!\n";
-			//	//Logger::WriteLog(crap.str());
-			//	memoryOverflow = true;
-			//}
+			if((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) > 2.0f*memDivisor/1000000.0f || overMemoryCount)
+			{
+				//stringstream crap;
+				//crap << "Actual overflow " << MemoryUtils::GetProgramMemoryConsumption() - threadMemoryConsumptionInMB << " in MB!\n";
+				//crap << "Quick approximation at Process Chunks And Generate of " << (globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) << " in MB!\n";
+				//Logger::WriteLog(crap.str());
+				memoryOverflow = true;
+			}
 
 			if(!memoryOverflow)
 			{
@@ -3108,7 +3108,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 						
 							//if(!overMemoryCount)
 							//if(sizeInMB < memDivisor/1000000.0f)
-							if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f)) < (memDivisor/1000000.0f)/* && !overMemoryCount*/)
+							if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f)) < (memDivisor/1000000.0f) && !overMemoryCount)
 							{
 								/*stringstream crap;
 								crap << "Approximation overflow at Process HD of " << sizeInMB << " in MB!\n";
@@ -4128,10 +4128,10 @@ string Forest::CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threa
 	while(iterator != leaf.leaves.end()) 
 	{
 		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
-		/*if(overMemoryCount)
+		if(overMemoryCount)
 		{
 			archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-		}*/
+		}
 		iterator = leaf.leaves.erase(iterator);
 	}
 	map<string, TreeHD> test;
