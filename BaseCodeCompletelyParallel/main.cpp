@@ -7,7 +7,6 @@ using namespace std;
 	/* Microsoft Windows (32-bit). or 64 bit ------------------------------ */
 	#if defined(_DEBUG)
 		#define _DEBUG
-		//#include "vld.h"
 	#endif
 	#define _CRTDBG_MAP_ALLOC
 		#include <crtdbg.h>
