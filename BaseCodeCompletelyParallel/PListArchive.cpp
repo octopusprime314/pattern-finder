@@ -15,6 +15,7 @@ PListArchive::PListArchive(string fileName, bool create)
 {
 	try
 	{
+		totalWritten = 0;
 		mapper = NULL;
 		prevFileIndex = 0;
 
@@ -438,16 +439,8 @@ bool PListArchive::Exists()
 
 void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList, PListType *mapToDelete)
 {
-	if(mapToDelete != NULL)
-	{
-		//Deallocate only when it has been completely used
-		if (munmap(mapToDelete, hdSectorSize) == -1) 
-		{
-			UnMappingError(fd, this->fileName);
-			return;
-		}
-	}
-	memLocalList.unique();
+	
+	//memLocalList.unique();
 	for(PListType* temp : memLocalList)
 	{
 		msync(temp, hdSectorSize, MS_SYNC);
@@ -460,129 +453,6 @@ void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charL
 	
 }
 
-//void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern, bool flush)
-//{
-//	try
-//	{
-//		if(flush)
-//		{
-//			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad lol
-//			//cout << "Number of memory locations to flush: " << memLocals.size() << endl;
-//			syncLock.lock();
-//			threadKillList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
-//			syncLock.unlock();
-//			memLocals.clear();
-//			return;
-//		}
-//		long long result;
-//		PListType *map = NULL;  /* mmapped array of char's */
-//		if(pListVector.size() > 0)
-//		{
-//			if(pattern.size() > 0)
-//			{
-//				stringBuffer.push_back(pattern);
-//			}
-//			mappingIndex += ((pListVector.size() + 1)*sizeof(PListType));
-//		}
-//
-//		PListType startPoint = ((prevMappingIndex/sizeof(PListType)) % totalLoops);
-//		PListType tempMapIndex = mappingIndex;
-//		mappingIndex = prevMappingIndex;
-//		prevMappingIndex = tempMapIndex;
-//
-//		
-//		fileIndex = (mappingIndex/hdSectorSize)*hdSectorSize;
-//
-//		bool doneWithThisShit = false;
-//
-//		//overshoot how much we are going to write just in case by adding one extra to the offset
-//		// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
-//		// who fucking knows but baby does it work now!
-//		//PListType offset = ceil(((double)(pListBuffer.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
-//		PListType offset = ceil(((double)(pListVector.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
-//
-//		//If offset is less than disk write size then write whatever can be done
-//		if(offset <= 0)
-//		{
-//			offset = 1;
-//		}
-//
-//		PListType pListSize = pListVector.size();
-//
-//		PListType offsetStep = 0;
-//
-//		bool grabbedCount = false;
-//
-//		int i;
-//		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)
-//		{
-//
-//			map = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
-//			
-//			memLocals.push_back(map);
-//			//memLocals.unique();
-//
-//			if (map == MAP_FAILED) 
-//			{
-//				MappingError(fd, this->fileName);
-//				return;
-//			}
-//    
-//			/* Now write unsigned longs's to the file as if it were memory (an array of longs).
-//				*/
-//
-//			PListType listVectorSize = pListVector.size();
-//			int z;
-//			for (z = startPoint; z < totalLoops && offsetStep < listVectorSize; ++z) 
-//			{
-//				if(!grabbedCount)
-//				{
-//					grabbedCount = true;
-//					map[z] = pListVector.size();
-//				}
-//				else
-//				{
-//					map[z] = pListVector[offsetStep];
-//					offsetStep++;
-//				}
-//
-//				if(offsetStep >= listVectorSize)
-//				{
-//					doneWithThisShit = true;
-//					break;
-//				}
-//			}
-//
-//
-//			//No longer need to use a starting point after first write hehe :)
-//			startPoint = 0;
-//
-//			if(z == totalLoops)
-//			{
-//				fileIndex += hdSectorSize;
-//			}
-//		
-//			/* Don't forget to free the mmapped memory
-//				*/
-//
-//			if (munmap(map, hdSectorSize) == -1) 
-//			{
-//				UnMappingError(fd, this->fileName);
-//				return;
-//			}
-//		}
-//
-//		mappingIndex = prevMappingIndex;
-//
-//	}
-//	catch(exception e)
-//	{
-//		cout << "Exception occurred in method WriteArchiveMapMMAP -> " << e.what() << endl;
-//		cout << "Vector size man! " << pListVector.size() << endl;
-//	}
-//
-//}
-
 void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern, bool flush)
 {
 	try
@@ -591,10 +461,21 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		{
 			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad lol
 			//cout << "Number of memory locations to flush: " << memLocals.size() << endl;
+			totalWritten = 0;
 			syncLock.lock();
 			threadKillList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals, mapper));
 			syncLock.unlock();
 			memLocals.clear();
+			if(mapper != NULL)
+			{
+				//Deallocate only when it has been completely used
+				if (munmap(mapper, hdSectorSize) == -1) 
+				{
+					UnMappingError(fd, this->fileName);
+					return;
+				}
+				mapper = NULL;
+			}
 			return;
 		}
 		long long result;
@@ -659,7 +540,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		int i;
 		for(i = 0; i < offset && !doneWithThisShit && pListSize > 0; i++)
 		{
-			if(startPoint == 0 || dumpDeleted)
+			if(startPoint == 0 || mapper == NULL)
 			{
 				if(mapper != NULL)
 				{
@@ -675,7 +556,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 				mapper = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
 			
 				memLocals.push_back(mapper);
-				//memLocals.unique();
 				
 				if (mapper == MAP_FAILED) 
 				{
@@ -703,6 +583,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 					mapper[z] = pListVector[offsetStep];
 					offsetStep++;
 				}
+				totalWritten++;
 
 				if(offsetStep >= listVectorSize)
 				{
@@ -717,6 +598,8 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 
 			if(z == totalLoops)
 			{
+				
+
 				fileIndex += hdSectorSize;
 				////Deallocate only when it has been completely used
 				//if (munmap(mapper, hdSectorSize) == -1) 
@@ -726,6 +609,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 				//}
 				//mapper = NULL;
 			}
+
 		}
 
 		
@@ -1002,3 +886,4 @@ void PListArchive::CloseArchiveMMAP()
 		cout << "Exception occurred in method CloseArchiveMMAP -> " << e.what() << endl;
 	}
 }
+

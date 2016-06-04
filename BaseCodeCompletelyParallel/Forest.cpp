@@ -13,8 +13,11 @@ bool Forest::outlierScans = false;
 bool Forest::overMemoryCount = false;
 Forest::Forest(int argc, char **argv)
 {
+#if defined(_WIN64) || defined(_WIN32)
+	system("del ..\\Log\\PList*.txt");
+#elif defined(__linux__)
 	system("rm -r ../Log/PList*");
-	//mkdir("../Log/BackupLog");
+#endif
 
 	writingFlag = false;
 	globalUsingRAM = false;
@@ -857,7 +860,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	//	}
 	//}
 
-	//previousLevelMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
+	previousLevelMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
 
 	//cout << "Size used for previous level " << levelInfo.currLevel - 1 << " is " << previousLevelMemoryMB << " MB" << endl;
 	
@@ -2156,125 +2159,14 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				
 				PListType patternsToDumpCount = totalPatterns - patternsThatCantBeDumped.size();
 				stringstream sizeDifference;
-				sizeDifference << "Actual patterns: " << totalPatterns << " and total patterns we can get rid of: " << totalPatterns - patternsThatCantBeDumped.size() << endl;
-				if(totalPatterns != totalPatterns - patternsThatCantBeDumped.size())
+				patternsThatCantBeDumped.unique();
+				sizeDifference << "Actual patterns left to process: " << totalPatterns << " and the total patterns we can dump is: " << finalMetaDataMap.size() - patternsThatCantBeDumped.size() << endl;
+				if(totalPatterns != patternsToDumpCount)
 				{
 					sizeDifference << "We don't have a match!" << endl;
 				}
 				Logger::WriteLog(sizeDifference.str());
 				patternsThatCantBeDumped.unique();
-
-
-				//CODE WHERE SOME PATTERNS NEED TO BE DUMPED
-
-				//if(patternsThatCantBeDumped.size() > 0)
-				//{ 
-					////ADDED CODE
-
-					////thread files
-					//PListArchive* currChunkFile = NULL;
-					//bool notBegun = true;
-					//PListType removedPatterns = 0;
-					//
-					//it_map_list_p_type iterator = finalMetaDataMap.begin();
-					//while( iterator != finalMetaDataMap.end())
-					//{
-					//	string_it_type it = find (patternsThatCantBeDumped.begin(), patternsThatCantBeDumped.end(), iterator->first);
-					//	if(it == patternsThatCantBeDumped.end())
-					//	{
-					//		if(notBegun)
-					//		{
-					//			notBegun = false;
-					//			if(currChunkFile != NULL)
-					//			{
-					//				currChunkFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-					//				currChunkFile->CloseArchiveMMAP();
-					//				delete currChunkFile;
-					//			}
-					//
-					//			if(firstLevel)
-					//			{
-					//				stringstream fileNameage;
-					//				stringstream fileNameForPrevList;
-					//				fileIDMutex->lock();
-					//				fileID++;
-					//				fileNameage << ARCHIVE_FOLDER << "PListChunks" << fileID << ".txt";
-					//				fileNameForPrevList << "PListChunks" << fileID;
-					//				fileIDMutex->unlock();
-					//	 
-					//				prevFileNameList[threadNumber].push_back(fileNameForPrevList.str());
-					//
-					//				currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
-	
-					//				threadNumber++;
-					//				threadNumber %= threadsToDispatch;
-					//			}
-					//			else
-					//			{
-					//	
-					//				stringstream fileNameForPrevList;
-					//				fileIDMutex->lock();
-					//				fileID++;
-					//				fileNameForPrevList << "PListChunks" << fileID;
-					//				fileIDMutex->unlock();
-
-					//				newFileNames.push_back(fileNameForPrevList.str());
-					//
-					//				currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
-					//			}
-					//		}
-			
-					//		if(iterator->second->size() >= minOccurrence /*|| (outlierScans && iterator->second->size() == 1)*/)
-					//		{
-					//			currChunkFile->WriteArchiveMapMMAP(*iterator->second);
-					//			interimCount++;
-
-					//			if(mostCommonPattern.size() < currLevel)
-					//			{
-					//				mostCommonPattern.resize(currLevel);
-					//				mostCommonPatternCount.resize(currLevel);
-					//			}
-					//
-					//			if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
-					//			{
-					//				mostCommonPatternCount[currLevel - 1] = iterator->second->size();
-					//
-					//				mostCommonPattern[currLevel - 1] = iterator->first;
-					//			}
-					//		}
-					//		else
-					//		{
-					//			removedPatterns++;
-					//		}
-			
-					//		delete iterator->second;
-					//		iterator = finalMetaDataMap.erase(iterator);
-					//	}
-					//	else
-					//	{
-					//		iterator++;
-					//	}
-					//}
-
-					//if(currChunkFile != NULL)
-					//{
-					//	currChunkFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-					//	if(currChunkFile->mappingIndex != 0)
-					//	{
-					//		currChunkFile->CloseArchiveMMAP();
-					//		delete currChunkFile;
-					//	}
-					//	else
-					//	{
-					//		currChunkFile->CloseArchiveMMAP();
-					//		delete currChunkFile;
-					//		DeleteChunk(newFileNames[newFileNames.size() - 1], ARCHIVE_FOLDER);
-					//		newFileNames.pop_back();
-					//	}
-					//}
-
-					////END OF ADDED CODE
-				//}
 
 				//CODE FOR NO MATCHES SO WE DUMP EVERYTHING
 
@@ -2292,81 +2184,74 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 					it_map_list_p_type iterator = finalMetaDataMap.begin();
 					while( iterator != finalMetaDataMap.end())
 					{
-						//string_it_type it = find (patternsThatCantBeDumped.begin(), patternsThatCantBeDumped.end(), iterator->first);
-						//if(it == patternsThatCantBeDumped.end())
-						//{
-							if(notBegun)
+						
+						if(notBegun)
+						{
+							notBegun = false;
+							if(currChunkFile != NULL)
 							{
-								notBegun = false;
-								if(currChunkFile != NULL)
-								{
-									currChunkFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-									currChunkFile->CloseArchiveMMAP();
-									delete currChunkFile;
-								}
-				
-								if(firstLevel)
-								{
-									stringstream fileNameage;
-									stringstream fileNameForPrevList;
-									fileIDMutex->lock();
-									fileID++;
-									fileNameage << ARCHIVE_FOLDER << "PListChunks" << fileID << ".txt";
-									fileNameForPrevList << "PListChunks" << fileID;
-									fileIDMutex->unlock();
-					 
-									prevFileNameList[threadNumber].push_back(fileNameForPrevList.str());
-				
-									currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
-	
-									threadNumber++;
-									threadNumber %= threadsToDispatch;
-								}
-								else
-								{
-					
-									stringstream fileNameForPrevList;
-									fileIDMutex->lock();
-									fileID++;
-									fileNameForPrevList << "PListChunks" << fileID;
-									fileIDMutex->unlock();
-
-									newFileNames.push_back(fileNameForPrevList.str());
-				
-									currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
-								}
+								currChunkFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
+								currChunkFile->CloseArchiveMMAP();
+								delete currChunkFile;
 							}
-			
-							if(iterator->second->size() >= minOccurrence /*|| (outlierScans && iterator->second->size() == 1)*/)
+				
+							if(firstLevel)
 							{
-								currChunkFile->WriteArchiveMapMMAP(*iterator->second);
-								interimCount++;
-
-								if(mostCommonPattern.size() < currLevel)
-								{
-									mostCommonPattern.resize(currLevel);
-									mostCommonPatternCount.resize(currLevel);
-								}
+								stringstream fileNameage;
+								stringstream fileNameForPrevList;
+								fileIDMutex->lock();
+								fileID++;
+								fileNameage << ARCHIVE_FOLDER << "PListChunks" << fileID << ".txt";
+								fileNameForPrevList << "PListChunks" << fileID;
+								fileIDMutex->unlock();
+					 
+								prevFileNameList[threadNumber].push_back(fileNameForPrevList.str());
 				
-								if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
-								{
-									mostCommonPatternCount[currLevel - 1] = iterator->second->size();
-				
-									mostCommonPattern[currLevel - 1] = iterator->first;
-								}
+								currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
+	
+								threadNumber++;
+								threadNumber %= threadsToDispatch;
 							}
 							else
 							{
-								removedPatterns++;
+					
+								stringstream fileNameForPrevList;
+								fileIDMutex->lock();
+								fileID++;
+								fileNameForPrevList << "PListChunks" << fileID;
+								fileIDMutex->unlock();
+
+								newFileNames.push_back(fileNameForPrevList.str());
+				
+								currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
 							}
+						}
 			
-							delete iterator->second;
-							iterator = finalMetaDataMap.erase(iterator);
-						/*}
+						if(iterator->second->size() >= minOccurrence /*|| (outlierScans && iterator->second->size() == 1)*/)
+						{
+							currChunkFile->WriteArchiveMapMMAP(*iterator->second);
+							interimCount++;
+
+							if(mostCommonPattern.size() < currLevel)
+							{
+								mostCommonPattern.resize(currLevel);
+								mostCommonPatternCount.resize(currLevel);
+							}
+				
+							if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
+							{
+								mostCommonPatternCount[currLevel - 1] = iterator->second->size();
+				
+								mostCommonPattern[currLevel - 1] = iterator->first;
+							}
+						}
 						else
 						{
-							iterator++;
-						}*/
+							removedPatterns++;
+						}
+			
+						delete iterator->second;
+						iterator = finalMetaDataMap.erase(iterator);
 					}
 
 					if(currChunkFile != NULL)
@@ -2385,11 +2270,11 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 							newFileNames.pop_back();
 						}
 					}
+					finalMetaDataMap.clear();
 
 					//END OF ADDED CODE
 				}
-
-
+				foundAHit = false;
 
 				std::string::size_type i = archiveCollection[a]->fileName.find(".txt");
 				string tempString = archiveCollection[a]->fileName;
@@ -2411,8 +2296,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				stringBuffer = stringBufferFile->GetPatterns(currLevel, sizeOfPackedPList);
 				packedPListSize = sizeOfPackedPList;
 				
-				foundAHit = false;
-				
 				if(sizeOfPackedPList > 0)
 				{
 					for(PListType z = 0; z < stringBuffer->size(); z++)
@@ -2428,6 +2311,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 						archiveCollection[a]->GetPListArchiveMMAP(packedPListArray); //Needs MB
 					}
 				}
+				
 			}
 
 			PListType countAdded = 0;
@@ -2798,7 +2682,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 
 						string pattern = (*stringBuffer)[partialLists];
 						
-						currChunkFiles[pattern]->WriteArchiveMapMMAP(*(packedPListArray[partialLists])/*, "", true*/);
+						currChunkFiles[pattern]->WriteArchiveMapMMAP(*(packedPListArray[partialLists]));
 						delete packedPListArray[partialLists];
 						packedPListArray[partialLists] = NULL;
 						
@@ -3108,7 +2992,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 						
 							//if(!overMemoryCount)
 							//if(sizeInMB < memDivisor/1000000.0f)
-							if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f)) < (memDivisor/1000000.0f) && !overMemoryCount)
+							if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f)) < (memDivisor/1000000.0f)/* && !overMemoryCount*/)
 							{
 								/*stringstream crap;
 								crap << "Approximation overflow at Process HD of " << sizeInMB << " in MB!\n";
@@ -4128,10 +4012,11 @@ string Forest::CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threa
 	while(iterator != leaf.leaves.end()) 
 	{
 		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
-		if(overMemoryCount)
+		// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
+		/*if(overMemoryCount && archiveCollective->totalWritten >= 262144) 
 		{
 			archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-		}
+		}*/
 		iterator = leaf.leaves.erase(iterator);
 	}
 	map<string, TreeHD> test;
