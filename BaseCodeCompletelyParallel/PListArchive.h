@@ -62,6 +62,9 @@ public:
 	
 	static vector<thread*> threadKillList;
 	static mutex syncLock;
+	
+	list<PListType*> memLocals;
+	PListType totalWritten;
 
 private:
 	static mutex listCountMutex;
@@ -69,7 +72,6 @@ private:
 	bool alreadyWrittenLargeFile;
 	bool endOfFileReached;
 	ofstream *outputFile;
-	list<PListType*> memLocals;
 	list<char*> charLocals;
 
 	//for mmap writing
