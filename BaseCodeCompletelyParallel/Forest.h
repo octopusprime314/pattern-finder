@@ -16,10 +16,7 @@ using namespace std;
 #define READMEPATH "../ReadMe.txt"
 
 typedef std::vector<map<PatternType, PListType>>::iterator it_type;
-typedef std::map<PatternType, PListType>::iterator it_map_type;
-typedef std::map<PatternType, vector<PListType>>::iterator it_map_list_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
-typedef std::map<PatternType, PListArchive*>::iterator it_map_plistarchive_type;
 typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
 typedef std::list<PatternType>::iterator string_it_type;
 struct LevelPackage

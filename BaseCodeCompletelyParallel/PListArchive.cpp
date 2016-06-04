@@ -741,7 +741,6 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 	{
 		long long result;
 		
-		typedef std::map<PatternType, PListType>::iterator it_map_type;
 		char *mapForChars = NULL;  /* mmapped array of char's */
 
 		string file;

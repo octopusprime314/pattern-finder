@@ -26,12 +26,6 @@ public:
 	//Close log
 	static void CloseLog();
 
-	//Display on scrolling logger
-	//static void WriteScrollingLog(string subject);
-
-	//Display on scrolling logger
-	//static void DisplayScrollingLog();
-
 	static string GetFormattedTime();
 
 	static bool verbosity;
@@ -40,7 +34,6 @@ private:
 	static string stringBuffer;
 	static ofstream *outputFile;
 	static mutex* logMutex;
-	//static string scroll[SCROLLCOUNT];
 	static mutex* scrollLogMutex;
 	static int index;
 };

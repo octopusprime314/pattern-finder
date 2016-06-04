@@ -3,11 +3,9 @@
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
-//string Logger::scroll[SCROLLCOUNT];
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
 bool Logger::verbosity = false;
-//#include "Windows.h"
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
@@ -73,54 +71,6 @@ void Logger::CloseLog()
 	delete logMutex;
 }
 
-
-//void Logger::WriteScrollingLog(string subject)
-//{
-//	scrollLogMutex->lock();
-//	if(index < SCROLLCOUNT)
-//	{
-//		scroll[index] = subject;
-//		index++;
-//	}
-//	else
-//	{
-//		for(int i = 0; i < SCROLLCOUNT-1; i++)
-//		{
-//			scroll[i] = scroll[i+1];
-//		}
-//		scroll[SCROLLCOUNT-1] = subject;
-//	}
-//	scrollLogMutex->unlock();
-//}
-
-//void Logger::DisplayScrollingLog()
-//{
-//	scrollLogMutex->lock();
-//	int scrollStartWidth = glutGet(GLUT_SCREEN_WIDTH);
-//	int scrollStartHeight = glutGet(GLUT_SCREEN_HEIGHT);
-//	
-//	glColor4f(0.0,1.0,0.0,1.0);
-//
-//	glMatrixMode(GL_PROJECTION);
-//	glLoadIdentity();
-//	gluOrtho2D(0.0, scrollStartWidth, 0.0, scrollStartHeight);
-//
-//	glMatrixMode(GL_MODELVIEW);
-//	glLoadIdentity();
-//
-//
-//	int positioning = 350;
-//	for(unsigned int i = 0; i < SCROLLCOUNT; i++)
-//	{
-//		glRasterPos2i(0, positioning);
-//		for(int j = 0; j < scroll[i].length(); j++)
-//		{
-//			glutBitmapCharacter(MEDIUM_FONT, scroll[i][j]);
-//		}
-//		positioning-=12;
-//	}
-//	scrollLogMutex->unlock();
-//}
 
 string Logger::GetFormattedTime()
 {
