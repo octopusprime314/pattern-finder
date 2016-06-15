@@ -28,7 +28,7 @@ public:
 
 	static string GetFormattedTime();
 
-	static bool verbosity;
+	static int verbosity;
 
 private:
 	static string stringBuffer;

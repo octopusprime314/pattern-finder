@@ -17,6 +17,7 @@ using namespace std;
 
 typedef std::vector<map<PatternType, PListType>>::iterator it_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
+typedef std::vector<pair<PatternType, vector<PListType>>*>::iterator it_map_list_p_type_test;
 typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
 typedef std::list<PatternType>::iterator string_it_type;
 struct LevelPackage
@@ -24,8 +25,8 @@ struct LevelPackage
 	unsigned int currLevel;
 	unsigned int threadIndex;
 	unsigned int inceptionLevelLOL;
-	unsigned int useRAM;
-	PListType previousPatternsFound;
+	bool useRAM;
+	unsigned int coreIndex;
 };
 
 class Forest
@@ -36,10 +37,10 @@ private:
 	double currMemoryOverflow;
 	PListType fileID;
 	vector<mutex*> gatedMutexes;
-	vector<int> currentLevelVector;
+	vector<unsigned int> currentLevelVector;
 	vector<bool> activeThreads;
-	PListType threadsDispatched;
-	PListType threadsDefuncted;
+	int threadsDispatched;
+	int threadsDefuncted;
 	vector<future<void>> *threadPool;
 	vector<future<void>> *threadPlantSeedPoolHD;
 	vector<future<TreeRAM*>> *threadPlantSeedPoolRAM;
@@ -47,11 +48,11 @@ private:
 	std::string::size_type sz;
 	unsigned int numThreads;
 	unsigned int levelToOutput;
-	bool history;
+	int history;
 	PListType minimum, maximum;
 	PListType memoryBandwidthMB;
 	PListType memoryPerThread;
-	PListType globalLevel;
+	unsigned int globalLevel;
 	string patternToSearchFor;
 	//If /d is in commands then display number of patterns found at each level
 	bool displayEachLevelSearch;
@@ -66,8 +67,8 @@ private:
 	PListType startingLevel;
 	vector<vector<string>> prevFileNameList;
 	vector<vector<string>> newFileNameList;
-	PListType MemoryUsedPriorToThread;
-	PListType MemoryUsageAtInception;
+	double MemoryUsedPriorToThread;
+	double MemoryUsageAtInception;
 	vector<bool> usedRAM;
 	PListType sizeOfPreviousLevelMB;
 	vector<vector<PListType>*>* prevPListArray;
@@ -96,13 +97,15 @@ private:
 
 	vector<string> fileChunks;
 
+	vector<unsigned int> availableCores;
+
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
 
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);
 	void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
 	
-	bool NextLevelTreeSearch(PListType level);
+	bool NextLevelTreeSearch(unsigned int level);
 	bool NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, vector<string>& fileList, LevelPackage& levelInfo);
 	
 	void ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo);
@@ -111,13 +114,13 @@ private:
 	void FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsigned int z);
 	void FirstLevelRAMProcessing();
 
-	string CreateChunkFile(string fileName, TreeHD& leaf, unsigned int threadNum, PListType currLevel);
+	string CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo/*unsigned int threadNum, unsigned int currLevel*/);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);
 	void DeleteArchive(string fileNames, string folderLocation);
 
-	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
+	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex, bool firstLevel = false);
 	PListType ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 
 	bool ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &isThreadDefuncted);
@@ -128,7 +131,7 @@ private:
 	vector<vector<PListType>> ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
 	vector<vector<string>> ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, LevelPackage levelInfo, vector<string> prevFileNames);
 
-	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false);
+	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false, unsigned int thread = 0);
 
 	bool DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
 	bool DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<vector<PListType>*>* prevLocalPListArray, LevelPackage levelInfo, bool& isThreadDefuncted);

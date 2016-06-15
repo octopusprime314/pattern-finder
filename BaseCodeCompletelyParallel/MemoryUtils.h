@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include "TypeDefines.h"
 using namespace std;
-typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 
 class MemoryUtils
 {
@@ -47,12 +46,14 @@ public:
 		char name_buf[512];
 		name_buf[readlink("/proc/self/exe", name_buf, 511)]=0;
 		int child_pid = fork();
-		if (!child_pid) {           
+		if (!child_pid) 
+		{           
 			dup2(2,1); // redirect output to stderr
 			fprintf(stdout,"stack trace for %s pid=%s\n",name_buf,pid_buf);
 			execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
 			abort(); /* If gdb failed to start */
-		} else {
+		} else
+		{
 			waitpid(child_pid,NULL,0);
 		}
 #endif
@@ -117,33 +118,7 @@ public:
 		return sizeInMB;
 	}
 
-	static double SizeOfMap(map<PatternType, vector<PListType>*> mapFile)
-	{
-		
-		//16 bytes for map itself
-		PListType totalMemoryInBytes = 16;
-		//Size needed for each node in the map overhead essentially
-		totalMemoryInBytes += (mapFile.size() + 1)*32;
-
-		unsigned int mapHashSize = 0;
-		if(mapFile.size() > 0)
-		{
-			mapHashSize = mapFile.begin()->first.length();
-			totalMemoryInBytes += (mapFile.size() + 1)*mapHashSize;
-
-			for(it_map_list_p_type iterator = mapFile.begin(); iterator != mapFile.end(); iterator++)
-			{
-				//Add 24 for the overhead storage for a vector in addition to its capacity
-				totalMemoryInBytes += iterator->second->capacity()*sizeof(PListType) + 24;
-			}
-		}
-		
-		
-		double sizeInMB = totalMemoryInBytes/1000000.0f;
-		return sizeInMB;
-	}
-
-	static bool IsOverMemoryCount(unsigned long initialMemoryInMB, unsigned long memoryBandwidthInMB, double& memoryOverflow)
+	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
 	{
 		double currMemory = GetProgramMemoryConsumption();
 		stringstream stringbuilder;
@@ -233,14 +208,12 @@ public:
 #if defined(_WIN64) || defined(_WIN32)
 		std::ifstream  src(copyFrom, std::ios::binary);
 		std::ofstream  dst(copyTo,   std::ios::binary);
-		/*copy(src, dst);
-		dst.close();
-		src.close();*/
+		
 		dst << src.rdbuf();
 		dst.flush();
 		dst.close();
 		src.close();
-		//CopyFile(copyFrom.c_str(), copyTo.c_str(), false);
+
 #elif defined(__linux__)
 		//Implement later
 		std::ifstream  src(copyFrom, std::ios::binary);

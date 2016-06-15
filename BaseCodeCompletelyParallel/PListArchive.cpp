@@ -250,10 +250,8 @@ bool PListArchive::Exists()
 	}
 }
 
-void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList, PListType *mapToDelete)
+void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList)
 {
-	
-	//memLocalList.unique();
 	for(PListType* temp : memLocalList)
 	{
 		msync(temp, hdSectorSize, MS_SYNC);
@@ -262,11 +260,9 @@ void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charL
 	{
 		msync(tempChar, hdSectorSize, MS_SYNC);
 	}
-	
-	
 }
 
-void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern, bool flush)
+void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern, bool flush, bool forceClose)
 {
 	try
 	{
@@ -274,11 +270,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 		{
 			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad lol
 			//cout << "Number of memory locations to flush: " << memLocals.size() << endl;
-			totalWritten = 0;
-			syncLock.lock();
-			threadKillList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals, mapper));
-			syncLock.unlock();
-			memLocals.clear();
 			if(mapper != NULL)
 			{
 				//Deallocate only when it has been completely used
@@ -289,6 +280,28 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 				}
 				mapper = NULL;
 			}
+			totalWritten = 0;
+			/*syncLock.lock();
+			threadKillList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
+			syncLock.unlock();*/
+			//Not enough work to dispatch a thread
+			if(fileIndex <= hdSectorSize)
+			{
+				for(PListType* temp : memLocals)
+				{
+					msync(temp, hdSectorSize, MS_SYNC);
+				}
+				for(char* tempChar : charLocals)
+				{
+					msync(tempChar, hdSectorSize, MS_SYNC);
+				}
+			}
+			else
+			{
+				localThreadList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
+			}
+			memLocals.clear();
+			
 			return;
 		}
 		long long result;
@@ -416,6 +429,116 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, Pat
 
 }
 
+//vector<const char*>* PListArchive::GetPatterns(unsigned int level, PListType count)
+//{
+//	if(fd == -1)
+//	{
+//		return NULL;
+//	}
+//
+//	PListType preservedFileIndex = fileIndex;
+//
+//	long long result;
+//	char *mapChar;  /* mmapped array of char's */
+//
+//	//Add plus two to account for patternLength and mapEntries.
+//	PListType sizeToReadForPatterns = count*level;
+//	PListType totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize));
+//	if(totalReadsForPatterns == 0)
+//	{
+//		totalReadsForPatterns++;
+//	}
+//	vector<const char*> *newStringBuffer = NULL;
+//	PListType newStringBufferIndex = 0;
+//	PListType offstep = 0;
+//	unsigned int prevIndexForChar = 0;
+//
+//	PListType sizeToRead = 0;
+//	if(count == 0)
+//	{
+//		return NULL;
+//	}
+//	else
+//	{
+//		newStringBuffer = new vector<const char*>(count);
+//	}
+//
+//	string completePattern( level, ' ');
+//
+//	try
+//	{
+//		for(PListType piss = 0; piss < totalReadsForPatterns; piss++)
+//		{
+//
+//	#if defined(_WIN64) || defined(_WIN32)
+//			result = _lseeki64(fd, fileIndex, SEEK_SET);
+//	#elif defined(__linux__)
+//			result = lseek64(fd, fileIndex, SEEK_SET);
+//	#endif
+//			mapChar = (char *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
+//
+//			if (mapChar == MAP_FAILED) 
+//			{
+//				MappingError(fd, this->fileName);
+//				return NULL;
+//			}
+//		
+//			PListType PListBuffSize = hdSectorSize/sizeof(char);
+//			/* Now do something with the information. */
+//
+//			if(piss < totalReadsForPatterns)
+//			{
+//				PListBuffSize = hdSectorSize/sizeof(char);
+//
+//				bool shitWhistle = false;
+//				PListType i = 0;
+//				while (i < PListBuffSize && offstep < count) 
+//				{
+//					for(PListType charIt = prevIndexForChar; charIt < level; charIt++)
+//					{
+//						if(i >= PListBuffSize)
+//						{
+//							prevIndexForChar = charIt;
+//							shitWhistle = true;
+//							break;
+//						}
+//						else
+//						{
+//							prevIndexForChar = 0;
+//						}
+//					
+//						if(!shitWhistle)
+//						{
+//							completePattern[charIt] = mapChar[i];
+//						}
+//						i++;
+//					}
+//					if(!shitWhistle)
+//					{ 
+//						(*newStringBuffer)[newStringBufferIndex++] = completePattern.c_str();
+//						offstep++;
+//					}
+//				}
+//
+//				if (munmap(mapChar, PListBuffSize) == -1) 
+//				{
+//					UnMappingError(fd, this->fileName);
+//					return NULL;
+//				}
+//			}
+//		
+//			fileIndex += hdSectorSize;
+//		}
+//		fileIndex = preservedFileIndex;
+//		newStringBuffer->shrink_to_fit();
+//	}
+//	catch(exception e)
+//	{
+//		cout << "Exception occurred in method GetPatterns -> " << e.what() << endl;
+//	}
+//	return newStringBuffer;
+//}
+
 vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 {
 	if(fd == -1)
@@ -449,7 +572,6 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	{
 		newStringBuffer = new vector<string>(count);
 	}
-
 
 	string completePattern( level, ' ');
 
@@ -656,6 +778,14 @@ void PListArchive::CloseArchiveMMAP()
 {
 	try
 	{
+		//Add msync threads at the end
+		if(localThreadList.size() > 0)
+		{
+			syncLock.lock();
+			threadKillList.insert(threadKillList.end(), localThreadList.begin(), localThreadList.end());
+			syncLock.unlock();
+		}
+
 		/* Un-mmaping doesn't close the file, so we still need to do that.
 		 */
 		if(fd != -1)

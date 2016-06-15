@@ -5,7 +5,7 @@ string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
-bool Logger::verbosity = false;
+int Logger::verbosity = 0;
 //Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
@@ -75,7 +75,8 @@ void Logger::CloseLog()
 string Logger::GetFormattedTime()
 {
 	time_t t = time(0);   // get time now
-    struct tm * now = localtime( & t );
+    struct tm * now = new struct tm();
+	localtime_s( now,  & t );
 	stringstream timeBuff;
 	//timeBuff << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-' <<  now->tm_mday << " ";
 	string amorpm;
@@ -102,7 +103,7 @@ string Logger::GetFormattedTime()
 		timeBuff << "0";	
 	}
 	timeBuff << now->tm_sec /*<< " " << amorpm*/;
-	srand (time(NULL));
+	srand ((unsigned int)(time(NULL)));
 	timeBuff << rand();
 
 	return timeBuff.str();

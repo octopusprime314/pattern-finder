@@ -36,13 +36,14 @@ public:
 	PListArchive(string fileName, bool create = false);
 
 	//Load in pList
-	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
-	void WriteArchiveMapMMAPLargeFile(const vector<PListType> &pListVector, PatternType pattern = "", bool flush = false);
+	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false, bool forceClose = false);
+	void WriteArchiveMapMMAPLargeFile(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false);
 	
 	//Write map to hard disk 
 	void DumpPatternsToDisk(unsigned int level);
 
 	vector<string>* GetPatterns(unsigned int level, PListType count);
+	//vector<const char*>* GetPatterns(unsigned int level, PListType count);
 	void GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, double chunkSizeInMB = 0);
 	bool IsEndOfFile();
 	bool Exists();
@@ -61,6 +62,7 @@ public:
 	PListType prevMappingIndex;
 	
 	static vector<thread*> threadKillList;
+	vector<thread*> localThreadList;
 	static mutex syncLock;
 	
 	list<PListType*> memLocals;
@@ -78,7 +80,7 @@ private:
 	PListType prevListIndex;
 	PListType prevStartingIndex;
 
-	void FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList, PListType *mapToDelete);
+	void FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList);
 
 	void MappingError(int& fileDescriptor, string fileName);
 	void UnMappingError(int& fileDescriptor, string fileName);

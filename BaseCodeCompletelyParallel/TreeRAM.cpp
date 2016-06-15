@@ -3,7 +3,6 @@
 #include "Logger.h"
 #include <sstream>
 #include "Forest.h"
-//#include "vld.h"
 
 TreeRAM::TreeRAM()
 {
@@ -25,20 +24,10 @@ vector<PListType>* TreeRAM::GetPList()
 	return pList;
 }
 
-PListType TreeRAM::GetPListCount()
-{
-	return pList->size();
-}
-
-map<char, TreeRAM*> TreeRAM::GetMap()
-{
-	return leaves;
-}
-
 vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence)
 {
 	vector<vector<PListType>*>* list = NULL;
-	typedef std::map<char, TreeRAM*>::iterator it_type;
+	typedef std::unordered_map<char, TreeRAM*>::iterator it_type;
 	for (it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
 	{
 		vector<PListType>* pList = (*iterator).second->GetPList();
@@ -59,38 +48,6 @@ vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns
 		delete (*iterator).second;
 	}
 	return list;
-}
-
-void TreeRAM::addLeaf(unsigned char uniqueChar, PListType pIndex)
-{
-	
-	if (leaves.find(uniqueChar) == leaves.end())
-	{
-		leaves[uniqueChar] = new TreeRAM(pIndex);
-	}
-	else
-	{
-		leaves[uniqueChar]->addPIndex(pIndex);
-	}
-}
-void TreeRAM::displayTree(vector<TreeRAM*> tree, string buffer, int level)
-{
-	for (int i = 0; i < tree.size(); i++)
-	{
-		if (tree[i] != NULL)
-		{
-			string seq = buffer.substr((*tree[i]->GetPList())[0] - level, level);
-			stringstream buff;
-			buff << seq.c_str() << " is found " << tree[i]->GetPListCount() << endl;
-			Logger::WriteLog(buff.str());
-		}
-	}
-}
-
-
-void TreeRAM::addPIndex(PListType pIndex)
-{
-	pList->push_back(pIndex);
 }
 
 vector<PListType>* TreeRAM::GetMostCommonPattern(vector<vector<PListType>*>* pLists, string buffer, int level)
@@ -121,3 +78,4 @@ vector<PListType>* TreeRAM::GetMostCommonPattern(vector<vector<PListType>*>* pLi
 	}
 
 }
+

@@ -41,9 +41,6 @@
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAM.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TypeDefines.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\BaseCodeCompletelyParallel\README.md" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{32EF00B8-804F-4784-A92F-EEB414EBB5C1}</ProjectGuid>
     <RootNamespace>PatternDetective</RootNamespace>
