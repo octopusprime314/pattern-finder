@@ -3,34 +3,99 @@
 #include <vector>
 #include <unordered_map>
 #include "TypeDefines.h"
+#define MAX_TREE_SIZE 256
 using namespace std;
+
+class TreeRAM;
+typedef std::unordered_map<char, vector<PListType>*>::iterator it_type_tree_ram;
 
 class TreeRAM
 {
 private:
-	vector<PListType> *pList;
+	
 
 public:
 	TreeRAM();
 	~TreeRAM();
-	TreeRAM(PListType pIndex);
 	vector<vector<PListType>*>* GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence);
-	inline void TreeRAM::addLeaf(const unsigned char& uniqueChar, PListType pIndex)
+	void GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence, vector<vector<PListType>*>* list);
+	
+	//OLD SLOW VERSION
+	//inline void TreeRAM::addLeaf(const unsigned char& uniqueChar, PListType pIndex)
+	//{
+	//	if (leaves.find(uniqueChar) == leaves.end())
+	//	{
+	//		leaves[uniqueChar] = new TreeRAM(pIndex);
+	//	}
+	//	else
+	//	{
+	//		/*if(leaves[uniqueChar]->pList->size() == leaves[uniqueChar]->pList->capacity())
+	//		{
+	//			leaves[uniqueChar]->pList->reserve(leaves[uniqueChar]->pList->size()*3);
+	//		}*/
+	//		leaves[uniqueChar]->pList->push_back(pIndex);
+	//	}
+	//}
+
+	////FASTEST VERSION SO FAR
+	//inline void TreeRAM::addLeaf(const char& uniqueChar, PListType pIndex)
+	//{
+	//	if (leaves.size() != MAX_TREE_SIZE && leaves.find(uniqueChar) == leaves.end())
+	//	{
+	//		leaves[uniqueChar] = new TreeRAM(pIndex);
+	//	}
+	//	else
+	//	{
+	//		leaves[uniqueChar]->pList->push_back(pIndex);
+	//	}
+	//}
+
+	//TEST VERSION SO FAR
+	inline void TreeRAM::addLeaf(const char& uniqueChar, PListType pIndex)
 	{
-		if (leaves.find(uniqueChar) == leaves.end())
+		/*if (leaves.size() != MAX_TREE_SIZE && leaves.find(uniqueChar) == leaves.end())
 		{
 			leaves[uniqueChar] = new TreeRAM(pIndex);
 		}
 		else
 		{
-			leaves[uniqueChar]->addPIndex(pIndex);
+			leaves[uniqueChar]->pList->push_back(pIndex);
+		}*/
+
+		/*if (leaves.size() == MAX_TREE_SIZE)
+		{
+			leaves[uniqueChar]->pList->push_back(pIndex);
 		}
+		else if(leaves.find(uniqueChar) == leaves.end())
+		{
+			leaves[uniqueChar] = new TreeRAM(pIndex);
+		}
+		else
+		{
+			leaves[uniqueChar]->pList->push_back(pIndex);
+		}*/
+
+		if (leaves.size() == MAX_TREE_SIZE)
+		{
+			leaves[uniqueChar]->push_back(pIndex);
+		}
+		else if(leaves.find(uniqueChar) == leaves.end())
+		{
+			leaves[uniqueChar] = new vector<PListType>(1, pIndex);
+		}
+		else
+		{
+			leaves[uniqueChar]->push_back(pIndex);
+		}
+
+		/*TreeRAM *tree = new TreeRAM(pIndex);
+		pair<it_type_tree_ram,bool> val = leaves.insert(pair<char, TreeRAM*>(uniqueChar, tree));
+		
+		if(!val.second)
+		{
+			leaves[uniqueChar]->pList->push_back(pIndex);
+		}
+		delete tree;*/
 	}
-	inline void TreeRAM::addPIndex(PListType pIndex)
-	{
-		pList->push_back(pIndex);
-	}
-	vector<PListType>* GetPList();
-	static vector<PListType>* GetMostCommonPattern(vector<vector<PListType>*>* pLists, string buffer, int level);
-	unordered_map<char, TreeRAM*> leaves;
+	unordered_map<char, vector<PListType>*> leaves;
 };

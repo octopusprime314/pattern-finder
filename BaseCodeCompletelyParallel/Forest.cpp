@@ -545,7 +545,7 @@ void Forest::FirstLevelRAMProcessing()
 {
 	int threadsFinished = 0;
 	unsigned int threadsToDispatch = numThreads - 1;
-	unordered_map<char, TreeRAM*>* globalMap = new unordered_map<char, TreeRAM*>();
+	unordered_map<char, vector<PListType>*>* globalMap = new unordered_map<char, vector<PListType>*>();
 	while (threadsFinished != threadsToDispatch)
 	{
 		for (unsigned int k = 0; k < threadsToDispatch; k++)
@@ -554,28 +554,25 @@ void Forest::FirstLevelRAMProcessing()
 			{
 				TreeRAM* temp = (*threadPlantSeedPoolRAM)[k].get();
 				
-				typedef std::unordered_map<char, TreeRAM*>::iterator it_type;
+				typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
 				for (it_type iterator = temp->leaves.begin(); iterator != temp->leaves.end(); iterator++)
 				{
 					if (globalMap->find(iterator->first) == globalMap->end())
 					{
-						vector<PListType>* newPList = iterator->second->GetPList();
+						vector<PListType>* newPList = iterator->second;
 						(*globalMap)[iterator->first] = iterator->second;
 					}
 					else
 					{
-						vector<PListType>* newPList = iterator->second->GetPList();
-						vector<PListType>* currGlobalPList = (*globalMap)[iterator->first]->GetPList();
+						vector<PListType>* newPList = iterator->second;
+						vector<PListType>* currGlobalPList = (*globalMap)[iterator->first];
 
 						currGlobalPList->insert(currGlobalPList->end(), newPList->begin(), newPList->end());
 
-						delete iterator->second->GetPList();
 						delete iterator->second;
-
 					}
 				}
 
-				delete temp->GetPList();
 				delete temp;
 
 				threadsFinished++;
@@ -585,11 +582,11 @@ void Forest::FirstLevelRAMProcessing()
 	}
 	prevPListArray->clear();
 
-	typedef std::unordered_map<char, TreeRAM*>::iterator it_type;
+	typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
 	//Remove map but extract pLists...hungry why wait grab a snickers.
 	for(it_type iterator = globalMap->begin(); iterator != globalMap->end(); iterator++)
 	{
-		vector<PListType>* pList = iterator->second->GetPList();
+		vector<PListType>* pList = iterator->second;
 		if(pList->size() <= 1)
 		{
 			delete pList;
@@ -3062,18 +3059,19 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		
 			
 		PListType removedPatternsTemp = 0;
-		vector<vector<PListType>*>* newList = leaf.GetLeafPLists(removedPatternsTemp, minOccurrence);
+		
+		leaf.GetLeafPLists(removedPatternsTemp, minOccurrence, globalLocalPListArray);
 		totalTallyRemovedPatterns += removedPatternsTemp;
 		
-
+		/*vector<vector<PListType>*>* newList = leaf.GetLeafPLists(removedPatternsTemp, minOccurrence);
+		totalTallyRemovedPatterns += removedPatternsTemp;
 		if(newList != NULL)
 		{
 			globalLocalPListArray->insert(globalLocalPListArray->end(), newList->begin(), newList->end());
 			newList->erase(newList->begin(), newList->end());
 			delete newList;
-		}
+		}*/
 
-		delete leaf.GetPList();
 
 		delete (*prevLocalPListArray)[i];
 	}
@@ -3365,11 +3363,11 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 
 	vector<unsigned char> listToDos;
 
-	typedef std::unordered_map<char, TreeRAM*>::iterator it_type;
+	typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
 	for(it_type iterator = leaf->leaves.begin(); iterator != leaf->leaves.end(); iterator++)
 	{
 		
-		vector<PListType>* pList = iterator->second->GetPList();
+		vector<PListType>* pList = iterator->second;
 		unsigned char index = ((unsigned char)iterator->first);
 		
 		if((*prevPListArray)[index] == NULL)
@@ -3405,7 +3403,7 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		for(unsigned char i = 0; i < listToDos.size(); i++)
 		{
 		
-			vector<PListType>* pList = leaf->leaves.find(listToDos[i])->second->GetPList();
+			vector<PListType>* pList = leaf->leaves.find(listToDos[i])->second;
 			if((*prevPListArray)[listToDos[i]] == NULL)
 			{
 				if(gatedMutexes[listToDos[i]]->try_lock())
@@ -3440,17 +3438,11 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		}
 	}
 
-	for(it_type iterator = leaf->leaves.begin(); iterator != leaf->leaves.end(); iterator++)
-	{
-		delete iterator->second;
-	}
-
-	delete leaf->GetPList();
 	delete leaf;
 	return NULL;
 }
 
-string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo/*, unsigned int threadNum, unsigned int currLevel*/)
+string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;
 	

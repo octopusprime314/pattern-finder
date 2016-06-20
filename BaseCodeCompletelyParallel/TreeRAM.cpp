@@ -6,31 +6,18 @@
 
 TreeRAM::TreeRAM()
 {
-	pList = new vector<PListType>();
-}
-
-TreeRAM::TreeRAM(PListType pIndex)
-{
-	pList = new vector<PListType>();
-	pList->push_back(pIndex);
 }
 
 TreeRAM::~TreeRAM()
 {
 }
 
-vector<PListType>* TreeRAM::GetPList()
-{
-	return pList;
-}
-
 vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence)
 {
 	vector<vector<PListType>*>* list = NULL;
-	typedef std::unordered_map<char, TreeRAM*>::iterator it_type;
-	for (it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
+	for (it_type_tree_ram iterator = leaves.begin(); iterator != leaves.end(); iterator++)
 	{
-		vector<PListType>* pList = (*iterator).second->GetPList();
+		vector<PListType>* pList = (*iterator).second;
 		if (pList->size() >= minOccurence/* || (Forest::outlierScans && pList->size() == 1)*/)
 		{
 			if(list == NULL)
@@ -42,40 +29,26 @@ vector<vector<PListType>*>* TreeRAM::GetLeafPLists(PListType& eradicatedPatterns
 		else
 		{
 			eradicatedPatterns++;
-			delete (*iterator).second->GetPList();
+			delete (*iterator).second;
 		}
-
-		delete (*iterator).second;
 	}
 	return list;
 }
 
-vector<PListType>* TreeRAM::GetMostCommonPattern(vector<vector<PListType>*>* pLists, string buffer, int level)
+void TreeRAM::GetLeafPLists(PListType& eradicatedPatterns, PListType minOccurence, vector<vector<PListType>*>* list)
 {
-	PListType PListTypeestLength = 0;
-	PListType PListTypeestLengthIndex = 0;
-	for (int i = 0; i < pLists->size(); i++)
+	for (it_type_tree_ram iterator = leaves.begin(); iterator != leaves.end(); iterator++)
 	{
-
-		if ((*pLists)[i]->size() > PListTypeestLength)
+		if ((*iterator).second->size() >= minOccurence/* || (Forest::outlierScans && pList->size() == 1)*/)
 		{
-			PListTypeestLength = (*pLists)[i]->size();
-			PListTypeestLengthIndex = i;
+			list->push_back((*iterator).second);
+		}
+		else
+		{
+			eradicatedPatterns++;
+			delete (*iterator).second;
 		}
 	}
-
-	if (PListTypeestLength > 1)
-	{
-		//vector<PListType> *test = (*pLists)[PListTypeestLengthIndex];
-		//string seq = buffer.substr((*test)[0] - level, level);
-		//cout << seq.c_str() << " is found " << PListTypeestLength << endl;
-		return (*pLists)[PListTypeestLengthIndex];
-	}
-	else
-	{
-		vector<PListType>* emptyList = new vector<PListType>();
-		return NULL;
-	}
-
 }
+
 

@@ -114,7 +114,7 @@ private:
 	void FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsigned int z);
 	void FirstLevelRAMProcessing();
 
-	string CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo/*unsigned int threadNum, unsigned int currLevel*/);
+	string CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);
