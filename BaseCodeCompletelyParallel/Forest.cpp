@@ -216,11 +216,21 @@ Forest::Forest(int argc, char **argv)
 
 				if(prediction)
 				{
+				#if defined(_WIN64) || defined(_WIN32)
 					threadPlantSeedPoolHD->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
+				#else
+					threadPlantSeedPoolHD->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
+				#endif
+					//threadPlantSeedPoolHD->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 				}
 				else
 				{
+				#if defined(_WIN64) || defined(_WIN32)
 					threadPlantSeedPoolRAM->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
+				#else
+					threadPlantSeedPoolRAM->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
+				#endif
+					//threadPlantSeedPoolRAM->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
 				}
 				position += span;
 			}
@@ -1319,7 +1329,13 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 			levelInfo.coreIndex = i;
 			threadsDispatched++;
 			vector<string> temp2;
+
+		#if defined(_WIN64) || defined(_WIN32)
 			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
+		#else
+			threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
+		#endif
+			//threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 		}
 		countMutex->unlock();
 		WaitForThreads(localWorkingThreads, threadPool);
@@ -1353,7 +1369,12 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 			levelInfo.coreIndex = i;
 			threadsDispatched++;
 			vector<PListType> temp;
+		#if defined(_WIN64) || defined(_WIN32)
 			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
+		#else
+			threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
+		#endif
+			//threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 		}
 		countMutex->unlock();
 		WaitForThreads(localWorkingThreads, threadPool);
@@ -1389,7 +1410,11 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 			vector<unsigned int> currentThreads;
 			for (PListType k = 0; k < localWorkingThreads.size(); k++)
 			{
-				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid()/* && (*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready*/)
+			#if defined(_WIN64) || defined(_WIN32)
+				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
+			#else	
+				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid() /*&& (*localThreadPool)[localWorkingThreads[k]]._Is_ready() && (*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready*/)
+			#endif	
 				{
 					if(recursive)
 					{
@@ -1426,8 +1451,10 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 				}
 				else
 				{
+				//#if defined(_WIN64) || defined(_WIN32)
 					//Wait 5 milliseconds
 					this_thread::sleep_for(chrono::milliseconds(5));
+				//#endif
 					currentThreads.push_back(localWorkingThreads[k]);
 				}
 			}
@@ -2825,9 +2852,9 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 	}
 	else
 	{
-		countMutex->lock();
+		/*countMutex->lock();
 		availableCores.push_back(levelInfo.coreIndex);
-		countMutex->unlock();
+		countMutex->unlock();*/
 		DeleteArchives(fileList, ARCHIVE_FOLDER);
 	}
 	return morePatternsToFind;
@@ -2918,8 +2945,12 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					for (PListType i = 0; i < localWorkingThreads.size(); i++)
 					{
 						threadsDispatched++;
-						levelInfoRecursion.coreIndex = availableCores[i];
+						//levelInfoRecursion.coreIndex = availableCores[i];
+					#if defined(_WIN64) || defined(_WIN32)
 						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+					#else
+						localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+					#endif
 					}
 					countMutex->unlock();
 						
@@ -2999,11 +3030,16 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 					{
 						threadsDispatched++;
 
-						levelInfoRecursion.coreIndex = availableCores[availableCores.size() - 1];
-						availableCores.pop_back();
+						/*levelInfoRecursion.coreIndex = availableCores[availableCores.size() - 1];
+						availableCores.pop_back();*/
 
 						vector<PListType> temp;
+					#if defined(_WIN64) || defined(_WIN32)
 						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+					#else
+						localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+					#endif
+						//localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 					}
 					countMutex->unlock();
 						
@@ -3029,49 +3065,104 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	bool continueSearching = true;
 	int threadsToDispatch = numThreads - 1;
 	PListType totalTallyRemovedPatterns = 0;
+	
 	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 	{
-		//used primarily for just storage containment
-		TreeRAM leaf;
+		//PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
+		//
+		//unordered_map<char, vector<PListType>*> leaves;
+		//
+		//vector<PListType>* pList = (*prevLocalPListArray)[i];
+		//PListType pListLength = (*prevLocalPListArray)[i]->size();
+		//
+		//for (PListType k = 0; k < pListLength; k++)
+		//{
+		//	//If pattern is past end of string stream then stop counting this pattern
+		//	if ((*pList)[k] < file->fileStringSize)
+		//	{
+		//		
+		//		if(patternToSearchFor.size() == 0 || file->fileString[(*pList)[k]] == patternToSearchFor[levelInfo.currLevel - 1])
+		//		{
+		//			if (leaves.size() != MAX_TREE_SIZE && leaves.find(file->fileString[(*pList)[k]]) == leaves.end())
+		//			{
+		//				leaves[file->fileString[(*pList)[k]]] = new vector<PListType>(1, (*pList)[k] + 1);
+		//				if(earlyApproximation > 1)
+		//				{
+		//					leaves[file->fileString[(*pList)[k]]]->reserve(earlyApproximation);
+		//				}
+		//			}
+		//			else
+		//			{
+		//				leaves[file->fileString[(*pList)[k]]]->push_back((*pList)[k] + 1);
+		//			}
+		//		}
+		//	}
+		//}
+		//for (it_type_tree_ram iterator = leaves.begin(); iterator != leaves.end(); iterator++)
+		//{
+		//	if ((*iterator).second->size() >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
+		//	{
+		//		globalLocalPListArray->push_back((*iterator).second);
+		//	}
+		//	else
+		//	{
+		//		totalTallyRemovedPatterns++;
+		//		delete (*iterator).second;
+		//	}
+		//}
+		//delete (*prevLocalPListArray)[i];
 
+		PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
+		
+		bool map[256] = {false};
+		size_t index[256];
+		int countering = 0;
+		vector<vector<PListType>*> newPList;
+		
 		vector<PListType>* pList = (*prevLocalPListArray)[i];
 		PListType pListLength = (*prevLocalPListArray)[i]->size();
-
 		for (PListType k = 0; k < pListLength; k++)
 		{
 			//If pattern is past end of string stream then stop counting this pattern
 			if ((*pList)[k] < file->fileStringSize)
 			{
-				////unsigned char value = file->fileString[(*pList)[k]];
-				//string value = file->fileString.substr((*pList)[k], 1);
-				//if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[levelInfo.currLevel - 1])
-				//{
-				//	leaf.addLeaf(value[0], (*pList)[k] + 1);
-				//}
-
 				
 				if(patternToSearchFor.size() == 0 || file->fileString[(*pList)[k]] == patternToSearchFor[levelInfo.currLevel - 1])
 				{
-					leaf.addLeaf(file->fileString[(*pList)[k]], (*pList)[k] + 1);
+					uint8_t indexer = ((uint8_t)file->fileString[(*pList)[k]]);
+					if(countering < 256 && !map[indexer])
+					{
+						countering++;
+						map[indexer] = true;
+						
+						index[indexer] = newPList.size();
+						
+						newPList.push_back(new vector<PListType>(1, (*pList)[k] + 1));
+						if(earlyApproximation > 1)
+						{
+							newPList[newPList.size() - 1]->reserve(earlyApproximation);
+						}
+					}
+					else
+					{
+						newPList[index[indexer]]->push_back((*pList)[k] + 1);
+					}
 				}
 			}
 		}
 		
-			
-		PListType removedPatternsTemp = 0;
-		
-		leaf.GetLeafPLists(removedPatternsTemp, minOccurrence, globalLocalPListArray);
-		totalTallyRemovedPatterns += removedPatternsTemp;
-		
-		/*vector<vector<PListType>*>* newList = leaf.GetLeafPLists(removedPatternsTemp, minOccurrence);
-		totalTallyRemovedPatterns += removedPatternsTemp;
-		if(newList != NULL)
+		for (int z = 0; z < newPList.size(); z++)
 		{
-			globalLocalPListArray->insert(globalLocalPListArray->end(), newList->begin(), newList->end());
-			newList->erase(newList->begin(), newList->end());
-			delete newList;
-		}*/
-
+			if (newPList[z]->size() >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
+			{
+				globalLocalPListArray->push_back(newPList[z]);
+			}
+			else
+			{
+				totalTallyRemovedPatterns++;
+				delete newPList[z];
+			}
+		}
 
 		delete (*prevLocalPListArray)[i];
 	}
@@ -3122,9 +3213,9 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		prevLocalPListArray->swap((*globalLocalPListArray));
 		globalLocalPListArray->reserve(0);
 		continueSearching = false;
-		countMutex->lock();
+		/*countMutex->lock();
 		availableCores.push_back(levelInfo.coreIndex);
-		countMutex->unlock();
+		countMutex->unlock();*/
 	}
 	else
 	{
@@ -3302,10 +3393,167 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 	return;
 }
 
+//TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch)
+//{
+//	//used primarily for just storage containment
+//	unordered_map<char, vector<PListType>*> leaves;
+//	PListType earlyApproximation = file->fileString.size()/(256*(numThreads - 1));
+//	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
+//	{
+//#ifdef INTEGERS
+//		
+//		stringstream finalValue;
+//		//If pattern is past end of string stream then stop counting this pattern
+//		if (i < file->fileStringSize)
+//		{
+//			while(i < file->fileStringSize)
+//			{
+//				unsigned char value = file->fileString[i];
+//				//if values are between 0 through 9 and include 45 for the negative sign
+//				if(value >= 48 && value <= 57 || value == 45)
+//				{
+//					finalValue << value;
+//				}
+//			
+//
+//				if(value == '\r' || value == 13 || value == '\n' || value == ' ' || value == '/t')
+//				{
+//					while((value < 48 || value > 57) && value != 45 && i < file->fileStringSize)
+//					{
+//						value = file->fileString[i];
+//						i++;
+//					}
+//					if(i < file->fileStringSize)
+//					{
+//						i-=2;
+//					}
+//					break;
+//				}
+//				else
+//				{
+//					i++;
+//				}
+//			}
+//			if(finalValue.str() != "")
+//			{
+//				string patternValue = finalValue.str();
+//				unsigned long long ull = stoull(patternValue, &sz);
+//				//cout << "Pattern found: " << ull << endl;
+//				leaf->addLeaf(ull, i + 1, patternValue);
+//			}
+//		}
+//#endif
+//#ifdef BYTES
+//		string value = file->fileString.substr(i, 1);
+//		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
+//		{
+//			if (leaves.size() != MAX_TREE_SIZE && leaves.find(file->fileString[i]) == leaves.end())
+//			{
+//				leaves[file->fileString[i]] = new vector<PListType>(1, i + 1);
+//				leaves[file->fileString[i]]->reserve(earlyApproximation);
+//			}
+//			else
+//			{
+//				leaves[file->fileString[i]]->push_back(i + 1);
+//			}
+//		}
+//#endif
+//	}
+//
+//
+//	vector<unsigned char> listToDos;
+//
+//	typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
+//	for(it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
+//	{
+//		
+//		vector<PListType>* pList = iterator->second;
+//		unsigned char index = ((unsigned char)iterator->first);
+//		
+//		if((*prevPListArray)[index] == NULL)
+//		{
+//			if(gatedMutexes[index]->try_lock())
+//			{
+//				(*prevPListArray)[index] = pList;
+//				gatedMutexes[index]->unlock();
+//			}
+//			else
+//			{
+//				listToDos.push_back(index);
+//			}
+//		}
+//		else
+//		{
+//			if(gatedMutexes[index]->try_lock())
+//			{
+//				(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
+//				gatedMutexes[index]->unlock();
+//				delete pList;
+//			}
+//			else
+//			{
+//				listToDos.push_back(index);
+//			}
+//		}
+//
+//	}
+//	while(listToDos.size() > 0)
+//	{
+//		vector<unsigned char> nextListToDos;
+//		for(unsigned char i = 0; i < listToDos.size(); i++)
+//		{
+//		
+//			vector<PListType>* pList = leaves.find(listToDos[i])->second;
+//			if((*prevPListArray)[listToDos[i]] == NULL)
+//			{
+//				if(gatedMutexes[listToDos[i]]->try_lock())
+//				{
+//					(*prevPListArray)[listToDos[i]] = pList;
+//					gatedMutexes[listToDos[i]]->unlock();
+//				}
+//				else
+//				{
+//					nextListToDos.push_back(listToDos[i]);
+//				}
+//			}
+//			else
+//			{
+//				if(gatedMutexes[listToDos[i]]->try_lock())
+//				{
+//					(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
+//					gatedMutexes[listToDos[i]]->unlock();
+//					delete pList;
+//				}
+//				else
+//				{
+//					nextListToDos.push_back(listToDos[i]);
+//				}
+//			}
+//		}
+//		listToDos.clear();
+//		listToDos.resize(nextListToDos.size());
+//		for(int k = 0; k < nextListToDos.size(); k++)
+//		{
+//			listToDos[k] = nextListToDos[k];
+//		}
+//	}
+//
+//	return NULL;
+//}
+
 TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch)
 {
+	int currentThread = startPatternIndex/numPatternsToSearch;
 	//used primarily for just storage containment
-	TreeRAM *leaf = new TreeRAM();
+	unordered_map<char, vector<PListType>*> leaves;
+	PListType earlyApproximation = file->fileString.size()/(256*(numThreads - 1));
+
+	/*bool map[256] = {false};
+	size_t index[256];
+
+	vector<vector<PListType>*> newPList;*/
+			
+
 	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
 	{
 #ifdef INTEGERS
@@ -3355,8 +3603,41 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		string value = file->fileString.substr(i, 1);
 		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
 		{
-			leaf->addLeaf(file->fileString[i], i+1);
+			if (leaves.size() != MAX_TREE_SIZE && leaves.find(file->fileString[i]) == leaves.end())
+			{
+				leaves[file->fileString[i]] = new vector<PListType>(1, i + 1);
+				leaves[file->fileString[i]]->reserve(earlyApproximation);
+			}
+			else
+			{
+				leaves[file->fileString[i]]->push_back(i + 1);
+			}
 		}
+
+		
+		/*string value = file->fileString.substr(i, 1);
+		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
+		{
+			uint8_t indexer = ((uint8_t)file->fileString[i]);
+			if(!map[indexer])
+			{
+				map[indexer] = true;
+						
+				index[indexer] = newPList.size();
+						
+				newPList.push_back(new vector<PListType>(1, i + 1));
+				if(earlyApproximation > 1)
+				{
+					newPList[newPList.size() - 1]->reserve(earlyApproximation);
+				}
+			}
+			else
+			{
+				newPList[index[indexer]]->push_back(i + 1);
+			}
+		}*/
+		
+
 #endif
 	}
 
@@ -3364,7 +3645,7 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 	vector<unsigned char> listToDos;
 
 	typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
-	for(it_type iterator = leaf->leaves.begin(); iterator != leaf->leaves.end(); iterator++)
+	for(it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
 	{
 		
 		vector<PListType>* pList = iterator->second;
@@ -3403,7 +3684,7 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		for(unsigned char i = 0; i < listToDos.size(); i++)
 		{
 		
-			vector<PListType>* pList = leaf->leaves.find(listToDos[i])->second;
+			vector<PListType>* pList = leaves.find(listToDos[i])->second;
 			if((*prevPListArray)[listToDos[i]] == NULL)
 			{
 				if(gatedMutexes[listToDos[i]]->try_lock())
@@ -3438,7 +3719,84 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		}
 	}
 
-	delete leaf;
+	//vector<unsigned char> listToDos;
+
+	//typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
+	////for(it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
+	//for(int i = 0; i < newPList.size(); i++)
+	//{
+	//	
+	//	vector<PListType>* pList = newPList[i];
+	//	unsigned char index = i;
+	//	
+	//	if((*prevPListArray)[index] == NULL)
+	//	{
+	//		if(gatedMutexes[index]->try_lock())
+	//		{
+	//			(*prevPListArray)[index] = pList;
+	//			gatedMutexes[index]->unlock();
+	//		}
+	//		else
+	//		{
+	//			listToDos.push_back(index);
+	//		}
+	//	}
+	//	else
+	//	{
+	//		if(gatedMutexes[index]->try_lock())
+	//		{
+	//			(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
+	//			gatedMutexes[index]->unlock();
+	//			delete pList;
+	//		}
+	//		else
+	//		{
+	//			listToDos.push_back(index);
+	//		}
+	//	}
+
+	//}
+	//while(listToDos.size() > 0)
+	//{
+	//	vector<unsigned char> nextListToDos;
+	//	for(unsigned char i = 0; i < listToDos.size(); i++)
+	//	{
+	//	
+	//		vector<PListType>* pList = newPList[listToDos[i]];
+	//		if((*prevPListArray)[listToDos[i]] == NULL)
+	//		{
+	//			if(gatedMutexes[listToDos[i]]->try_lock())
+	//			{
+	//				(*prevPListArray)[listToDos[i]] = pList;
+	//				gatedMutexes[listToDos[i]]->unlock();
+	//			}
+	//			else
+	//			{
+	//				nextListToDos.push_back(listToDos[i]);
+	//			}
+	//		}
+	//		else
+	//		{
+	//			if(gatedMutexes[listToDos[i]]->try_lock())
+	//			{
+	//				(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
+	//				gatedMutexes[listToDos[i]]->unlock();
+	//				delete pList;
+	//			}
+	//			else
+	//			{
+	//				nextListToDos.push_back(listToDos[i]);
+	//			}
+	//		}
+	//	}
+	//	listToDos.clear();
+	//	listToDos.resize(nextListToDos.size());
+	//	for(int k = 0; k < nextListToDos.size(); k++)
+	//	{
+	//		listToDos[k] = nextListToDos[k];
+	//	}
+	//}
+
 	return NULL;
 }
 

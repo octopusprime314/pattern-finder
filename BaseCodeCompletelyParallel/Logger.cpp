@@ -76,7 +76,7 @@ string Logger::GetFormattedTime()
 {
 	time_t t = time(0);   // get time now
     struct tm * now = new struct tm();
-	localtime_s( now,  & t );
+	now = localtime( & t );
 	stringstream timeBuff;
 	//timeBuff << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-' <<  now->tm_mday << " ";
 	string amorpm;
