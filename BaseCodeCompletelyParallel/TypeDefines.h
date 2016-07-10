@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#define GREATERTHAN4GB 1
+#define GREATERTHAN4GB 0
 //#define INTEGERS 1
 #define BYTES 1
 using namespace std;
@@ -13,7 +13,8 @@ using namespace std;
 #if GREATERTHAN4GB
 typedef unsigned long long PListType;
 #else
-typedef unsigned long PListType ;
+//typedef unsigned long PListType ;
+typedef unsigned int PListType ;
 #endif
 
 #if INTEGERS

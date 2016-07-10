@@ -106,17 +106,17 @@ public:
 
 	}
 
-	static double SizeOfVector(vector<vector<PListType>*>* vectorArray)
+	/*static double SizeOfVector(vector<vector<vector<PListType, boost::fast_pool_poolpoolAllocator<PListType>>*>*>* vectorArray)
 	{
 		
 		PListType totalMemoryInBytes = 0;
 		for(int i = 0; i < vectorArray->size(); i++)
 		{
-			totalMemoryInBytes = (*vectorArray)[i]->capacity() * sizeof(PListType) + sizeof(vector<PListType>*);
+			totalMemoryInBytes = (*vectorArray)[i]->capacity() * sizeof(PListType) + sizeof(vector<PListType[CACHE_SIZE]>*);
 		}
 		double sizeInMB = totalMemoryInBytes/1000000.0f;
 		return sizeInMB;
-	}
+	}*/
 
 	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
 	{
@@ -128,9 +128,9 @@ public:
 		if(usedMemory >= memoryBandwidthInMB)
 		{
 			
-			memoryOverflow = usedMemory - memoryBandwidthInMB;
+			/*memoryOverflow = usedMemory - memoryBandwidthInMB;
 			stringbuilder << "Memory overused is " << memoryOverflow << " MB" << endl;
-			Logger::WriteLog(stringbuilder.str());
+			Logger::WriteLog(stringbuilder.str());*/
 			
 			return true;
 		}

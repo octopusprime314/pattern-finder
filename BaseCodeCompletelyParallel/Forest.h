@@ -73,6 +73,10 @@ private:
 	PListType sizeOfPreviousLevelMB;
 	vector<vector<PListType>*>* prevPListArray;
 	vector<vector<PListType>*>* globalPListArray;
+	
+	vector<vector<vector<PListType>*>*>* localPrevPListArrayTriplet;
+	vector<vector<vector<PListType>*>*>* localGlobalPListArrayTriplet;
+
 	PListType eradicatedPatterns;
 	vector<PListType> levelRecordings;
 	vector<PListType> mostCommonPatternCount;
@@ -83,6 +87,10 @@ private:
 	bool processingFinished;
 	bool processingMSYNCFinished;
 	PListType minOccurrence;
+
+	PListType globalTruePrediction;
+	PListType globalFalsePrediction;
+	PListType byteBuckets[256];
 
 	bool writingFlag;
 	
@@ -99,8 +107,12 @@ private:
 
 	vector<unsigned int> availableCores;
 
+	vector<double> statisticsModel;
+
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
+
+	void ProcessChunksIntoUnifiedArray(PListType startPatternIndex, PListType numPatternsToSearch);
 
 	TreeRAM* PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch);
 	void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
