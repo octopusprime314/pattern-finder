@@ -19,9 +19,6 @@ Forest::Forest(int argc, char **argv)
 	system("rm -r ../Log/PList*");
 #endif
 
-	globalTruePrediction = 0;
-	globalFalsePrediction = 0;
-
 	writingFlag = false;
 	globalUsingRAM = false;
 	fileID = 0;
@@ -130,6 +127,7 @@ Forest::Forest(int argc, char **argv)
 			//prevPListArray->reserve(earlyApproximation);
 			//prevPListArray->push_back(NULL);
 			prevPListArray->push_back(new vector<PListType>());
+			//prevPListArray[i].reserve(earlyApproximation);
 			localPrevPListArrayTriplet->push_back(new vector<vector<PListType>*>());
 		}
 
@@ -233,7 +231,7 @@ Forest::Forest(int argc, char **argv)
 				#if defined(_WIN64) || defined(_WIN32)
 					threadPlantSeedPoolHD->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 				#else
-					threadPlantSeedPoolHD->push_back(std::async(launch::async, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
+					threadPlantSeedPoolHD->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 				#endif
 					//threadPlantSeedPoolHD->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 				}
@@ -242,7 +240,7 @@ Forest::Forest(int argc, char **argv)
 				#if defined(_WIN64) || defined(_WIN32)
 					threadPlantSeedPoolRAM->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
 				#else
-					threadPlantSeedPoolRAM->push_back(std::async(launch::async , &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
+					threadPlantSeedPoolRAM->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
 				#endif
 					//threadPlantSeedPoolRAM->push_back(std::async(launch::async | launch::deferred, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span));
 				}
@@ -291,7 +289,7 @@ Forest::Forest(int argc, char **argv)
 				#if defined(_WIN64) || defined(_WIN32)
 					processRAMThreads->push_back(std::async(std::launch::any, &Forest::ProcessChunksIntoUnifiedArray, this, position2, span2));
 				#else
-					processRAMThreads->push_back(std::async(launch::async, &Forest::ProcessChunksIntoUnifiedArray, this, position2, span2));
+					processRAMThreads->push_back(std::async(launch::async | launch::deferred, &Forest::ProcessChunksIntoUnifiedArray, this, position2, span2));
 				#endif	
 					position2 += span2;
 				}
@@ -319,7 +317,6 @@ Forest::Forest(int argc, char **argv)
 				cout << "File statistics..." << endl;
 				for (int i = 0; i < prevPListArray->size(); i++)
 				{
-					byteBuckets[i] += (*prevPListArray)[i]->size();
 					statisticsModel.push_back((double)(*prevPListArray)[i]->size() / (double)file->fileStringSize);
 					cout << "Byte: " << char(i) << " was observed in " << statisticsModel[i]*100.0f << " % of the file" << endl;
 					totalStats += statisticsModel[i];
@@ -336,13 +333,6 @@ Forest::Forest(int argc, char **argv)
 				
 				cout << "Average: " << avgStats*100.0f << endl;
 				cout << "Standard Deviation: " << stanDev*100.0f << endl;
-
-				crappy.str("");
-				for (int i = 0; i < 256; i++)
-				{
-					crappy << "Pattern " << (char)i << " " << byteBuckets[i] << endl;
-				}
-				Logger::WriteLog(crappy.str());
 
 				if(levelRecordings.size() < levelInfo.currLevel)
 				{
@@ -452,14 +442,14 @@ Forest::Forest(int argc, char **argv)
 			NextLevelTreeSearch(2);
 		}
 			
-		for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
-		{
-			
-			stringstream buff;
-			buff << "Level " << j + 1 << " count is " << levelRecordings[j] /*<< " with most common pattern being: \"" << mostCommonPattern[j] << "\" occured " << mostCommonPatternCount[j] << " and coverage was " << coverage[j] << "%"*/ << endl;
-			Logger::WriteLog(buff.str());
-			//cout << buff.str();
-		}
+		//for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
+		//{
+		//	
+		//	stringstream buff;
+		//	buff << "Level " << j + 1 << " count is " << levelRecordings[j] /*<< " with most common pattern being: \"" << mostCommonPattern[j] << "\" occured " << mostCommonPatternCount[j] << " and coverage was " << coverage[j] << "%"*/ << endl;
+		//	Logger::WriteLog(buff.str());
+		//	//cout << buff.str();
+		//}
 		
 		currentLevelVector.clear();
 
@@ -510,11 +500,6 @@ Forest::Forest(int argc, char **argv)
 	{
 		delete gatedMutexes[i];
 	}
-
-	crappy.str("");
-	crappy << "Number of patterns eradicated " << eradicatedPatterns << " and size of file " << file->fileStringSize << endl;
-	Logger::WriteLog(crappy.str());
-
 	delete file;
 	
 	delete threadPool;
@@ -526,20 +511,10 @@ Forest::Forest(int argc, char **argv)
 	delete localGlobalPListArrayTriplet;
 	delete fileIDMutex;
 
+	
+
 	initTime.Stop();
 	initTime.Display();
-
-	crappy.str("");
-	for (int i = 0; i < 256; i++)
-	{
-		crappy << "Pattern " << (char)i << " " << byteBuckets[i] << endl;
-	}
-	Logger::WriteLog(crappy.str());
-
-	crappy.str("");
-	crappy << "Prediction count for pattern already created " << globalTruePrediction << " and prediction count for pattern not yet created " << globalFalsePrediction << endl;
-	crappy << "Ratio of correct prediction to false prediction " << ((double)globalTruePrediction)/((double)globalFalsePrediction) << endl;
-	Logger::WriteLog(crappy.str());
 
 	threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
 	crappy.str("");
@@ -635,7 +610,6 @@ void Forest::MonitorMSYNCThreads()
 void Forest::MemoryQuery()
 {
 	StopWatch swTimer;
-	stringstream loggingIt;
 	swTimer.Start();
 	while(!processingFinished)
 	{
@@ -656,19 +630,12 @@ void Forest::MemoryQuery()
 
 		if(swTimer.GetTime() > 10000.0f)
 		{
-			loggingIt.str("");
 			swTimer.Start();
-			loggingIt << "Thread level status...\n";
+			cout << "Thread level status...\n";
 			for(int j = 0; j < currentLevelVector.size(); j++)
 			{
-				loggingIt << "Thread " << j << " is at level: " << currentLevelVector[j] << endl;
+				cout << "Thread " << j << " is at level: " << currentLevelVector[j] << endl;
 			}
-			cout << loggingIt.str() << endl;
-			Logger::WriteLog(loggingIt.str());
-			loggingIt.str("");
-			loggingIt << "Percentage of file processed is: " << (((double)eradicatedPatterns)/((double)file->fileStringSize))*100.0f;
-			cout << loggingIt.str() << endl;
-			Logger::WriteLog(loggingIt.str());
 			initTime.DisplayNow();
 		}
 
@@ -1485,7 +1452,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		#if defined(_WIN64) || defined(_WIN32)
 			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 		#else
-			threadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
+			threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 		#endif
 			//threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 		}
@@ -1524,7 +1491,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		#if defined(_WIN64) || defined(_WIN32)
 			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 		#else
-			threadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
+			threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 		#endif
 			//threadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 		}
@@ -1565,7 +1532,7 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 			#if defined(_WIN64) || defined(_WIN32)
 				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
 			#else	
-				if (/*localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid() && (*localThreadPool)[localWorkingThreads[k]]._Is_ready() && */(*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready)
+				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid() /*&& (*localThreadPool)[localWorkingThreads[k]]._Is_ready() && (*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready*/)
 			#endif	
 				{
 					if(recursive)
@@ -1603,10 +1570,10 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 				}
 				else
 				{
-				#if defined(_WIN64) || defined(_WIN32)
+				//#if defined(_WIN64) || defined(_WIN32)
 					//Wait 5 milliseconds
 					this_thread::sleep_for(chrono::milliseconds(5));
-				#endif
+				//#endif
 					currentThreads.push_back(localWorkingThreads[k]);
 				}
 			}
@@ -3101,7 +3068,7 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					#if defined(_WIN64) || defined(_WIN32)
 						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
 					#else
-						localThreadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+						localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
 					#endif
 					}
 					countMutex->unlock();
@@ -3189,7 +3156,7 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 					#if defined(_WIN64) || defined(_WIN32)
 						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 					#else
-						localThreadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+						localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 					#endif
 						//localThreadPool->push_back(std::async(launch::async | launch::deferred, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 					}
@@ -3212,92 +3179,209 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 	}
 	return dispatchedNewThreads;
 }
+//bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
+//{
+//	bool continueSearching = true;
+//	int threadsToDispatch = numThreads - 1;
+//	PListType totalTallyRemovedPatterns = 0;
+//	size_t size = 0;
+//	
+//	PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
+//
+//	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
+//	{
+//		bool map[256] = {false};
+//		unsigned int index[256];
+//		vector<vector<PListType>*> newPList;
+//
+//		
+//		vector<PListType>* pList = (*prevLocalPListArray)[i];
+//		PListType pListLength = (*prevLocalPListArray)[i]->size();
+//
+//		//PListType earlyApproximation = ceil(pListLength/256);
+//		
+//		for (PListType k = 0; k < pListLength; k++)
+//		{
+//
+//			//If pattern is past end of string stream then stop counting this pattern
+//			if ((*pList)[k] < file->fileStringSize)
+//			{
+//				
+//				//if(patternToSearchFor.size() == 0 || file->fileString[(*pList)[k]] == patternToSearchFor[levelInfo.currLevel - 1])
+//				//{
+//					uint8_t indexer = ((uint8_t)file->fileString[(*pList)[k]]);
+//				
+//					if(size == 256)
+//					{
+//						/*if(newPList[newPList.size() - 1]->size() == newPList[newPList.size() - 1]->capacity())
+//						{
+//							cout << "Need to resize!" << endl;
+//						}*/
+//						newPList[index[indexer]]->push_back(++(*pList)[k]);
+//						
+//					}
+//					else if(map[indexer] == true)
+//					{
+//						/*if(newPList[newPList.size() - 1]->size() == newPList[newPList.size() - 1]->capacity())
+//						{
+//							cout << "Need to resize!" << endl;
+//						}*/
+//						newPList[index[indexer]]->push_back(++(*pList)[k]);
+//					}
+//					else
+//					{
+//						map[indexer] = true;
+//						
+//						index[indexer] = newPList.size();
+//						
+//						//Adding this test
+//						size = newPList.size();
+//
+//						newPList.push_back(new vector<PListType>(1, ++(*pList)[k]));
+//						
+//						//newPList[newPList.size() - 1]->reserve(earlyApproximation);
+//						newPList[newPList.size() - 1]->reserve(statisticsModel[indexer]*pListLength);
+//						
+//						
+//					}
+//				//}
+//			}
+//		}
+//		
+//		for (int z = 0; z < newPList.size(); z++)
+//		{
+//			if (newPList[z]->size() >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
+//			{
+//				globalLocalPListArray->push_back(newPList[z]);
+//			}
+//			else
+//			{
+//				totalTallyRemovedPatterns++;
+//				delete newPList[z];
+//			}
+//		}
+//
+//		delete (*prevLocalPListArray)[i];
+//	}
+//
+//	countMutex->lock();
+//
+//	eradicatedPatterns += totalTallyRemovedPatterns;
+//
+//	/*if(mostCommonPattern.size() < levelInfo.currLevel)
+//	{
+//		mostCommonPattern.resize(levelInfo.currLevel);
+//		mostCommonPatternCount.resize(levelInfo.currLevel);
+//	}
+//	for (PListType i = 0; i < globalLocalPListArray->size(); i++)
+//	{
+//		if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
+//		{
+//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
+//				
+//			mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
+//		}
+//	}*/
+//		
+//	if(levelRecordings.size() < levelInfo.currLevel)
+//	{
+//		levelRecordings.resize(levelInfo.currLevel);
+//	}
+//	levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
+//
+//	/*if(coverage.size() < levelInfo.currLevel)
+//	{
+//		coverage.resize(levelInfo.currLevel);
+//	}
+//	coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
+//		
+//	levelInfo.currLevel++;
+//
+//	if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
+//	{
+//		currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
+//	}
+//	countMutex->unlock();
+//
+//	if(globalLocalPListArray->size() == 0 || levelInfo.currLevel - 1 >= maximum)
+//	{
+//		prevLocalPListArray->clear();
+//		prevLocalPListArray->reserve(globalLocalPListArray->size());
+//		prevLocalPListArray->swap((*globalLocalPListArray));
+//		globalLocalPListArray->reserve(0);
+//		continueSearching = false;
+//		/*countMutex->lock();
+//		availableCores.push_back(levelInfo.coreIndex);
+//		countMutex->unlock();*/
+//	}
+//	else
+//	{
+//		prevLocalPListArray->clear();
+//		prevLocalPListArray->reserve(globalLocalPListArray->size());
+//		prevLocalPListArray->swap((*globalLocalPListArray));
+//		globalLocalPListArray->reserve(0);
+//		continueSearching = true;
+//		DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
+//	}
+//		
+//	return continueSearching;
+//}
+
+
+
 bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
 {
 	bool continueSearching = true;
 	int threadsToDispatch = numThreads - 1;
 	PListType totalTallyRemovedPatterns = 0;
 	
-	//PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-
-	PListType truePrediction = 0;
-	PListType falsePrediction = 0;
-
-	//PListType localByteBuckets[256] = {0};
-
+	PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
+	vector<vector<PListType>> newPList(256);
 	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 	{
-		vector<vector<PListType>*> newPList(256, NULL);
-		
+		PListType indexes[256] = {0};
 		vector<PListType>* pList = (*prevLocalPListArray)[i];
 		PListType pListLength = (*prevLocalPListArray)[i]->size();
 
-		PListType earlyApproximation = ceil(pListLength/256);
-		
 		for (PListType k = 0; k < pListLength; k++)
 		{
-
 			//If pattern is past end of string stream then stop counting this pattern
 			if ((*pList)[k] < file->fileStringSize)
 			{
-				
-				//if(patternToSearchFor.size() == 0 || file->fileString[(*pList)[k]] == patternToSearchFor[levelInfo.currLevel - 1])
-				//{
-					uint8_t indexer = ((uint8_t)file->fileString[(*pList)[k]]);
-					
-					if(newPList[indexer] != NULL)
-					{
-						truePrediction++;
-
-						newPList[indexer]->push_back(++(*pList)[k]);
-					}
-					else
-					{
-						falsePrediction++;
-
-						newPList[indexer] = new vector<PListType>(1, ++(*pList)[k]);
-						newPList[indexer]->reserve(earlyApproximation);
-					}
-				//}
+				newPList[(uint8_t)file->fileString[(*pList)[k]]].push_back((*pList)[k]+1);	
+				indexes[(uint8_t)file->fileString[(*pList)[k]]]++;
 			}
 			else
 			{
 				totalTallyRemovedPatterns++;
 			}
-
 		}
 		
-		for (int z = 0; z < newPList.size(); z++)
+		for (PListType k = 0; k < 256; k++)
 		{
-			if(newPList[z] != NULL)
+			if (indexes[k] >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
 			{
-				if (newPList[z]->size() >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
-				{
-					globalLocalPListArray->push_back(newPList[z]);
-				}
-				else
-				{
-					totalTallyRemovedPatterns++;
-					//localByteBuckets[((uint8_t)file->fileString[(*newPList[z])[0]-1])]++;
-					delete newPList[z];
-				}
+				int index = globalLocalPListArray->size();
+
+				globalLocalPListArray->push_back(new vector<PListType>());
+				(*globalLocalPListArray)[index]->reserve(newPList[k].size());
+				(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[k].begin(), newPList[k].end());
+				newPList[k].clear();
 			}
+			else if(indexes[k] == 1)
+			{
+				totalTallyRemovedPatterns++;
+				newPList[k].clear();
+			}
+			
 		}
-
 		delete (*prevLocalPListArray)[i];
-
 	}
 
 	countMutex->lock();
 
 	eradicatedPatterns += totalTallyRemovedPatterns;
-	globalTruePrediction += truePrediction;
-	globalFalsePrediction += falsePrediction;
 
-	/*for (PListType i = 0; i < 256; i++)
-	{
-		byteBuckets[i] -= localByteBuckets[i];
-	}*/
 	/*if(mostCommonPattern.size() < levelInfo.currLevel)
 	{
 		mostCommonPattern.resize(levelInfo.currLevel);
@@ -3357,168 +3441,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	return continueSearching;
 }
 
-//bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
-//{
-//	bool continueSearching = true;
-//	int threadsToDispatch = numThreads - 1;
-//	PListType totalTallyRemovedPatterns = 0;
-//	
-//	//PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-//
-//	PListType truePrediction = 0;
-//	PListType falsePrediction = 0;
-//
-//	//PListType localByteBuckets[256] = {0};
-//	unsigned int index[256];
-//
-//	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
-//	{
-//		bool map[256] = {false};
-//		vector<vector<PListType>*> newPList;
-//		
-//		vector<PListType>* pList = (*prevLocalPListArray)[i];
-//		PListType pListLength = (*prevLocalPListArray)[i]->size();
-//
-//		PListType earlyApproximation = ceil(pListLength/256);
-//		
-//		for (PListType k = 0; k < pListLength; k++)
-//		{
-//
-//			//If pattern is past end of string stream then stop counting this pattern
-//			if ((*pList)[k] < file->fileStringSize)
-//			{
-//				
-//				//if(patternToSearchFor.size() == 0 || file->fileString[(*pList)[k]] == patternToSearchFor[levelInfo.currLevel - 1])
-//				//{
-//					uint8_t indexer = ((uint8_t)file->fileString[(*pList)[k]]);
-//					
-//					if(map[indexer] == true)
-//					{
-//						truePrediction++;
-//
-//						newPList[index[indexer]]->push_back(++(*pList)[k]);
-//					}
-//					else
-//					{
-//						falsePrediction++;
-//
-//						map[indexer] = true;
-//
-//						index[indexer] = newPList.size();
-//						
-//						newPList.push_back(new vector<PListType>(1, ++(*pList)[k]));
-//						newPList[newPList.size() - 1]->reserve(earlyApproximation);
-//
-//						//newPList[newPList.size() - 1]->reserve(statisticsModel[indexer]*pListLength);
-//						/*if(statisticsModel[indexer]*pListLength < 1.0f)
-//						{
-//							cout << statisticsModel[indexer]*pListLength << endl;
-//						}*/
-//						//if(statisticsModel[indexer]*pListLength >= 2.0f)
-//						//{
-//						//	newPList[newPList.size() - 1]->reserve(earlyApproximation);
-//						//	//newPList[newPList.size() - 1]->reserve(statisticsModel[indexer]*pListLength);
-//						//}
-//						//newPList[newPList.size() - 1]->reserve(statisticsModel[indexer]*earlyApproximation);
-//						
-//					}
-//				//}
-//			}
-//			else
-//			{
-//				totalTallyRemovedPatterns++;
-//			}
-//
-//		}
-//		
-//		for (int z = 0; z < newPList.size(); z++)
-//		{
-//			
-//			if (newPList[z]->size() >= minOccurrence/* || (Forest::outlierScans && pList->size() == 1)*/)
-//			{
-//				globalLocalPListArray->push_back(newPList[z]);
-//			}
-//			else
-//			{
-//				totalTallyRemovedPatterns++;
-//				//localByteBuckets[((uint8_t)file->fileString[(*newPList[z])[0]-1])]++;
-//				delete newPList[z];
-//			}
-//			
-//		}
-//
-//		delete (*prevLocalPListArray)[i];
-//
-//	}
-//
-//	countMutex->lock();
-//
-//	eradicatedPatterns += totalTallyRemovedPatterns;
-//	globalTruePrediction += truePrediction;
-//	globalFalsePrediction += falsePrediction;
-//
-//	/*for (PListType i = 0; i < 256; i++)
-//	{
-//		byteBuckets[i] -= localByteBuckets[i];
-//	}*/
-//	/*if(mostCommonPattern.size() < levelInfo.currLevel)
-//	{
-//		mostCommonPattern.resize(levelInfo.currLevel);
-//		mostCommonPatternCount.resize(levelInfo.currLevel);
-//	}
-//	for (PListType i = 0; i < globalLocalPListArray->size(); i++)
-//	{
-//		if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-//		{
-//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
-//				
-//			mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-//		}
-//	}*/
-//		
-//	if(levelRecordings.size() < levelInfo.currLevel)
-//	{
-//		levelRecordings.resize(levelInfo.currLevel);
-//	}
-//	levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
-//
-//	/*if(coverage.size() < levelInfo.currLevel)
-//	{
-//		coverage.resize(levelInfo.currLevel);
-//	}
-//	coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
-//		
-//	levelInfo.currLevel++;
-//
-//	if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
-//	{
-//		currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
-//	}
-//	countMutex->unlock();
-//
-//	if(globalLocalPListArray->size() == 0 || levelInfo.currLevel - 1 >= maximum)
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = false;
-//		/*countMutex->lock();
-//		availableCores.push_back(levelInfo.coreIndex);
-//		countMutex->unlock();*/
-//	}
-//	else
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = true;
-//		DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
-//	}
-//		
-//	return continueSearching;
-//}
 
 void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo)
 {
@@ -3797,7 +3719,9 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 		{
 			if(gatedMutexes[index]->try_lock())
 			{
+				//(*prevPListArray)[index] = pList;
 				(*localPrevPListArrayTriplet)[index]->push_back(pList);
+				//(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
 				gatedMutexes[index]->unlock();
 			}
 			else
@@ -3810,7 +3734,9 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 			if(gatedMutexes[index]->try_lock())
 			{
 				(*localPrevPListArrayTriplet)[index]->push_back(pList);
+				//(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
 				gatedMutexes[index]->unlock();
+				//delete pList;
 			}
 			else
 			{
@@ -3831,6 +3757,8 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 				if(gatedMutexes[listToDos[i]]->try_lock())
 				{
 					(*localPrevPListArrayTriplet)[listToDos[i]]->push_back(pList);
+					//(*prevPListArray)[listToDos[i]] = pList;
+					//(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
 					gatedMutexes[listToDos[i]]->unlock();
 				}
 				else
@@ -3843,7 +3771,9 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 				if(gatedMutexes[listToDos[i]]->try_lock())
 				{
 					(*localPrevPListArrayTriplet)[listToDos[i]]->push_back(pList);
+					//(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
 					gatedMutexes[listToDos[i]]->unlock();
+					//delete pList;
 				}
 				else
 				{
@@ -3944,14 +3874,13 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 //{
 //	int currentThread = startPatternIndex/numPatternsToSearch;
 //	//used primarily for just storage containment
-//	unordered_map<char, vector<PListType>*> leaves;
 //	PListType earlyApproximation = file->fileString.size()/(256*(numThreads - 1));
-//
-//	/*bool map[256] = {false};
-//	size_t index[256];
-//
-//	vector<vector<PListType>*> newPList;*/
-//			
+//	vector<vector<PListType>*> newPList(256);
+//	for (int i = 0; i < 256; i++)
+//	{
+//		newPList[i] = new vector<PListType>();
+//		//newPList[i]->reserve(earlyApproximation);
+//	}
 //
 //	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
 //	{
@@ -3999,117 +3928,43 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 //		}
 //#endif
 //#ifdef BYTES
-//		string value = file->fileString.substr(i, 1);
-//		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
+//		
+//		if(patternToSearchFor.size() == 0 || file->fileString[i] == patternToSearchFor[0])
 //		{
-//			if (leaves.size() != MAX_TREE_SIZE && leaves.find(file->fileString[i]) == leaves.end())
-//			{
-//				leaves[file->fileString[i]] = new vector<PListType>(1, i + 1);
-//				leaves[file->fileString[i]]->reserve(earlyApproximation);
-//			}
-//			else
-//			{
-//				leaves[file->fileString[i]]->push_back(i + 1);
-//			}
+//			newPList[(uint8_t)file->fileString[i]]->push_back(i + 1);	
 //		}
 //
-//		
-//		/*string value = file->fileString.substr(i, 1);
-//		if(patternToSearchFor.size() == 0 || value[0] == patternToSearchFor[0])
-//		{
-//			uint8_t indexer = ((uint8_t)file->fileString[i]);
-//			if(!map[indexer])
-//			{
-//				map[indexer] = true;
-//						
-//				index[indexer] = newPList.size();
-//						
-//				newPList.push_back(new vector<PListType>(1, i + 1));
-//				if(earlyApproximation > 1)
-//				{
-//					newPList[newPList.size() - 1]->reserve(earlyApproximation);
-//				}
-//			}
-//			else
-//			{
-//				newPList[index[indexer]]->push_back(i + 1);
-//			}
-//		}*/
-//		
-//
 //#endif
+//
 //	}
-//
-//
-//	vector<unsigned char> listToDos;
-//
-//	typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
-//	for(it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
+//	vector<int> listToDos;
+//	for(int i = 0; i < 256; i++)
 //	{
-//		
-//		vector<PListType>* pList = iterator->second;
-//		unsigned char index = ((unsigned char)iterator->first);
-//		
-//		if((*prevPListArray)[index] == NULL)
+//		if(gatedMutexes[i]->try_lock())
 //		{
-//			if(gatedMutexes[index]->try_lock())
-//			{
-//				(*prevPListArray)[index] = pList;
-//				//(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
-//				gatedMutexes[index]->unlock();
-//			}
-//			else
-//			{
-//				listToDos.push_back(index);
-//			}
+//			(*prevPListArray)[i]->insert((*prevPListArray)[i]->end(), newPList[i]->begin(), newPList[i]->end());
+//			//(*localPrevPListArrayTriplet)[i]->push_back(newPList[i]);
+//			gatedMutexes[i]->unlock();
 //		}
 //		else
 //		{
-//			if(gatedMutexes[index]->try_lock())
-//			{
-//				(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
-//				gatedMutexes[index]->unlock();
-//				delete pList;
-//			}
-//			else
-//			{
-//				listToDos.push_back(index);
-//			}
+//			listToDos.push_back(i);
 //		}
-//
 //	}
 //	while(listToDos.size() > 0)
 //	{
-//		vector<unsigned char> nextListToDos;
-//		for(unsigned char i = 0; i < listToDos.size(); i++)
+//		vector<int> nextListToDos;
+//		for(int i = 0; i < listToDos.size(); i++)
 //		{
-//		
-//			vector<PListType>* pList = leaves.find(listToDos[i])->second;
-//			if((*prevPListArray)[listToDos[i]] == NULL)
+//			if(gatedMutexes[listToDos[i]]->try_lock())
 //			{
-//				if(gatedMutexes[listToDos[i]]->try_lock())
-//				{
-//					(*prevPListArray)[listToDos[i]] = pList;
-//					//(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
-//					gatedMutexes[listToDos[i]]->unlock();
-//				}
-//				else
-//				{
-//					nextListToDos.push_back(listToDos[i]);
-//				}
+//				(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), newPList[listToDos[i]]->begin(), newPList[listToDos[i]]->end());
+//				//(*localPrevPListArrayTriplet)[i]->push_back(newPList[listToDos[i]]);
+//				gatedMutexes[listToDos[i]]->unlock();
 //			}
 //			else
 //			{
-//				if(gatedMutexes[listToDos[i]]->try_lock())
-//				{
-//					(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
-//					gatedMutexes[listToDos[i]]->unlock();
-//					delete pList;
-//				}
-//				else
-//				{
-//					nextListToDos.push_back(listToDos[i]);
-//				}
+//				nextListToDos.push_back(listToDos[i]);
 //			}
 //		}
 //		listToDos.clear();
@@ -4120,89 +3975,9 @@ TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType star
 //		}
 //	}
 //
-//	//vector<unsigned char> listToDos;
-//
-//	//typedef std::unordered_map<char, vector<PListType>*>::iterator it_type;
-//	////for(it_type iterator = leaves.begin(); iterator != leaves.end(); iterator++)
-//	//for(int i = 0; i < newPList.size(); i++)
-//	//{
-//	//	
-//	//	vector<PListType>* pList = newPList[i];
-//	//	unsigned char index = i;
-//	//	
-//	//	if((*prevPListArray)[index] == NULL)
-//	//	{
-//	//		if(gatedMutexes[index]->try_lock())
-//	//		{
-//	//			(*prevPListArray)[index] = pList;
-//	//			gatedMutexes[index]->unlock();
-//	//		}
-//	//		else
-//	//		{
-//	//			listToDos.push_back(index);
-//	//		}
-//	//	}
-//	//	else
-//	//	{
-//	//		if(gatedMutexes[index]->try_lock())
-//	//		{
-//	//			(*prevPListArray)[index]->insert((*prevPListArray)[index]->end(), pList->begin(), pList->end());
-//	//			gatedMutexes[index]->unlock();
-//	//			delete pList;
-//	//		}
-//	//		else
-//	//		{
-//	//			listToDos.push_back(index);
-//	//		}
-//	//	}
-//
-//	//}
-//	//while(listToDos.size() > 0)
-//	//{
-//	//	vector<unsigned char> nextListToDos;
-//	//	for(unsigned char i = 0; i < listToDos.size(); i++)
-//	//	{
-//	//	
-//	//		vector<PListType>* pList = newPList[listToDos[i]];
-//	//		if((*prevPListArray)[listToDos[i]] == NULL)
-//	//		{
-//	//			if(gatedMutexes[listToDos[i]]->try_lock())
-//	//			{
-//	//				(*prevPListArray)[listToDos[i]] = pList;
-//	//				gatedMutexes[listToDos[i]]->unlock();
-//	//			}
-//	//			else
-//	//			{
-//	//				nextListToDos.push_back(listToDos[i]);
-//	//			}
-//	//		}
-//	//		else
-//	//		{
-//	//			if(gatedMutexes[listToDos[i]]->try_lock())
-//	//			{
-//	//				(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), pList->begin(), pList->end());
-//	//				gatedMutexes[listToDos[i]]->unlock();
-//	//				delete pList;
-//	//			}
-//	//			else
-//	//			{
-//	//				nextListToDos.push_back(listToDos[i]);
-//	//			}
-//	//		}
-//	//	}
-//	//	listToDos.clear();
-//	//	listToDos.resize(nextListToDos.size());
-//	//	for(int k = 0; k < nextListToDos.size(); k++)
-//	//	{
-//	//		listToDos[k] = nextListToDos[k];
-//	//	}
-//	//}
 //
 //	return NULL;
 //}
-
-
-
 string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;

@@ -5,7 +5,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-f StargateClip.mp4 -min 1 -max 1000 -d -threads 9 -mem 300 -lev 1 -his 0 -v 1 -RAM</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f MassEffect.bmp -min 1 -d -mem 40 -threads 2 -lev 1 -his 0 -v 1 -o 2 -RAM</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -13,8 +13,9 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -max 1000 -d -threads 9 -mem 1000 -lev 1 -his 0 -v 0 -RAM</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -d -mem 300 -threads 9 -lev 1 -his 0 -v 1 -o 2 -RAM</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerSQLDebugging>true</LocalDebuggerSQLDebugging>
   </PropertyGroup>
   <PropertyGroup>
     <ShowAllFiles>false</ShowAllFiles>

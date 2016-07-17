@@ -67,3 +67,6 @@ Temporary Items
 *.psess
 *.suo
 *.suo
+*.cfg
+PatternDetectiveTCMallocCompletelyParallel/PatternDetective/My Amplifier XE Results - PatternDetective/My Amplifier XE Results - PatternDetective.amplxeproj
+*.norun

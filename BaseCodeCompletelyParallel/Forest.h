@@ -29,6 +29,12 @@ struct LevelPackage
 	unsigned int coreIndex;
 };
 
+struct sort_pred {
+    bool operator()(const std::pair<uint8_t,PListType> &left, const std::pair<uint8_t,PListType> &right) {
+        return left.first < right.first;
+    }
+};
+
 class Forest
 {
 private:
@@ -87,10 +93,6 @@ private:
 	bool processingFinished;
 	bool processingMSYNCFinished;
 	PListType minOccurrence;
-
-	PListType globalTruePrediction;
-	PListType globalFalsePrediction;
-	PListType byteBuckets[256];
 
 	bool writingFlag;
 	

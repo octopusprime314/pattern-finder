@@ -13,8 +13,7 @@ using namespace std;
 #if GREATERTHAN4GB
 typedef unsigned long long PListType;
 #else
-//typedef unsigned long PListType ;
-typedef unsigned int PListType ;
+typedef unsigned long PListType ;
 #endif
 
 #if INTEGERS
