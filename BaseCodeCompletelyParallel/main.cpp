@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 	
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	_CrtSetBreakAlloc(270);
+	//_CrtSetBreakAlloc(6104439);
 	//_CrtSetBreakAlloc(3372082);
 	//_CrtSetBreakAlloc(3292);
 #endif

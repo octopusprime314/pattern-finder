@@ -70,3 +70,6 @@ Temporary Items
 *.cfg
 PatternDetectiveTCMallocCompletelyParallel/PatternDetective/My Amplifier XE Results - PatternDetective/My Amplifier XE Results - PatternDetective.amplxeproj
 *.norun
+*.inspxe
+*.db3
+*.data
