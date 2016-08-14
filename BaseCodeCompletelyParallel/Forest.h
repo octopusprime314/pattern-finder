@@ -67,6 +67,12 @@ struct sort_quad {
     }
 };
 
+struct sortier {
+    bool operator()(const pair<PListType, PListType> &left, const pair<PListType, PListType> &right) {
+        return left.first < right.first;
+    }
+};
+
 struct sort_duple {
     bool operator()(const Duple &left, Duple &right) {
         return left.index < right.index;

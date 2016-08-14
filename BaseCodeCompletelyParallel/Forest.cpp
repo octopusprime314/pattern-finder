@@ -2994,116 +2994,116 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<vector<PListType>*>* prevLocalPListArray, LevelPackage levelInfo, bool& isThreadDefuncted)
 {
 	bool dispatchedNewThreads = false;
-	//bool alreadyUnlocked = false;
-	//countMutex->lock();
+	bool alreadyUnlocked = false;
+	countMutex->lock();
 
-	//int threadsToDispatch = numThreads - 1;
-	//int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
-	//if(prevLocalPListArray->size() < unusedCores && unusedCores > 1)
-	//{
-	//	unusedCores = (int)prevLocalPListArray->size();
-	//}
-	////Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
-	//if(unusedCores > 1 && morePatternsToFind && prevLocalPListArray->size() > 1)
-	//{
-	//	//OLD WAY THREAD PRORITY//
-	//	/*unsigned int levelCount = 1000000000;
-	//	vector<int> threadPriority;
+	int threadsToDispatch = numThreads - 1;
+	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
+	if(prevLocalPListArray->size() < unusedCores && unusedCores > 1)
+	{
+		unusedCores = (int)prevLocalPListArray->size();
+	}
+	//Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
+	if(unusedCores > 1 && morePatternsToFind && prevLocalPListArray->size() > 1)
+	{
+		//OLD WAY THREAD PRORITY//
+		/*unsigned int levelCount = 1000000000;
+		vector<int> threadPriority;
 
-	//	for(int z = 0; z < currentLevelVector.size(); z++)
-	//	{
-	//		if(activeThreads[z])
-	//		{
-	//			if(currentLevelVector[z] < levelCount && activeThreads[z])
-	//			{
-	//				levelCount = currentLevelVector[z];
-	//				threadPriority.push_back(z);
-	//			}
-	//		}
-	//	}
+		for(int z = 0; z < currentLevelVector.size(); z++)
+		{
+			if(activeThreads[z])
+			{
+				if(currentLevelVector[z] < levelCount && activeThreads[z])
+				{
+					levelCount = currentLevelVector[z];
+					threadPriority.push_back(z);
+				}
+			}
+		}
 
-	//	bool spawnThreads = false;
-	//	for(int z = 0; z < threadPriority.size(); z++)
-	//	{
-	//		if(threadPriority[z] == levelInfo.threadIndex && currentLevelVector[threadPriority[z]] == levelCount)
-	//		{
-	//			spawnThreads = true;
-	//		}
-	//	}*/
-	//	//END OF OLD WAY THREAD PRORITY//
-	//	bool spawnThreads = true;
-	//	//If this thread is at the lowest level of progress spawn new threads
-	//	if(spawnThreads)
-	//	{
-	//		
-	//		vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAM(unusedCores, prevLocalPListArray);
-	//		vector<unsigned int> localWorkingThreads;
-	//		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
-	//		{
-	//			localWorkingThreads.push_back(i);
-	//		}
+		bool spawnThreads = false;
+		for(int z = 0; z < threadPriority.size(); z++)
+		{
+			if(threadPriority[z] == levelInfo.threadIndex && currentLevelVector[threadPriority[z]] == levelCount)
+			{
+				spawnThreads = true;
+			}
+		}*/
+		//END OF OLD WAY THREAD PRORITY//
+		bool spawnThreads = true;
+		//If this thread is at the lowest level of progress spawn new threads
+		if(spawnThreads)
+		{
+			
+			vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAM(unusedCores, prevLocalPListArray);
+			vector<unsigned int> localWorkingThreads;
+			for(unsigned int i = 0; i < balancedTruncList.size(); i++)
+			{
+				localWorkingThreads.push_back(i);
+			}
 
-	//		if(localWorkingThreads.size() > 1)
-	//		{
-	//			int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
-	//			if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
-	//			{
-	//					
-	//				for(int z = 0; z < balancedTruncList.size(); z++)
-	//				{
-	//					unsigned int tally = 0;
-	//					for(int d = 0; d < balancedTruncList[z].size(); d++)
-	//					{
-	//						tally += (unsigned int)(*prevLocalPListArray)[balancedTruncList[z][d]]->size();
-	//					}
-	//				}
+			if(localWorkingThreads.size() > 1)
+			{
+				int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
+				if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
+				{
+						
+					for(int z = 0; z < balancedTruncList.size(); z++)
+					{
+						unsigned int tally = 0;
+						for(int d = 0; d < balancedTruncList[z].size(); d++)
+						{
+							tally += (unsigned int)(*prevLocalPListArray)[balancedTruncList[z][d]]->size();
+						}
+					}
 
-	//				dispatchedNewThreads = true;
-	//				//cout << "Thread " << levelInfo.threadIndex << " has priority and is at level " << levelInfo.currLevel << endl;
+					dispatchedNewThreads = true;
+					//cout << "Thread " << levelInfo.threadIndex << " has priority and is at level " << levelInfo.currLevel << endl;
 
-	//				LevelPackage levelInfoRecursion;
-	//				levelInfoRecursion.currLevel = levelInfo.currLevel;
-	//				levelInfoRecursion.threadIndex = levelInfo.threadIndex;
-	//				levelInfoRecursion.inceptionLevelLOL = levelInfo.inceptionLevelLOL + 1;
-	//				levelInfoRecursion.useRAM = true;
+					LevelPackage levelInfoRecursion;
+					levelInfoRecursion.currLevel = levelInfo.currLevel;
+					levelInfoRecursion.threadIndex = levelInfo.threadIndex;
+					levelInfoRecursion.inceptionLevelLOL = levelInfo.inceptionLevelLOL + 1;
+					levelInfoRecursion.useRAM = true;
 
-	//				//cout << "Current threads in use: " << threadsDispatched - threadsDefuncted + localWorkingThreads.size() - 1 << endl;
+					//cout << "Current threads in use: " << threadsDispatched - threadsDefuncted + localWorkingThreads.size() - 1 << endl;
 
-	//				threadsDefuncted++;
-	//				isThreadDefuncted = true;
+					threadsDefuncted++;
+					isThreadDefuncted = true;
 
-	//				vector<future<void>> *localThreadPool = new vector<future<void>>();
-	//				for (PListType i = 0; i < localWorkingThreads.size(); i++)
-	//				{
-	//					threadsDispatched++;
-	//					//levelInfoRecursion.coreIndex = availableCores[i];
-	//				#if defined(_WIN64) || defined(_WIN32)
-	//					localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
-	//				#else
-	//					localThreadPool->push_back(std::async(launch::async /*| launch::deferred*/, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
-	//				#endif
-	//				}
-	//				countMutex->unlock();
-	//					
-	//				alreadyUnlocked = true;
-	//				WaitForThreads(localWorkingThreads, localThreadPool, true, levelInfo.threadIndex);
+					vector<future<void>> *localThreadPool = new vector<future<void>>();
+					for (PListType i = 0; i < localWorkingThreads.size(); i++)
+					{
+						threadsDispatched++;
+						//levelInfoRecursion.coreIndex = availableCores[i];
+					#if defined(_WIN64) || defined(_WIN32)
+						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+					#else
+						localThreadPool->push_back(std::async(launch::async /*| launch::deferred*/, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+					#endif
+					}
+					countMutex->unlock();
+						
+					alreadyUnlocked = true;
+					WaitForThreads(localWorkingThreads, localThreadPool, true, levelInfo.threadIndex);
 
-	//				localThreadPool->erase(localThreadPool->begin(), localThreadPool->end());
-	//				(*localThreadPool).clear();
-	//				delete localThreadPool;
-	//				morePatternsToFind = false;
-	//			}
-	//		}
-	//	}
-	//	else
-	//	{
-	//			
-	//	}
-	//}
-	//if(!alreadyUnlocked)
-	//{
-	//	countMutex->unlock();
-	//}
+					localThreadPool->erase(localThreadPool->begin(), localThreadPool->end());
+					(*localThreadPool).clear();
+					delete localThreadPool;
+					morePatternsToFind = false;
+				}
+			}
+		}
+		else
+		{
+				
+		}
+	}
+	if(!alreadyUnlocked)
+	{
+		countMutex->unlock();
+	}
 	return dispatchedNewThreads;
 }
 
@@ -3785,41 +3785,92 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	PListType totalTallyRemovedPatterns = 0;
 	PListType newPatterns = 0;
 	string globalStringConstruct;
+	vector<PListType> pListTracker;
 	PListType fileSize = file->fileStringSize;
 	PListType totalCount = 0;
-	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
+	PListType pListTrackerIndex = 0;
+	if(levelInfo.currLevel == 2)
 	{
-		PListType pListLength = (*prevLocalPListArray)[i]->size();
-		if(pListLength > 1)
+		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
-			totalCount += pListLength;
+			PListType pListLength = (*prevLocalPListArray)[i]->size();
+			if(pListLength > 0)
+			{
+				totalCount += pListLength;
+			}
 		}
 	}
-	globalStringConstruct.resize(totalCount);
-
-	while(continueSearching)
+	else
 	{
-		PListType prevPListSize = prevLocalPListArray->size();
-		PListType minIndex = -1;
-		PListType maxIndex = 0;
-		PListType stringIndexer = 0;
-		for (PListType i = 0; i < prevPListSize; i++)
+		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = (*prevLocalPListArray)[i]->size();
 			if(pListLength > 1)
 			{
-				vector<PListType>* pList = (*prevLocalPListArray)[i];
-				for (PListType k = 0; k < pListLength; k++)
+				totalCount += pListLength;
+			}
+		}
+	}
+	globalStringConstruct.resize(totalCount);
+	//pListTracker.resize(totalCount);
+
+	while(continueSearching)
+	{
+		totalTallyRemovedPatterns = 0;
+		PListType prevPListSize = prevLocalPListArray->size();
+		PListType minIndex = -1;
+		PListType maxIndex = 0;
+		PListType stringIndexer = 0;
+
+		if(levelInfo.currLevel == 2)
+		{
+			for (PListType i = 0; i < prevPListSize; i++)
+			{
+				PListType pListLength = (*prevLocalPListArray)[i]->size();
+				if(pListLength > 0)
 				{
-					if ((*pList)[k] < fileSize)
+					vector<PListType>* pList = (*prevLocalPListArray)[i];
+					for (PListType k = 0; k < pListLength; k++)
 					{
-						globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
+						if ((*pList)[k] < fileSize)
+						{
+							globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
+						}
 					}
 				}
 			}
 		}
+		else
+		{
+			for (PListType i = 0; i < prevPListSize; i++)
+			{
+				PListType pListLength = (*prevLocalPListArray)[i]->size();
+				if(pListLength > 1)
+				{
+					vector<PListType>* pList = (*prevLocalPListArray)[i];
+					for (PListType k = 0; k < pListLength; k++)
+					{
+						if ((*pList)[k] < fileSize)
+						{
+							globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
+						}
+					}
+				}
+			}
+			/*sort(pListTracker.begin(), pListTracker.end());
+
+			for (PListType i = 0; i < pListTrackerIndex; i++)
+			{
+				if (pListTracker[i] < fileSize)
+				{
+					globalStringConstruct[stringIndexer++] = file->fileString[pListTracker[i]];	
+				}
+			}*/
+		}
 		globalStringConstruct.resize(stringIndexer);
+		//pListTracker.resize(stringIndexer);
 		stringIndexer = 0;
+		pListTrackerIndex = 0;
 
 		if(levelInfo.currLevel == 2)
 		{
@@ -3831,33 +3882,28 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			//Banking off very random patterns
 			PListType firstPatternIndex[256] = {0};
 			uint8_t prevPattern = 0;
+			PListType prevSize = 0;
 			int listLength = 0;
 
 			for (PListType i = 0; i < prevPListSize; i++)
 			{
 				vector<PListType>* pList = (*prevLocalPListArray)[i];
 				PListType pListLength = (*prevLocalPListArray)[i]->size();
-				if((*prevLocalPListArray)[i]->size() > 0)
-				{
-					prevPattern = (uint8_t)file->fileString[(*pList)[0] - 1];
-				}
 			
-				if(pListLength > 1)
+				if(pListLength > 0)
 				{		
 					for (PListType k = 0; k < pListLength; k++)
 					{
 						//If pattern is past end of string stream then stop counting this pattern
 						PListType index = (*pList)[k];
-						if (index < file->fileStringSize)
+						if (index < fileSize)
 						{
-
-							//uint_fast8_t indexIntoFile = (uint8_t)file->fileString[index];
 							uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
 							if(firstPatternIndex[indexIntoFile])
 							{
 								if(newPList[indexIntoFile].empty())
 								{
-									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);	
+									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
 								}
 								newPList[indexIntoFile].push_back(index + 1);	
 								indexes[indexIntoFile]++;
@@ -3875,19 +3921,8 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						}
 					}
 				}
-				else
-				{
-					totalTallyRemovedPatterns++;
-				}
-
-				vector<PListType>* pList2 = NULL;
-				uint8_t newPattern = 0;
-				if(i != prevPListSize - 1 && (*prevLocalPListArray)[i+1]->size() != 0)
-				{
-					pList2 = (*prevLocalPListArray)[i+1];
-					newPattern = (uint8_t)file->fileString[(*pList2)[0] - 1];
-				}
-				if(i == prevPListSize - 1 || prevPattern != newPattern)
+				
+				if(i == prevPListSize - 1  || (i % threadsToDispatch == (threadsToDispatch - 1)) && (i >= (threadsToDispatch - 1)))
 				{
 					for (PListType k = 0; k < listLength; k++)
 					{
@@ -3897,7 +3932,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 							int index = globalLocalPListArray->size();
 
 							globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-							//(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
+		
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;
 							newPList[indexesToPush[k]].clear();
@@ -3942,16 +3977,15 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 
 						PListType index = (*pList)[k];
 					
-						if (index < file->fileStringSize)
+						if (index < fileSize)
 						{
-							//uint_fast8_t indexIntoFile = (uint8_t)file->fileString[index];
 							uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
 
 							if(firstPatternIndex[indexIntoFile])
 							{
 								if(newPList[indexIntoFile].empty())
-								{	
-									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);	
+								{
+									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
 								}
 								newPList[indexIntoFile].push_back(index + 1);	
 								indexes[indexIntoFile]++;
@@ -3977,7 +4011,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 							int index = globalLocalPListArray->size();
 
 							globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-							//(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
+						
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;
 							newPList[indexesToPush[k]].clear();
