@@ -3785,7 +3785,18 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	PListType totalTallyRemovedPatterns = 0;
 	PListType newPatterns = 0;
 	string globalStringConstruct;
-	globalStringConstruct.resize(file->fileStringSize);
+	PListType fileSize = file->fileStringSize;
+	PListType totalCount = 0;
+	for (PListType i = 0; i < prevLocalPListArray->size(); i++)
+	{
+		PListType pListLength = (*prevLocalPListArray)[i]->size();
+		if(pListLength > 1)
+		{
+			totalCount += pListLength;
+		}
+	}
+	globalStringConstruct.resize(totalCount);
+
 	while(continueSearching)
 	{
 		PListType prevPListSize = prevLocalPListArray->size();
@@ -3800,7 +3811,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				vector<PListType>* pList = (*prevLocalPListArray)[i];
 				for (PListType k = 0; k < pListLength; k++)
 				{
-					if ((*pList)[k] < file->fileStringSize)
+					if ((*pList)[k] < fileSize)
 					{
 						globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
 					}
