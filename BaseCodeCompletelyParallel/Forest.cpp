@@ -989,85 +989,6 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	}
 }
 
-//bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount)
-//{
-//	//Break early if memory usage is predetermined by command line arguments
-//	if(usingPureRAM)
-//	{
-//		return false;
-//	}
-//	if(usingPureHD)
-//	{
-//		return true;
-//	}
-//	//main thread is a hardware thread so dispatch threads requested minus 1
-//	PListType threadsToDispatch = numThreads - 1;
-//
-//	//predictedMemoryForLevelProcessing has to include memory loading in from previous level and memory for the next level
-//	//First calculate the size of the file because that is the maximum number of pLists we can store minus the level
-//	//Second calculate the size of Tree objects will be allocated based on the number of POTENTIAL PATTERNS...
-//	//POTENTIAL PATTERNS equals the previous list times 256 possible byte values but this value can't exceed the file size minus the current level
-//	PListType potentialPatterns = sizeOfPrevPatternCount*256;
-//	//cout << "Level " << levelInfo.currLevel << " had " << sizeOfPrevPatternCount << " patterns!" << endl;
-//
-//	//cout << "Eradicated file indexes: " << eradicatedPatterns << endl;
-//	if(potentialPatterns > file->fileStringSize - (levelInfo.currLevel - 1))
-//	{
-//		//Factor in eradicated patterns because those places no longer need to be checked in the file
-//		potentialPatterns = (file->fileStringSize - eradicatedPatterns) - (levelInfo.currLevel - 1);
-//		//cout << "Potential patterns has exceed file size so we downgrade to " << potentialPatterns << endl;
-//	}
-//
-//	//cout << "Potential patterns for level " << levelInfo.currLevel << " is " << potentialPatterns << endl;
-//
-//	PListType previousLevelMemoryMB = 0;
-//	PListType predictedMemoryForLevelProcessing = 0;
-//	PListType sizeOfTreeMap = 0;
-//	if(levelInfo.useRAM)
-//	{
-//		sizeOfTreeMap = (potentialPatterns + 1)*32 + (potentialPatterns)*(potentialPatterns + sizeof(char)) + potentialPatterns * 32;
-//		previousLevelMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
-//	}
-//	else
-//	{
-//		sizeOfTreeMap = (potentialPatterns + 1)*32 + (potentialPatterns)*(potentialPatterns + sizeof(char)) + potentialPatterns * 32;
-//		PListType sizeOfPrevTreeMap = (sizeOfPrevPatternCount + 1)*32 + (sizeOfPrevPatternCount)*(sizeOfPrevPatternCount + sizeof(char)) + sizeOfPrevPatternCount * 32;
-//		previousLevelMemoryMB = sizeOfPrevTreeMap/1000000.0f;
-//	}
-//
-//	PListType predictedMemoryForNextLevelMB = sizeOfTreeMap/1000000.0f;
-//
-//	//cout << "Size used for previous level " << levelInfo.currLevel - 1 << " is " << previousLevelMemoryMB << " MB" << endl;
-//	
-//	predictedMemoryForLevelProcessing = previousLevelMemoryMB + predictedMemoryForNextLevelMB;
-//	if(predictedMemoryForLevelProcessing > memoryBandwidthMB)
-//	{
-//	
-//		stringstream stringbuilder;
-//		stringbuilder << "Using HARD DISK! Total size for level " << levelInfo.currLevel << " processing is " << predictedMemoryForLevelProcessing << " MB" << endl;
-//		cout << stringbuilder.str();
-//		Logger::WriteLog(stringbuilder.str());
-//		
-//		return true;
-//	}
-//	else
-//	{
-//		if(file->fileString.size() == 0)
-//		{
-//			//new way to read in file
-//			file->fileString.resize(file->fileStringSize);
-//			file->copyBuffer->read( &file->fileString[0], file->fileString.size());
-//		}
-//		
-//		stringstream stringbuilder;
-//		stringbuilder << "Using RAM! Total size for level " << levelInfo.currLevel << " processing is " << predictedMemoryForLevelProcessing << " MB" << endl;
-//		cout << stringbuilder.str();
-//		Logger::WriteLog(stringbuilder.str());
-//		
-//		return false;
-//	}
-//}
-
 void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray)
 {
 	PListType threadsToDispatch = numThreads - 1;
@@ -3192,594 +3113,18 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 	return dispatchedNewThreads;
 }
 
-
-//bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
-//{
-//	bool continueSearching = true;
-//	int threadsToDispatch = numThreads - 1;
-//	PListType totalTallyRemovedPatterns = 0;
-//	
-//	if(levelInfo.currLevel == 2)
-//	{
-//		PListType hey = 256/threadsToDispatch;
-//		PListType startIndex = levelInfo.threadIndex*hey;
-//		//cout << "Start index: " << startIndex << endl;
-//		PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-//		vector<PListType> newPList[256];
-//		PListType prevPListSize = prevLocalPListArray->size();
-//		PListType indexes[256] = {0};
-//		PListType indexesToPush[256] = {0};
-//		//Banking off very random patterns
-//		PListType firstPatternIndex[256] = {0};
-//		uint8_t prevPattern = 0;
-//		int listLength = 0;
-//
-//		for (PListType i = 0; i < prevPListSize; i++)
-//		{
-//			vector<PListType>* pList = (*prevLocalPListArray)[i];
-//			PListType pListLength = (*prevLocalPListArray)[i]->size();
-//			if((*prevLocalPListArray)[i]->size() > 0)
-//			{
-//				prevPattern = (uint8_t)file->fileString[(*pList)[0] - 1];
-//			}
-//			
-//			if(pListLength > 1)
-//			{		
-//				for (PListType k = 0; k < pListLength; k++)
-//				{
-//					//If pattern is past end of string stream then stop counting this pattern
-//					PListType index = (*pList)[k];
-//					if (index < file->fileStringSize)
-//					{
-//
-//						uint_fast8_t indexIntoFile = (uint8_t)file->fileString[index];
-//
-//						if(firstPatternIndex[indexIntoFile])
-//						{
-//							if(newPList[indexIntoFile].empty())
-//							{
-//								newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);	
-//							}
-//							newPList[indexIntoFile].push_back(index + 1);	
-//							indexes[indexIntoFile]++;
-//						}
-//						else
-//						{
-//							firstPatternIndex[indexIntoFile] = index + 1;
-//							indexes[indexIntoFile]++;
-//							indexesToPush[listLength++] = indexIntoFile;
-//						}
-//					}
-//					else
-//					{
-//						totalTallyRemovedPatterns++;
-//					}
-//				}
-//			}
-//			else
-//			{
-//				totalTallyRemovedPatterns++;
-//			}
-//
-//			vector<PListType>* pList2 = NULL;
-//			uint8_t newPattern = 0;
-//			if(i != prevPListSize - 1 && (*prevLocalPListArray)[i+1]->size() != 0)
-//			{
-//				pList2 = (*prevLocalPListArray)[i+1];
-//				newPattern = (uint8_t)file->fileString[(*pList2)[0] - 1];
-//			}
-//			if(i == prevPListSize - 1 || prevPattern != newPattern)
-//			{
-//				for (PListType k = 0; k < listLength; k++)
-//				{
-//					int insert = indexes[indexesToPush[k]];
-//					if (insert >= minOccurrence)
-//					{
-//						int index = globalLocalPListArray->size();
-//
-//						globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-//						//(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//					else if(insert == 1)
-//					{
-//						totalTallyRemovedPatterns++;
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//						
-//				}
-//					
-//				listLength = 0;
-//			}
-//			delete (*prevLocalPListArray)[i];
-//		}
-//	}
-//	else
-//	{
-//	
-//		PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-//		vector<PListType> newPList[256];
-//		PListType prevPListSize = prevLocalPListArray->size();
-//		PListType indexes[256] = {0};
-//		PListType indexesToPush[256] = {0};
-//		//Banking off very random patterns
-//		register PListType firstPatternIndex[256] = {0};
-//		PListType preloadedFirstPatternIndexes[20] = {0};
-//		for (PListType i = 0; i < prevPListSize; i++)
-//		{
-//			vector<PListType>* pList = (*prevLocalPListArray)[i];
-//			PListType pListLength = (*prevLocalPListArray)[i]->size();
-//			if(pListLength > 1)
-//			{
-//				int listLength = 0;
-//
-//
-//				for (PListType k = 0; k < pListLength; k++)
-//				{
-//					
-//					////If pattern is past end of string stream then stop counting this pattern
-//					//if(k % 20 == 0 && pListLength >= 20 && k < pListLength - 20)
-//					//{
-//					//	PListType indexTemp;
-//					//	uint_fast8_t indexIntoFileTemp;
-//					//	PListType firstPatternIndexValTemp;
-//					//	for(int z = 0; z < 20; z++)
-//					//	{
-//					//		indexTemp = (*pList)[k+z];
-//					//		if (indexTemp < file->fileStringSize)
-//					//		{
-//					//			indexIntoFileTemp = (uint8_t)file->fileString[indexTemp];
-//					//			preloadedFirstPatternIndexes[z] = firstPatternIndex[indexIntoFileTemp];
-//					//		}
-//					//	}
-//					//}
-//					//else if(k % 20 == 0 && pListLength < 20 && k < pListLength - 20)
-//					//{
-//					//	PListType indexTemp;
-//					//	uint_fast8_t indexIntoFileTemp;
-//					//	PListType firstPatternIndexValTemp;
-//					//	for(int z = 0; z < pListLength; z++)
-//					//	{
-//					//		indexTemp = (*pList)[k+z];
-//					//		if (indexTemp < file->fileStringSize)
-//					//		{
-//					//			indexIntoFileTemp = (uint8_t)file->fileString[indexTemp];
-//					//			preloadedFirstPatternIndexes[z] = firstPatternIndex[indexIntoFileTemp];
-//					//		}
-//					//	}
-//					//}
-//
-//
-//				/*	if(k%20 == 0)
-//					{
-//						PListType* index = pList->data() + k;
-//						_mm_prefetch((const char *)index, _MM_HINT_T0);
-//					}*/
-//
-//					PListType index = (*pList)[k];
-//					
-//					if (index < file->fileStringSize)
-//					{
-//						uint_fast8_t indexIntoFile = (uint8_t)file->fileString[index];
-//						
-//						if(firstPatternIndex[indexIntoFile])
-//						{
-//							if(newPList[indexIntoFile].empty())
-//							{
-//								newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);	
-//							}
-//							newPList[indexIntoFile].push_back(index + 1);	
-//							indexes[indexIntoFile]++;
-//						}
-//						else
-//						{
-//							firstPatternIndex[indexIntoFile] = index + 1;
-//							//preloadedFirstPatternIndexes[k%20] = index + 1;
-//							indexes[indexIntoFile]++;
-//							indexesToPush[listLength++] = indexIntoFile;
-//						}
-//					}
-//					else
-//					{
-//						totalTallyRemovedPatterns++;
-//					}
-//				}
-//			
-//				for (PListType k = 0; k < listLength; k++)
-//				{
-//					int insert = indexes[indexesToPush[k]];
-//					if (insert >= minOccurrence)
-//					{
-//						int index = globalLocalPListArray->size();
-//
-//						globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-//						//(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//					else if(insert == 1)
-//					{
-//						totalTallyRemovedPatterns++;
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//			
-//				}
-//				//delete pList;
-//			}
-//			else
-//			{
-//				//delete pList;
-//				totalTallyRemovedPatterns++;
-//			}
-//			//delete pList;
-//			delete (*prevLocalPListArray)[i];
-//		}
-//	}
-//	
-//
-//	countMutex->lock();
-//
-//	eradicatedPatterns += totalTallyRemovedPatterns;
-//
-//	/*if(mostCommonPattern.size() < levelInfo.currLevel)
-//	{
-//		mostCommonPattern.resize(levelInfo.currLevel);
-//		mostCommonPatternCount.resize(levelInfo.currLevel);
-//	}
-//	for (PListType i = 0; i < globalLocalPListArray->size(); i++)
-//	{
-//		if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-//		{
-//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
-//				
-//			mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-//		}
-//	}*/
-//		
-//	if(levelRecordings.size() < levelInfo.currLevel)
-//	{
-//		levelRecordings.resize(levelInfo.currLevel);
-//	}
-//	levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
-//
-//	/*if(coverage.size() < levelInfo.currLevel)
-//	{
-//		coverage.resize(levelInfo.currLevel);
-//	}
-//	coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
-//		
-//	levelInfo.currLevel++;
-//
-//	if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
-//	{
-//		currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
-//	}
-//	countMutex->unlock();
-//
-//	if(globalLocalPListArray->size() == 0 || levelInfo.currLevel - 1 >= maximum)
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = false;
-//		/*countMutex->lock();
-//		availableCores.push_back(levelInfo.coreIndex);
-//		countMutex->unlock();*/
-//	}
-//	else
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = true;
-//		DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
-//	}
-//		
-//	return continueSearching;
-//}
-
-
-//bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
-//{
-//	bool continueSearching = true;
-//	int threadsToDispatch = numThreads - 1;
-//	PListType totalTallyRemovedPatterns = 0;
-//	
-//	if(levelInfo.currLevel == 2)
-//	{
-//		PListType hey = 256/threadsToDispatch;
-//		PListType startIndex = levelInfo.threadIndex*hey;
-//		//cout << "Start index: " << startIndex << endl;
-//		PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-//		vector<PListType> newPList[256];
-//		PListType prevPListSize = prevLocalPListArray->size();
-//		PListType indexes[256] = {0};
-//		PListType indexesToPush[256] = {0};
-//		//Banking off very random patterns
-//		PListType firstPatternIndex[256] = {0};
-//		uint8_t prevPattern = 0;
-//		int listLength = 0;
-//
-//		for (PListType i = 0; i < prevPListSize; i++)
-//		{
-//			vector<PListType>* pList = (*prevLocalPListArray)[i];
-//			PListType pListLength = (*prevLocalPListArray)[i]->size();
-//			if((*prevLocalPListArray)[i]->size() > 0)
-//			{
-//				prevPattern = (uint8_t)file->fileString[(*pList)[0] - 1];
-//			}
-//			
-//			if(pListLength > 1)
-//			{		
-//				for (PListType k = 0; k < pListLength; k++)
-//				{
-//					//If pattern is past end of string stream then stop counting this pattern
-//					PListType index = (*pList)[k];
-//					if (index < file->fileStringSize)
-//					{
-//
-//						uint_fast8_t indexIntoFile = (uint8_t)file->fileString[index];
-//
-//						if(firstPatternIndex[indexIntoFile])
-//						{
-//							if(newPList[indexIntoFile].empty())
-//							{
-//								newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);	
-//							}
-//							newPList[indexIntoFile].push_back(index + 1);	
-//							indexes[indexIntoFile]++;
-//						}
-//						else
-//						{
-//							firstPatternIndex[indexIntoFile] = index + 1;
-//							indexes[indexIntoFile]++;
-//							indexesToPush[listLength++] = indexIntoFile;
-//						}
-//					}
-//					else
-//					{
-//						totalTallyRemovedPatterns++;
-//					}
-//				}
-//			}
-//			else
-//			{
-//				totalTallyRemovedPatterns++;
-//			}
-//
-//			vector<PListType>* pList2 = NULL;
-//			uint8_t newPattern = 0;
-//			if(i != prevPListSize - 1 && (*prevLocalPListArray)[i+1]->size() != 0)
-//			{
-//				pList2 = (*prevLocalPListArray)[i+1];
-//				newPattern = (uint8_t)file->fileString[(*pList2)[0] - 1];
-//			}
-//			if(i == prevPListSize - 1 || prevPattern != newPattern)
-//			{
-//				for (PListType k = 0; k < listLength; k++)
-//				{
-//					int insert = indexes[indexesToPush[k]];
-//					if (insert >= minOccurrence)
-//					{
-//						int index = globalLocalPListArray->size();
-//
-//						globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-//						//(*globalLocalPListArray)[index]->insert((*globalLocalPListArray)[index]->end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//					else if(insert == 1)
-//					{
-//						totalTallyRemovedPatterns++;
-//						indexes[indexesToPush[k]] = 0;
-//						firstPatternIndex[indexesToPush[k]] = 0;
-//						newPList[indexesToPush[k]].clear();
-//					}
-//						
-//				}
-//					
-//				listLength = 0;
-//			}
-//			delete (*prevLocalPListArray)[i];
-//		}
-//	}
-//	else
-//	{
-//	
-//		PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-//		vector<PListType> newPList[256];
-//		PListType prevPListSize = prevLocalPListArray->size();
-//		PListType indexes[256] = {0};
-//		PListType indexesToPush[256] = {0};
-//		//Banking off very random patterns
-//		PListType firstPatternIndex[256] = {0};
-//		
-//		for (PListType i = 0; i < prevPListSize; i++)
-//		{
-//			vector<PListType>* pList = (*prevLocalPListArray)[i];
-//			PListType pListLength = (*prevLocalPListArray)[i]->size();
-//
-//			vector<pair<PListType, uint8_t>> patternCombine;
-//			patternCombine.reserve(pListLength);
-//
-//			if(pListLength > 1)
-//			{
-//				int listLength = 0;
-//
-//				for (PListType k = 0; k < pListLength; k++)
-//				{
-//					PListType index = (*pList)[k];
-//					
-//					if (index < file->fileStringSize)
-//					{
-//						uint8_t indexIntoFile = (uint8_t)file->fileString[index];
-//						patternCombine.push_back( pair<PListType, int8_t>(index + 1, indexIntoFile) );
-//					}
-//					else
-//					{
-//						totalTallyRemovedPatterns++;
-//					}
-//				}
-//
-//				PListType patternCombineSize = patternCombine.size();
-//				if(patternCombineSize > 2)
-//				{
-//					/*concurrency::parallel_sort(begin(patternCombine), end(patternCombine),  
-//						[](const std::pair<uint8_t,PListType> &left, const std::pair<uint8_t,PListType> &right) 
-//					{
-//							return left.second < right.second;
-//					});*/
-//
-//					std::sort(patternCombine.begin(), patternCombine.end(), sort_pred());
-//				}
-//
-//				PListType currentSize = globalLocalPListArray->size();
-//				
-//				PListType counter = 0;
-//				bool newVector = true;
-//
-//				if(patternCombineSize > 1)
-//				{
-//					for (PListType k = 0; k < patternCombineSize; k++)
-//					{
-//						uint8_t val = patternCombine[k].second;
-//					
-//						if(newVector)
-//						{
-//							currentSize = globalLocalPListArray->size();
-//							globalLocalPListArray->push_back(new vector<PListType>());
-//							newVector = false;
-//							counter = 0;
-//						}
-//
-//						if(k < patternCombineSize - 1)
-//						{
-//							if(val == patternCombine[k+1].second)
-//							{
-//								(*globalLocalPListArray)[currentSize]->push_back(patternCombine[k].first);
-//								counter++;
-//							}
-//							else if(val != patternCombine[k+1].second && counter > 0)
-//							{
-//								(*globalLocalPListArray)[currentSize]->push_back(patternCombine[k].first);
-//								counter = 0;
-//								newVector = true;
-//							}
-//							else if(counter > 0)
-//							{
-//								(*globalLocalPListArray)[currentSize]->push_back(patternCombine[k].first);
-//								counter++;
-//							}
-//							else
-//							{
-//								totalTallyRemovedPatterns++;
-//							}
-//						}
-//						else
-//						{
-//							if(counter > 0)
-//							{
-//								(*globalLocalPListArray)[currentSize]->push_back(patternCombine[k].first);
-//								counter++;
-//							}
-//							else
-//							{
-//								totalTallyRemovedPatterns++;
-//							}
-//						}
-//					}
-//				}
-//
-//				if((*globalLocalPListArray)[globalLocalPListArray->size() - 1]->size() == 0)
-//				{
-//					globalLocalPListArray->pop_back();
-//				}
-//			}
-//			else
-//			{
-//				totalTallyRemovedPatterns++;
-//			}
-//			delete (*prevLocalPListArray)[i];
-//		}
-//	}
-//	
-//
-//	countMutex->lock();
-//
-//	eradicatedPatterns += totalTallyRemovedPatterns;
-//
-//	/*if(mostCommonPattern.size() < levelInfo.currLevel)
-//	{
-//		mostCommonPattern.resize(levelInfo.currLevel);
-//		mostCommonPatternCount.resize(levelInfo.currLevel);
-//	}
-//	for (PListType i = 0; i < globalLocalPListArray->size(); i++)
-//	{
-//		if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-//		{
-//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
-//				
-//			mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-//		}
-//	}*/
-//		
-//	if(levelRecordings.size() < levelInfo.currLevel)
-//	{
-//		levelRecordings.resize(levelInfo.currLevel);
-//	}
-//	levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
-//
-//	/*if(coverage.size() < levelInfo.currLevel)
-//	{
-//		coverage.resize(levelInfo.currLevel);
-//	}
-//	coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
-//		
-//	levelInfo.currLevel++;
-//
-//	if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
-//	{
-//		currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
-//	}
-//	countMutex->unlock();
-//
-//	if(globalLocalPListArray->size() == 0 || levelInfo.currLevel - 1 >= maximum)
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = false;
-//		/*countMutex->lock();
-//		availableCores.push_back(levelInfo.coreIndex);
-//		countMutex->unlock();*/
-//	}
-//	else
-//	{
-//		prevLocalPListArray->clear();
-//		prevLocalPListArray->reserve(globalLocalPListArray->size());
-//		prevLocalPListArray->swap((*globalLocalPListArray));
-//		globalLocalPListArray->reserve(0);
-//		continueSearching = true;
-//		DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
-//	}
-//		
-//	return continueSearching;
-//}
-
-
 bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
 {
+	//Keeps track of all pLists in one contiguous block of memory
+	vector<PListType> linearList;
+	//Keeps track of the length of each pList
+	vector<PListType> pListLengths;
+
+	//Keeps track of all pLists in one contiguous block of memory
+	vector<PListType> prevLinearList;
+	//Keeps track of the length of each pList
+	vector<PListType> prevPListLengths;
+
 	bool continueSearching = true;
 	int threadsToDispatch = numThreads - 1;
 	PListType totalTallyRemovedPatterns = 0;
@@ -3788,15 +3133,35 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	vector<PListType> pListTracker;
 	PListType fileSize = file->fileStringSize;
 	PListType totalCount = 0;
-	PListType pListTrackerIndex = 0;
 	if(levelInfo.currLevel == 2)
 	{
+		int threadCountage = 0;
+
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = (*prevLocalPListArray)[i]->size();
 			if(pListLength > 0)
 			{
 				totalCount += pListLength;
+				
+			}
+		}
+		prevLinearList.reserve(totalCount);
+
+		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
+		{
+			PListType pListLength = (*prevLocalPListArray)[i]->size();
+			if(pListLength > 0)
+			{
+				threadCountage += pListLength;
+				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
+				delete  (*prevLocalPListArray)[i];
+			}
+
+			if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
+			{
+				prevPListLengths.push_back(threadCountage);
+				threadCountage = 0;
 			}
 		}
 	}
@@ -3805,14 +3170,28 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = (*prevLocalPListArray)[i]->size();
-			if(pListLength > 1)
+			if(pListLength > 0)
 			{
 				totalCount += pListLength;
+				
+			}
+		}
+		prevLinearList.reserve(totalCount);
+
+		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
+		{
+			PListType pListLength = (*prevLocalPListArray)[i]->size();
+			if(pListLength > 1)
+			{
+				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
+				prevPListLengths.push_back(pListLength);
 			}
 		}
 	}
 	globalStringConstruct.resize(totalCount);
-	//pListTracker.resize(totalCount);
+	linearList.reserve(totalCount);
+
+	PListType linearListIndex = 0;
 
 	while(continueSearching)
 	{
@@ -3824,249 +3203,197 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 
 		if(levelInfo.currLevel == 2)
 		{
-			for (PListType i = 0; i < prevPListSize; i++)
+			PListType linearListSize = prevLinearList.size();
+			if(linearListSize > 0)
 			{
-				PListType pListLength = (*prevLocalPListArray)[i]->size();
-				if(pListLength > 0)
+				for (PListType i = 0; i < linearListSize; i++)
 				{
-					vector<PListType>* pList = (*prevLocalPListArray)[i];
-					for (PListType k = 0; k < pListLength; k++)
+					if (prevLinearList[i] < fileSize)
 					{
-						if ((*pList)[k] < fileSize)
-						{
-							globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
-						}
+						globalStringConstruct[stringIndexer++] = file->fileString[prevLinearList[i]];
 					}
 				}
 			}
 		}
 		else
 		{
-			for (PListType i = 0; i < prevPListSize; i++)
+			PListType linearListSize = prevLinearList.size();
+			if(linearListSize > 1)
 			{
-				PListType pListLength = (*prevLocalPListArray)[i]->size();
-				if(pListLength > 1)
+				for (PListType i = 0; i < linearListSize; i++)
 				{
-					vector<PListType>* pList = (*prevLocalPListArray)[i];
-					for (PListType k = 0; k < pListLength; k++)
+					if (prevLinearList[i] < fileSize)
 					{
-						if ((*pList)[k] < fileSize)
-						{
-							globalStringConstruct[stringIndexer++] = file->fileString[(*pList)[k]];
-						}
+						globalStringConstruct[stringIndexer++] = file->fileString[prevLinearList[i]];
 					}
 				}
 			}
-			/*sort(pListTracker.begin(), pListTracker.end());
-
-			for (PListType i = 0; i < pListTrackerIndex; i++)
-			{
-				if (pListTracker[i] < fileSize)
-				{
-					globalStringConstruct[stringIndexer++] = file->fileString[pListTracker[i]];	
-				}
-			}*/
 		}
 		globalStringConstruct.resize(stringIndexer);
-		//pListTracker.resize(stringIndexer);
 		stringIndexer = 0;
-		pListTrackerIndex = 0;
-
+		vector<PListType> newPList[256];
+		
 		if(levelInfo.currLevel == 2)
 		{
-			PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-			vector<PListType> newPList[256];
-			PListType prevPListSize = prevLocalPListArray->size();
+			PListType prevPListSize = prevLinearList.size();
 			PListType indexes[256] = {0};
 			PListType indexesToPush[256] = {0};
 			//Banking off very random patterns
 			PListType firstPatternIndex[256] = {0};
-			uint8_t prevPattern = 0;
 			PListType prevSize = 0;
 			int listLength = 0;
 
+			
+			int currList = 0;
+			int currPosition = 0;
+			int limit = prevPListLengths[currList];
 			for (PListType i = 0; i < prevPListSize; i++)
 			{
-				vector<PListType>* pList = (*prevLocalPListArray)[i];
-				PListType pListLength = (*prevLocalPListArray)[i]->size();
-			
-				if(pListLength > 0)
-				{		
-					for (PListType k = 0; k < pListLength; k++)
-					{
-						//If pattern is past end of string stream then stop counting this pattern
-						PListType index = (*pList)[k];
-						if (index < fileSize)
-						{
-							uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
-							if(firstPatternIndex[indexIntoFile])
-							{
-								if(newPList[indexIntoFile].empty())
-								{
-									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
-								}
-								newPList[indexIntoFile].push_back(index + 1);	
-								indexes[indexIntoFile]++;
-							}
-							else
-							{
-								firstPatternIndex[indexIntoFile] = index + 1;
-								indexes[indexIntoFile]++;
-								indexesToPush[listLength++] = indexIntoFile;
-							}
-						}
-						else
-						{
-							totalTallyRemovedPatterns++;
-						}
-					}
-				}
-				
-				if(i == prevPListSize - 1  || (i % threadsToDispatch == (threadsToDispatch - 1)) && (i >= (threadsToDispatch - 1)))
+				//If pattern is past end of string stream then stop counting this pattern
+				PListType index = prevLinearList[i];
+				if (index < fileSize)
 				{
-					for (PListType k = 0; k < listLength; k++)
+					uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
+					if(firstPatternIndex[indexIntoFile])
 					{
-						int insert = indexes[indexesToPush[k]];
-						if (insert >= minOccurrence)
+						if(newPList[indexIntoFile].empty())
 						{
-							int index = globalLocalPListArray->size();
-
-							globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-		
-							indexes[indexesToPush[k]] = 0;
-							firstPatternIndex[indexesToPush[k]] = 0;
-							newPList[indexesToPush[k]].clear();
+							newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
 						}
-						else if(insert == 1)
-						{
-							totalTallyRemovedPatterns++;
-							indexes[indexesToPush[k]] = 0;
-							firstPatternIndex[indexesToPush[k]] = 0;
-							newPList[indexesToPush[k]].clear();
-						}
-						
+						newPList[indexIntoFile].push_back(index + 1);	
+						indexes[indexIntoFile]++;
 					}
-					
-					listLength = 0;
-				}
-				delete (*prevLocalPListArray)[i];
-			}
-		}
-		else
-		{
-
-			PListType earlyApproximation = (file->fileString.size() - eradicatedPatterns)/(prevLocalPListArray->size()*256*(numThreads - 1));
-			vector<PListType> newPList[256];
-			PListType prevPListSize = prevLocalPListArray->size();
-			PListType indexes[256] = {0};
-			PListType indexesToPush[256] = {0};
-			//Banking off very random patterns
-			register PListType firstPatternIndex[256] = {0};
-			PListType preloadedFirstPatternIndexes[20] = {0};
-			for (PListType i = 0; i < prevPListSize; i++)
-			{
-				vector<PListType>* pList = (*prevLocalPListArray)[i];
-				PListType pListLength = (*prevLocalPListArray)[i]->size();
-				if(pListLength > 1)
-				{
-					int listLength = 0;
-
-
-					for (PListType k = 0; k < pListLength; k++)
+					else
 					{
-
-						PListType index = (*pList)[k];
-					
-						if (index < fileSize)
-						{
-							uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
-
-							if(firstPatternIndex[indexIntoFile])
-							{
-								if(newPList[indexIntoFile].empty())
-								{
-									newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
-								}
-								newPList[indexIntoFile].push_back(index + 1);	
-								indexes[indexIntoFile]++;
-							}
-							else
-							{
-								firstPatternIndex[indexIntoFile] = index + 1;
-								indexes[indexIntoFile]++;
-								indexesToPush[listLength++] = indexIntoFile;
-							}
-						}
-						else
-						{
-							totalTallyRemovedPatterns++;
-						}
-					}
-			
-					for (PListType k = 0; k < listLength; k++)
-					{
-						int insert = indexes[indexesToPush[k]];
-						if (insert >= minOccurrence)
-						{
-							int index = globalLocalPListArray->size();
-
-							globalLocalPListArray->push_back(new vector<PListType>(newPList[indexesToPush[k]]));
-						
-							indexes[indexesToPush[k]] = 0;
-							firstPatternIndex[indexesToPush[k]] = 0;
-							newPList[indexesToPush[k]].clear();
-						}
-						else if(insert == 1)
-						{
-							totalTallyRemovedPatterns++;
-							indexes[indexesToPush[k]] = 0;
-							firstPatternIndex[indexesToPush[k]] = 0;
-							newPList[indexesToPush[k]].clear();
-						}
-			
+						firstPatternIndex[indexIntoFile] = index + 1;
+						indexes[indexIntoFile]++;
+						indexesToPush[listLength++] = indexIntoFile;
 					}
 				}
 				else
 				{
 					totalTallyRemovedPatterns++;
 				}
-				delete (*prevLocalPListArray)[i];
+
+				if(i + 1 == currPosition + limit)
+				{
+					for (PListType k = 0; k < listLength; k++)
+					{
+						int insert = indexes[indexesToPush[k]];
+						if (insert >= minOccurrence)
+						{
+							pListLengths.push_back(newPList[indexesToPush[k]].size());
+							linearList.insert(linearList.begin() + i, newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
+						
+							indexes[indexesToPush[k]] = 0;
+							firstPatternIndex[indexesToPush[k]] = 0;
+							newPList[indexesToPush[k]].clear();
+						}
+						else if(insert == 1)
+						{
+							totalTallyRemovedPatterns++;
+							indexes[indexesToPush[k]] = 0;
+							firstPatternIndex[indexesToPush[k]] = 0;
+							newPList[indexesToPush[k]].clear();
+						}
+			
+					}
+					if(currList + 1 < prevPListLengths.size())
+					{
+						currPosition = i + 1;
+						currList++;
+						limit = prevPListLengths[currList];
+						listLength = 0;
+					}
+				}
+			}
+		}
+		else
+		{
+
+			PListType prevPListSize = prevLinearList.size();
+			PListType indexes[256] = {0};
+			PListType indexesToPush[256] = {0};
+			//Banking off very random patterns
+			PListType firstPatternIndex[256] = {0};
+			PListType prevSize = 0;
+			int listLength = 0;
+
+			
+			int currList = 0;
+			int currPosition = 0;
+			int limit = prevPListLengths[currList];
+			for (PListType i = 0; i < prevPListSize; i++)
+			{
+				//If pattern is past end of string stream then stop counting this pattern
+				PListType index = prevLinearList[i];
+				if (index < fileSize)
+				{
+					uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
+					if(firstPatternIndex[indexIntoFile])
+					{
+						if(newPList[indexIntoFile].empty())
+						{
+							newPList[indexIntoFile].push_back(firstPatternIndex[indexIntoFile]);
+						}
+						newPList[indexIntoFile].push_back(index + 1);	
+						indexes[indexIntoFile]++;
+					}
+					else
+					{
+						firstPatternIndex[indexIntoFile] = index + 1;
+						indexes[indexIntoFile]++;
+						indexesToPush[listLength++] = indexIntoFile;
+					}
+				}
+				else
+				{
+					totalTallyRemovedPatterns++;
+				}
+
+				if(i + 1 == currPosition + limit)
+				{
+					for (PListType k = 0; k < listLength; k++)
+					{
+						int insert = indexes[indexesToPush[k]];
+						if (insert >= minOccurrence)
+						{
+							pListLengths.push_back(newPList[indexesToPush[k]].size());
+							linearList.insert(linearList.end(), newPList[indexesToPush[k]].begin(), newPList[indexesToPush[k]].end());
+						
+							indexes[indexesToPush[k]] = 0;
+							firstPatternIndex[indexesToPush[k]] = 0;
+							newPList[indexesToPush[k]].clear();
+						}
+						else if(insert == 1)
+						{
+							totalTallyRemovedPatterns++;
+							indexes[indexesToPush[k]] = 0;
+							firstPatternIndex[indexesToPush[k]] = 0;
+							newPList[indexesToPush[k]].clear();
+						}
+			
+					}
+					if(currList + 1 < prevPListLengths.size())
+					{
+						currPosition = i + 1;
+						currList++;
+						limit = prevPListLengths[currList];
+						listLength = 0;
+					}
+				}
 			}
 		}
 
-		//cout << "Min string index: " << minIndex << " Max string index: " << maxIndex << endl;
-	
 		countMutex->lock();
 
 		eradicatedPatterns += totalTallyRemovedPatterns;
 
-		/*if(mostCommonPattern.size() < levelInfo.currLevel)
-		{
-			mostCommonPattern.resize(levelInfo.currLevel);
-			mostCommonPatternCount.resize(levelInfo.currLevel);
-		}
-		for (PListType i = 0; i < globalLocalPListArray->size(); i++)
-		{
-			if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-			{
-				mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
-				
-				mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-			}
-		}*/
-		
 		if(levelRecordings.size() < levelInfo.currLevel)
 		{
 			levelRecordings.resize(levelInfo.currLevel);
 		}
-		levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
-		//levelRecordings[levelInfo.currLevel - 1] += newPatterns;
-
-		/*if(coverage.size() < levelInfo.currLevel)
-		{
-			coverage.resize(levelInfo.currLevel);
-		}
-		coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
+		levelRecordings[levelInfo.currLevel - 1] += pListLengths.size();
 		
 		levelInfo.currLevel++;
 
@@ -4076,383 +3403,45 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		}
 		countMutex->unlock();
 
-		if(globalLocalPListArray->size() == 0 || levelInfo.currLevel - 1 >= maximum)
+		/*for(int i = 0; i < pListLengths.size(); i++)
 		{
-			prevLocalPListArray->clear();
-			prevLocalPListArray->reserve(globalLocalPListArray->size());
-			prevLocalPListArray->swap((*globalLocalPListArray));
-			globalLocalPListArray->reserve(0);
+			stringstream shit;
+			shit << i << " : " << pListLengths[i] << endl;
+			Logger::WriteLog(shit.str());
+		}*/
+
+		if(linearList.size() == 0 || levelInfo.currLevel - 1 >= maximum)
+		{
+			prevLinearList.clear();
+			prevLinearList.reserve(linearList.size());
+			prevLinearList.swap((linearList));
+			//linearList.reserve(0);
+
+			prevPListLengths.clear();
+			prevPListLengths.reserve(pListLengths.size());
+			prevPListLengths.swap((pListLengths));
+			pListLengths.reserve(0);
+
 			continueSearching = false;
-			/*countMutex->lock();
-			availableCores.push_back(levelInfo.coreIndex);
-			countMutex->unlock();*/
 		}
 		else
 		{
-			prevLocalPListArray->clear();
-			prevLocalPListArray->reserve(globalLocalPListArray->size());
-			prevLocalPListArray->swap((*globalLocalPListArray));
-			globalLocalPListArray->reserve(0);
+			prevLinearList.clear();
+			prevLinearList.reserve(linearList.size());
+			prevLinearList.swap((linearList));
+			//linearList.reserve(0);
+			
+			prevPListLengths.clear();
+			prevPListLengths.reserve(pListLengths.size());
+			prevPListLengths.swap((pListLengths));
+			pListLengths.reserve(0);
+
 			continueSearching = true;
-			DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
+			//DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
 		}
 	}
 	return continueSearching;
 }
-
-
-//bool Forest::ProcessRAM(vector<Duple>& prevLocalPListArray, vector<Duple>& globalLocalPListArray, LevelPackage& levelInfo, bool &isThreadDefuncted)
-//{
-//	bool continueSearching = true;
-//	int threadsToDispatch = numThreads - 1;
-//	PListType totalTallyRemovedPatterns = 0;
-//	PListType newPatterns = 0;
-//	
-//	vector<Tuple> patternCombine;
-//	PListType counterCombine = prevLocalPListArray.size();
-//
-//	unordered_map<size_t, PListType> yoslap;
-//	vector<size_t> toslap(counterCombine);
-//	int levelDec = levelInfo.currLevel - 1;
-//	PListType j = 0;
-//	PListType fileStringSizer = file->fileStringSize;
-//
-//	string parser;
-//	parser.resize(levelDec);
-//	for (PListType i = 0; i < counterCombine; i++)
-//	{
-//		if (prevLocalPListArray[i].index < fileStringSizer)
-//		{
-//			parser = file->fileString.substr(prevLocalPListArray[i].index - levelDec, levelInfo.currLevel);
-//			prevLocalPListArray[i].index++;
-//			
-//			prevLocalPListArray[i].pListArrayIndex = hash<string>()(parser);
-//
-//			//toslap[i] = prevLocalPListArray[i].pListArrayIndex;
-//
-//			/*yoslap[prevLocalPListArray[i].pListArrayIndex]++;
-//			if(yoslap[prevLocalPListArray[i].pListArrayIndex] == 2)
-//			{
-//				newPatterns++;
-//			}*/
-//		}
-//		else
-//		{
-//			totalTallyRemovedPatterns++;
-//		}
-//	}
-//	PListType currIndex = 0;
-//	for (PListType i = 0; i < counterCombine; i++)
-//	{
-//		
-//		if(yoslap[prevLocalPListArray[i].pListArrayIndex] == 1)
-//		{
-//			totalTallyRemovedPatterns++;
-//		}
-//		else
-//		{
-//			prevLocalPListArray[currIndex].index = prevLocalPListArray[i].index;
-//			prevLocalPListArray[currIndex].pListArrayIndex= prevLocalPListArray[i].pListArrayIndex;
-//			currIndex++;
-//		}
-//	}
-//	prevLocalPListArray.resize(currIndex);
-//
-//	/*vector<PListType> patternTypes(counterCombine, 0);
-//	patternTypes.clear();
-//
-//	for (PListType i = 0; i < counterCombine; i++)
-//	{
-//		patternTypes.push_back(
-//	}
-//
-//	junk_it last = mappy.end();
-//
-//	for (junk_it it = mappy.begin(); it != last; it++)
-//	{
-//		if(it->second.size() == 1)
-//		{
-//			prevLocalPListArray[it->second[0]].index = file->fileStringSize;	
-//		}
-//		else
-//		{
-//			newPatterns ++;
-//		}
-//	}*/
-//	
-//	countMutex->lock();
-//
-//	//patternCombine.resize(counterCombine);
-//	//PListType j = 0;
-//	//for (PListType i = 0; i < counterCombine; i++)
-//	//{
-//	//	if (prevLocalPListArray[i].index < file->fileStringSize)
-//	//	{
-//	//		patternCombine[j].patternId = (uint8_t)file->fileString[prevLocalPListArray[i].index];
-//	//		patternCombine[j].index = prevLocalPListArray[i].index + 1;
-//	//		patternCombine[j].pListArrayIndex = prevLocalPListArray[i].pListArrayIndex;
-//	//		//patternCombine[j].order = j;
-//	//		j++;
-//	//	}
-//	//	else
-//	//	{
-//	//		totalTallyRemovedPatterns++;
-//	//	}
-//	//}
-//
-//	//counterCombine = j;
-//	//patternCombine.resize(counterCombine);
-//	//prevLocalPListArray.resize(counterCombine);
-//	////cout << "List size: " << prevLocalPListArray.size() << endl;
-//	//if(counterCombine > 2)
-//	//{
-//	//	std::sort(patternCombine.begin(), patternCombine.begin() + counterCombine, sort_tuple2());
-//	//}
-//
-//	//PListType currIndex = 0;
-//	//if(counterCombine > 1)
-//	//{
-//	//	currIndex = patternCombine[0].pListArrayIndex;
-//	//}
-//	//PListType matches[256] = {0};
-//	//vector<uint8_t> indexesToUse(256, 0);
-//	//vector<PListType> locations(256, 0);
-//	//vector<PListType> indexers(256, 0);
-//	//indexesToUse.clear();
-//
-//
-//	//vector<PListType> pushItOut;
-//	//pushItOut.reserve(counterCombine);
-//
-//	/*PListType followAlong = 0;
-//	for (PListType i = 0; i < counterCombine; i++)
-//	{
-//
-//		if(currIndex != patternCombine[i].pListArrayIndex)
-//		{
-//			for (int j = 0; j < 256; j++)
-//			{
-//				if(matches[j] == 1)
-//				{
-//					
-//					#if	NEW_PROCESS
-//					pushItOut.push_back(patternCombine[locations[j]].order);
-//					#else
-//					prevLocalPListArray[locations[j]].index = file->fileStringSize;
-//					#endif
-//					followAlong++;
-//				}
-//			}
-//			newPatterns += indexesToUse.size();
-//			indexesToUse.clear();
-//			currIndex = patternCombine[i].pListArrayIndex;
-//			memset(matches, 0, sizeof(matches));
-//		}
-//			
-//		matches[patternCombine[i].patternId]++;
-//		locations[patternCombine[i].patternId] = i;
-//			
-//
-//		if(matches[patternCombine[i].patternId] == 2)
-//		{
-//			indexesToUse.push_back(patternCombine[i].patternId);
-//				
-//		}
-//		else if(matches[patternCombine[i].patternId] == 1)
-//		{
-//			indexers[patternCombine[i].patternId] = i;
-//		}
-//				
-//		
-//
-//		#if	NEW_PROCESS
-//		patternCombine[i].pListArrayIndex = indexers[patternCombine[i].patternId];
-//		#else
-//		prevLocalPListArray[i].index = patternCombine[i].index;
-//		prevLocalPListArray[i].pListArrayIndex = indexers[patternCombine[i].patternId];
-//		#endif
-//	}*/
-//
-//	//PListType followAlong = 0;
-//	//for (PListType i = 0; i < counterCombine; i++)
-//	//{
-//
-//	//	if(currIndex != patternCombine[i].pListArrayIndex)
-//	//	{
-//	//		for (int j = 0; j < 256; j++)
-//	//		{
-//	//			if(matches[j] == 1)
-//	//			{
-//	//				
-//	//				#if	NEW_PROCESS
-//	//				pushItOut.push_back(patternCombine[locations[j]].order);
-//	//				#else
-//	//				prevLocalPListArray[locations[j]].index = file->fileStringSize;
-//	//				#endif
-//	//				followAlong++;
-//	//			}
-//	//		}
-//	//		newPatterns += indexesToUse.size();
-//	//		indexesToUse.clear();
-//	//		currIndex = patternCombine[i].pListArrayIndex;
-//	//		memset(matches, 0, sizeof(matches));
-//	//	}
-//	//		
-//	//	matches[patternCombine[i].patternId]++;
-//	//	locations[patternCombine[i].patternId] = i;
-//	//		
-//
-//	//	if(matches[patternCombine[i].patternId] == 2)
-//	//	{
-//	//		indexesToUse.push_back(patternCombine[i].patternId);
-//	//			
-//	//	}
-//	//	else if(matches[patternCombine[i].patternId] == 1)
-//	//	{
-//	//		indexers[patternCombine[i].patternId] = i;
-//	//	}
-//	//			
-//	//	
-//
-//	//	#if	NEW_PROCESS
-//	//	patternCombine[i].pListArrayIndex = indexers[patternCombine[i].patternId];
-//	//	#else
-//	//	prevLocalPListArray[i].index = patternCombine[i].index;
-//	//	prevLocalPListArray[i].pListArrayIndex = indexers[patternCombine[i].patternId];
-//	//	#endif
-//	//}
-//
-//
-//	///*stringstream shitter;
-//	//shitter << followAlong << endl;
-//	//Logger::WriteLog(shitter.str());
-//	//cout << shitter.str();*/
-//
-//	////Leftovers that are kind of old but still edible
-//	//
-//	//for (int j = 0; j < 256; j++)
-//	//{
-//	//	if(matches[j] == 1)
-//	//	{
-//	//		#if	NEW_PROCESS
-//	//		pushItOut.push_back(patternCombine[locations[j]].order);
-//	//		#else
-//	//		prevLocalPListArray[locations[j]].index = file->fileStringSize;
-//	//		#endif
-//	//	}
-//	//}
-//	//newPatterns += indexesToUse.size();
-//	
-//	
-////#if	NEW_PROCESS
-////	std::sort(pushItOut.begin(), pushItOut.end());
-////	PListType z = 0;
-////	PListType insertLocation = 0;
-////	
-////	/*for (PListType i = 0; i < counterCombine; i++)
-////	{
-////		if(z < pushItOut.size() && pushItOut[z] == i)
-////		{
-////			prevLocalPListArray[patternCombine[i].order].index = file->fileStringSize;
-////			z++;
-////		}
-////		else
-////		{
-////			prevLocalPListArray[patternCombine[i].order].index = patternCombine[i].index;
-////			prevLocalPListArray[patternCombine[i].order].pListArrayIndex = patternCombine[i].pListArrayIndex;
-////		}
-////		
-////	}*/
-////	for (PListType i = 0; i < counterCombine; i++)
-////	{
-////		if(z < pushItOut.size() && pushItOut[z] == i)
-////		{
-////			prevLocalPListArray[patternCombine[i].order].index = file->fileStringSize;
-////			z++;
-////		}
-////		else
-////		{
-////			prevLocalPListArray[i].index++;
-////			prevLocalPListArray[i].pListArrayIndex = patternCombine[i].pListArrayIndex;
-////		}
-////	}
-////#else
-////	if(counterCombine > 2)
-////	{
-////		std::sort(prevLocalPListArray.begin(), prevLocalPListArray.begin() + counterCombine, sort_duple());
-////	}
-////#endif
-//
-//	/*shitter.clear();
-//	shitter << counterCombine << endl;
-//	Logger::WriteLog(shitter.str());
-//	cout << shitter.str();*/
-//	
-//	/*countMutex->lock();*/
-//
-//	eradicatedPatterns += totalTallyRemovedPatterns;
-//
-//	/*if(mostCommonPattern.size() < levelInfo.currLevel)
-//	{
-//		mostCommonPattern.resize(levelInfo.currLevel);
-//		mostCommonPatternCount.resize(levelInfo.currLevel);
-//	}
-//	for (PListType i = 0; i < globalLocalPListArray->size(); i++)
-//	{
-//		if((*globalLocalPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-//		{
-//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*globalLocalPListArray)[i]->size();
-//				
-//			mostCommonPattern[levelInfo.currLevel - 1] = file->fileString.substr(((*(*globalLocalPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-//		}
-//	}*/
-//		
-//	if(levelRecordings.size() < levelInfo.currLevel)
-//	{
-//		levelRecordings.resize(levelInfo.currLevel);
-//	}
-//	//levelRecordings[levelInfo.currLevel - 1] += globalLocalPListArray->size();
-//	levelRecordings[levelInfo.currLevel - 1] += newPatterns;
-//
-//	/*if(coverage.size() < levelInfo.currLevel)
-//	{
-//		coverage.resize(levelInfo.currLevel);
-//	}
-//	coverage[levelInfo.currLevel - 1] += ((float)(globalLocalPListArray->size()))/((float)file->fileStringSize);*/
-//		
-//	levelInfo.currLevel++;
-//
-//	if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
-//	{
-//		currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
-//	}
-//	countMutex->unlock();
-//
-//	if(newPatterns == 0 || levelInfo.currLevel - 1 >= maximum)
-//	{
-//		/*prevLocalPListArray.clear();
-//		prevLocalPListArray.reserve(globalLocalPListArray.size());
-//		prevLocalPListArray.swap(globalLocalPListArray);
-//		globalLocalPListArray.reserve(0);*/
-//		continueSearching = false;
-//		/*countMutex->lock();
-//		availableCores.push_back(levelInfo.coreIndex);
-//		countMutex->unlock();*/
-//	}
-//	else
-//	{
-//		/*prevLocalPListArray.clear();
-//		prevLocalPListArray.reserve(globalLocalPListArray.size());
-//		prevLocalPListArray.swap(globalLocalPListArray);
-//		globalLocalPListArray.reserve(0);*/
-//		continueSearching = true;
-//		//DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
-//	}
-//		
-//	return continueSearching;
-//}
-
-
 
 void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo)
 {
@@ -4529,103 +3518,6 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 
 	return;
 }
-
-//void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo)
-//{
-//	PListType numPatternsToSearch = patternIndexList.size();
-//	bool isThreadDefuncted = false;
-//	//cout << "Threads dispatched: " << threadsDispatched << " Threads deported: " << threadsDefuncted << " Threads running: " << threadsDispatched - threadsDefuncted << endl;
-//	
-//	int tempCurrentLevel = levelInfo.currLevel;
-//	int threadsToDispatch = numThreads - 1;
-//
-//	if(threadsDispatched - threadsDefuncted > threadsToDispatch)
-//	{
-//		cout << "WENT OVER THREADS ALLOCATION SIZE!" << endl;
-//	}
-//	
-//	vector<Duple> prevLocalPListArray;
-//	vector<Duple> globalLocalPListArray;
-//
-//	if(levelInfo.useRAM)
-//	{
-//		PListType combineCount = 0;
-//		for(PListType i = 0; i < numPatternsToSearch; i++)
-//		{
-//			if((*patterns)[patternIndexList[i]] != NULL)
-//			{
-//				combineCount += (*patterns)[patternIndexList[i]]->size();
-//			}
-//		}
-//		prevLocalPListArray.resize(combineCount);
-//		combineCount = 0;
-//		int threadIndex = 0;
-//		for(PListType i = 0; i < numPatternsToSearch; i++)
-//		{
-//			if(i % threadsToDispatch == 0)
-//			{
-//				threadIndex++;
-//			}
-//			if((*patterns)[patternIndexList[i]] != NULL)
-//			{
-//				for(PListType j = 0; j < (*patterns)[patternIndexList[i]]->size(); j++)
-//				{
-//					prevLocalPListArray[combineCount].index = (*(*patterns)[patternIndexList[i]])[j];
-//					prevLocalPListArray[combineCount++].pListArrayIndex = threadIndex;
-//				}
-//			}
-//		}
-//	}
-//
-//	std::sort(prevLocalPListArray.begin(), prevLocalPListArray.end(), sort_duple());
-//	
-//	bool continueSearching = true;
-//
-//	while(continueSearching)
-//	{
-//		bool useRAMBRO = true;
-//		/*if(levelInfo.currLevel != 2)
-//		{
-//			useRAMBRO = !NextLevelTreeSearchRecursion(prevLocalPListArray, globalLocalPListArray, fileList, levelInfo);
-//		}
-//		else
-//		{*/
-//			useRAMBRO = levelInfo.useRAM;
-//		//}
-//
-//		if(useRAMBRO)
-//		{
-//			continueSearching = ProcessRAM(prevLocalPListArray, globalLocalPListArray, levelInfo, isThreadDefuncted);
-//		}
-//		else
-//		{
-//			continueSearching = ProcessHD(levelInfo, fileList, isThreadDefuncted);
-//		}
-//	}
-//
-//	/*if(prevLocalPListArray != NULL)
-//	{
-//		delete prevLocalPListArray;
-//	}
-//
-//	if(globalLocalPListArray != NULL)
-//	{
-//		delete globalLocalPListArray;
-//	}*/
-//	
-//	countMutex->lock();
-//	if(currentLevelVector[levelInfo.threadIndex] > globalLevel)
-//	{
-//		globalLevel = currentLevelVector[levelInfo.threadIndex];
-//	}
-//	if(!isThreadDefuncted)
-//	{
-//		threadsDefuncted++;
-//	}
-//	countMutex->unlock();
-//
-//	return;
-//}
 
 void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum)
 {
@@ -4795,114 +3687,6 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 	currentLevelVector[threadIndex] = 2;
 }
 
-//TreeRAM* Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch)
-//{
-//	int currentThread = startPatternIndex/numPatternsToSearch;
-//	//used primarily for just storage containment
-//	PListType earlyApproximation = file->fileString.size()/(256*(numThreads - 1));
-//	vector<vector<PListType>*> newPList(256);
-//	for (int i = 0; i < 256; i++)
-//	{
-//		newPList[i] = new vector<PListType>();
-//		//newPList[i]->reserve(earlyApproximation);
-//	}
-//
-//	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
-//	{
-//#ifdef INTEGERS
-//		
-//		stringstream finalValue;
-//		//If pattern is past end of string stream then stop counting this pattern
-//		if (i < file->fileStringSize)
-//		{
-//			while(i < file->fileStringSize)
-//			{
-//				unsigned char value = file->fileString[i];
-//				//if values are between 0 through 9 and include 45 for the negative sign
-//				if(value >= 48 && value <= 57 || value == 45)
-//				{
-//					finalValue << value;
-//				}
-//			
-//
-//				if(value == '\r' || value == 13 || value == '\n' || value == ' ' || value == '/t')
-//				{
-//					while((value < 48 || value > 57) && value != 45 && i < file->fileStringSize)
-//					{
-//						value = file->fileString[i];
-//						i++;
-//					}
-//					if(i < file->fileStringSize)
-//					{
-//						i-=2;
-//					}
-//					break;
-//				}
-//				else
-//				{
-//					i++;
-//				}
-//			}
-//			if(finalValue.str() != "")
-//			{
-//				string patternValue = finalValue.str();
-//				unsigned long long ull = stoull(patternValue, &sz);
-//				//cout << "Pattern found: " << ull << endl;
-//				leaf->addLeaf(ull, i + 1, patternValue);
-//			}
-//		}
-//#endif
-//#ifdef BYTES
-//		
-//		if(patternToSearchFor.size() == 0 || file->fileString[i] == patternToSearchFor[0])
-//		{
-//			newPList[(uint8_t)file->fileString[i]]->push_back(i + 1);	
-//		}
-//
-//#endif
-//
-//	}
-//	vector<int> listToDos;
-//	for(int i = 0; i < 256; i++)
-//	{
-//		if(gatedMutexes[i]->try_lock())
-//		{
-//			(*prevPListArray)[i]->insert((*prevPListArray)[i]->end(), newPList[i]->begin(), newPList[i]->end());
-//			//(*localPrevPListArrayTriplet)[i]->push_back(newPList[i]);
-//			gatedMutexes[i]->unlock();
-//		}
-//		else
-//		{
-//			listToDos.push_back(i);
-//		}
-//	}
-//	while(listToDos.size() > 0)
-//	{
-//		vector<int> nextListToDos;
-//		for(int i = 0; i < listToDos.size(); i++)
-//		{
-//			if(gatedMutexes[listToDos[i]]->try_lock())
-//			{
-//				(*prevPListArray)[listToDos[i]]->insert((*prevPListArray)[listToDos[i]]->end(), newPList[listToDos[i]]->begin(), newPList[listToDos[i]]->end());
-//				//(*localPrevPListArrayTriplet)[i]->push_back(newPList[listToDos[i]]);
-//				gatedMutexes[listToDos[i]]->unlock();
-//			}
-//			else
-//			{
-//				nextListToDos.push_back(listToDos[i]);
-//			}
-//		}
-//		listToDos.clear();
-//		listToDos.resize(nextListToDos.size());
-//		for(int k = 0; k < nextListToDos.size(); k++)
-//		{
-//			listToDos[k] = nextListToDos[k];
-//		}
-//	}
-//
-//
-//	return NULL;
-//}
 string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;
