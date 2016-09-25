@@ -12,6 +12,7 @@
 #include "PListArchive.h"
 #include "StopWatch.h"
 #include <array>
+#include "Dirent.h"
 
 using namespace std;
 #define ARCHIVE_FOLDER "../Log/"
@@ -139,7 +140,7 @@ private:
 	vector<future<void>> *threadPool;
 	vector<future<void>> *threadPlantSeedPoolHD;
 	vector<future<void>> *threadPlantSeedPoolRAM;
-	FileReader *file;
+	vector<FileReader*> files;
 	std::string::size_type sz;
 	unsigned int numThreads;
 	unsigned int levelToOutput;
@@ -248,6 +249,9 @@ private:
 	
 
 public:
+
+	int f;
+
 	static bool outlierScans;
 	static bool overMemoryCount;
 	Forest(int argc, char **argv);
