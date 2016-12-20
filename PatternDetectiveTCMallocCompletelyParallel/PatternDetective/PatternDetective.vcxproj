@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\Dirent.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\FileReader.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\Forest.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\Logger.cpp" />
@@ -30,6 +31,7 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAM.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\Dirent.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\FileReader.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\Forest.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\Logger.h" />
@@ -68,9 +70,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
