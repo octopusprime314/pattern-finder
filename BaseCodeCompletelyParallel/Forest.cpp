@@ -100,11 +100,11 @@ Forest::Forest(int argc, char **argv)
 	}
 
 	thread *memoryQueryThread = NULL;
-	//if(!usingPureRAM)
-	//{
-	//Kick off thread that processes how much memory the program uses at a certain interval
-	memoryQueryThread = new thread(&Forest::MemoryQuery, this);
-	//}
+	if(!usingPureRAM)
+	{
+		//Kick off thread that processes how much memory the program uses at a certain interval
+		memoryQueryThread = new thread(&Forest::MemoryQuery, this);
+	}
 	thread *msyncThread = NULL;
 	if(!usingPureRAM)
 	{
@@ -719,8 +719,8 @@ void Forest::CommandLineParser(int argc, char **argv)
 			// We know the next argument *should* be the maximum pattern to display
 			maximum = atoi(argv[i + 1]);
 			levelRecordings.resize(maximum);
-			mostCommonPatternCount.resize(maximum);
-			mostCommonPattern.resize(maximum);
+			//mostCommonPatternCount.resize(maximum);
+			//mostCommonPattern.resize(maximum);
 			maxEnter = true;
 			i++;
 		}
@@ -894,9 +894,9 @@ void Forest::CommandLineParser(int argc, char **argv)
 		minimum = 0;
 	}
 	//If numCores is not specified then we use number of threads supported cores plus the main thread
-	if (!threadsEnter)
+	if (!threadsEnter || numThreads > concurentThreadsSupported)
 	{
-		numThreads = concurentThreadsSupported;
+		numThreads = concurentThreadsSupported + 1;
 	}
 
 	int bestThreadCount = 0;
@@ -1973,18 +1973,18 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 							currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 							interimCount++;
 
-							if(mostCommonPattern.size() < currLevel)
-							{
-								mostCommonPattern.resize(currLevel);
-								mostCommonPatternCount.resize(currLevel);
-							}
+							//if(mostCommonPattern.size() < currLevel)
+							//{
+							//	mostCommonPattern.resize(currLevel);
+							//	mostCommonPatternCount.resize(currLevel);
+							//}
 
-							if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
-							{
-								mostCommonPatternCount[currLevel - 1] = iterator->second->size();
+							//if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
+							//{
+							//	//mostCommonPatternCount[currLevel - 1] = iterator->second->size();
 
-								mostCommonPattern[currLevel - 1] = iterator->first;
-							}
+							//	mostCommonPattern[currLevel - 1] = iterator->first;
+							//}
 						}
 						else
 						{
@@ -2225,7 +2225,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 				interimCount++;
 
-				if(mostCommonPattern.size() < currLevel)
+				/*if(mostCommonPattern.size() < currLevel)
 				{
 					mostCommonPattern.resize(currLevel);
 					mostCommonPatternCount.resize(currLevel);
@@ -2236,7 +2236,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 					mostCommonPatternCount[currLevel - 1] = iterator->second->size();
 
 					mostCommonPattern[currLevel - 1] = iterator->first;
-				}
+				}*/
 			}
 			else
 			{
@@ -2484,13 +2484,13 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 				empty = false;
 				interimCount++;
 
-				PListType patterCount = (currChunkFiles[buff.str()]->prevMappingIndex/sizeof(PListType)) - sizeof(PListType);
+				/*PListType patterCount = (currChunkFiles[buff.str()]->prevMappingIndex/sizeof(PListType)) - sizeof(PListType);
 				if(patterCount > mostCommonPatternCount[currLevel - 1])
 				{
 					mostCommonPatternCount[currLevel - 1] = patterCount;
 
 					mostCommonPattern[currLevel - 1] = buff.str();
-				}
+				}*/
 			}
 			string fileToDelete = currChunkFiles[buff.str()]->patternName;
 			currChunkFiles[buff.str()]->CloseArchiveMMAP();
@@ -2501,11 +2501,11 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 				DeleteChunk(fileToDelete, ARCHIVE_FOLDER);
 			}
 
-			if(mostCommonPattern.size() < currLevel)
+			/*if(mostCommonPattern.size() < currLevel)
 			{
 				mostCommonPattern.resize(currLevel);
 				mostCommonPatternCount.resize(currLevel);
-			}
+			}*/
 
 
 		}
