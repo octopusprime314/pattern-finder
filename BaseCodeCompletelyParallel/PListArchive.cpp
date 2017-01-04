@@ -5,7 +5,6 @@
 
 vector<thread*> PListArchive::threadKillList;
 mutex PListArchive::syncLock;
-mutex PListArchive::listCountMutex;
 
 PListArchive::PListArchive(void)
 {
@@ -62,7 +61,6 @@ PListArchive::PListArchive(string fileName, bool create)
 		startingIndex = 0;
 		mappingIndex = 0;
 		prevMappingIndex = 0;
-		predictedFutureMemoryLocation = 0;
 	}
 	catch(exception e)
 	{
@@ -201,6 +199,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				}
 				else
 				{
+					//stuffedPListBuffer[pListGlobalIndex]->insert(stuffedPListBuffer[pListGlobalIndex]->end(), map + i, map + PListBuffSize/*(PListBuffSize - (listCount%PListBuffSize))*/);
 					stuffedPListBuffer[pListGlobalIndex]->push_back(map[i]);
 					listCount--;
 				}

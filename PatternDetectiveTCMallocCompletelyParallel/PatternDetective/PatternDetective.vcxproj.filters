@@ -42,6 +42,9 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\StopWatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\Dirent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\FileReader.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\StopWatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\Dirent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

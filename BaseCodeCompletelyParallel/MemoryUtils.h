@@ -25,16 +25,6 @@ class MemoryUtils
 public:
 	#pragma region MemoryUtilities
 
-	static bool fileExists(const std::string& filename)
-	{
-		struct stat buf;
-		if (stat(filename.c_str(), &buf) != -1)
-		{
-			return true;
-		}
-		return false;
-	}
-
 	static void print_trace()
 	{
 		
@@ -59,6 +49,26 @@ public:
 #endif
 	}
 
+	static double GetAvailableRAMMB()
+	{
+
+#if defined(_WIN64) || defined(_WIN32)
+
+		MEMORYSTATUSEX statex;
+		statex.dwLength = sizeof (statex);
+		GlobalMemoryStatusEx (&statex);
+		return (double)(statex.ullAvailPhys/(1024.0f*1024.0f));
+		
+#elif defined(__linux__)
+
+		struct sysinfo info;
+		sysinfo(&info);
+		return info.freeram/(1024.0f*1024.0f);
+
+#endif
+
+	}
+
 	static PListType parseLine(char* line)
 	{
 		PListType i = strlen(line);
@@ -67,29 +77,19 @@ public:
 		i = atoi(line);
 		return i;
 	}
-	static double GetAvailableRAMMB()
-	{
-	#if defined(_WIN64) || defined(_WIN32)
-		MEMORYSTATUSEX statex;
-		statex.dwLength = sizeof (statex);
-		GlobalMemoryStatusEx (&statex);
-		return (double)(statex.ullAvailPhys/(1024.0f*1024.0f));
-		
-	#elif defined(__linux__)
-		struct sysinfo info;
-		sysinfo(&info);
-		return info.freeram/(1024.0f*1024.0f);
-	#endif
-	}
+	
 	static double GetProgramMemoryConsumption(PListType level = 0)
 	{
-	#if defined(_WIN64) || defined(_WIN32)
+
+#if defined(_WIN64) || defined(_WIN32)
+		
 		PROCESS_MEMORY_COUNTERS pmc;
 		GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 		PListType physMemUsedByMe = pmc.WorkingSetSize;
 		return physMemUsedByMe/1000000.0f;
 
-	#elif defined(__linux__)
+#elif defined(__linux__)
+		
 		FILE* file = fopen("/proc/self/status", "r");
 		int result = -1;
 		char line[128];
@@ -102,21 +102,10 @@ public:
 		}
 		fclose(file);
 		return result/1000.0f;
-	#endif
+
+#endif
 
 	}
-
-	/*static double SizeOfVector(vector<vector<vector<PListType, boost::fast_pool_poolpoolAllocator<PListType>>*>*>* vectorArray)
-	{
-		
-		PListType totalMemoryInBytes = 0;
-		for(int i = 0; i < vectorArray->size(); i++)
-		{
-			totalMemoryInBytes = (*vectorArray)[i]->capacity() * sizeof(PListType) + sizeof(vector<PListType[CACHE_SIZE]>*);
-		}
-		double sizeInMB = totalMemoryInBytes/1000000.0f;
-		return sizeInMB;
-	}*/
 
 	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
 	{
@@ -124,34 +113,12 @@ public:
 		stringstream stringbuilder;
 		
 		double usedMemory = currMemory - initialMemoryInMB;
-		//cout << usedMemory << endl;
 		if(usedMemory >= memoryBandwidthInMB)
 		{
-			
-			/*memoryOverflow = usedMemory - memoryBandwidthInMB;
-			stringbuilder << "Memory overused is " << memoryOverflow << " MB" << endl;
-			Logger::WriteLog(stringbuilder.str());*/
-			
 			return true;
 		}
 		else
 		{
-			return false;
-		}
-	}
-
-	static bool IsLessThanMemoryCount(unsigned long initialMemoryInMB, unsigned long memoryBandwidthInMB)
-	{
-		double currMemory = GetProgramMemoryConsumption();
-
-		if(initialMemoryInMB - currMemory >= memoryBandwidthInMB)
-		{
-			//cout << "Under memory bandwidth" << endl;
-			return true;
-		}
-		else
-		{
-			//cout << "Over memory bandwidth" << endl;
 			return false;
 		}
 	}
@@ -178,50 +145,8 @@ public:
 			fileSize = st.st_size; 
 		}
 #endif
+
 		return fileSize;
-	}
-
-	static const size_t BUF_SIZE = 8192;
-
-	static void copy(std::istream& is, std::ostream& os)
-	{
-		size_t len;
-		char buf[BUF_SIZE];
-
-		while((len = is.readsome(buf, BUF_SIZE)) > 0)
-		{
-			os.write(buf, len);
-			os.flush();
-		}
-	}
-
-	static bool copyFileOver(string fileToCopyFrom, string fileToCopyTo)
-	{
-		string copyFrom = "../Log/";
-		copyFrom.append(fileToCopyFrom);
-		copyFrom.append(".txt");
-	
-		string copyTo = "../Log/";
-		copyTo.append(fileToCopyTo);
-		copyTo.append(".txt");
-
-#if defined(_WIN64) || defined(_WIN32)
-		std::ifstream  src(copyFrom, std::ios::binary);
-		std::ofstream  dst(copyTo,   std::ios::binary);
-		
-		dst << src.rdbuf();
-		dst.flush();
-		dst.close();
-		src.close();
-
-#elif defined(__linux__)
-		//Implement later
-		std::ifstream  src(copyFrom, std::ios::binary);
-		std::ofstream  dst(copyTo,   std::ios::binary);
-		dst << src.rdbuf();
-#endif
-	
-		return true;
 	}
 
 	#pragma endregion MemoryUtilities

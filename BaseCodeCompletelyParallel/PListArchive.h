@@ -28,27 +28,20 @@
 using namespace std;
 const static PListType hdSectorSize = 2097152;
 const static PListType totalLoops = hdSectorSize/sizeof(PListType);
+
 class PListArchive
 {
 public:
+
 	PListArchive(void);
 	~PListArchive(void);
 	PListArchive(string fileName, bool create = false);
-
-	//Load in pList
 	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false, bool forceClose = false);
-	void WriteArchiveMapMMAPLargeFile(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false);
-	
-	//Write map to hard disk 
 	void DumpPatternsToDisk(unsigned int level);
-
 	vector<string>* GetPatterns(unsigned int level, PListType count);
-	//vector<const char*>* GetPatterns(unsigned int level, PListType count);
 	void GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, double chunkSizeInMB = 0);
 	bool IsEndOfFile();
 	bool Exists();
-	
-	//Close archive
 	void CloseArchiveMMAP();
 
 	PListType fileIndex;
@@ -60,36 +53,27 @@ public:
 	PListType mappingIndex;
 	PListType fileSize;
 	PListType prevMappingIndex;
-	
 	static vector<thread*> threadKillList;
 	vector<thread*> localThreadList;
 	static mutex syncLock;
-	
 	list<PListType*> memLocals;
 	PListType totalWritten;
 
 private:
-	static mutex listCountMutex;
-	PListType predictedFutureMemoryLocation;
-	bool alreadyWrittenLargeFile;
+
 	bool endOfFileReached;
 	ofstream *outputFile;
 	list<char*> charLocals;
-
-	//for mmap writing
 	PListType prevListIndex;
 	PListType prevStartingIndex;
-
+	PListType *mapper;
+	PListType prevFileIndex;
+	
 	void FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList);
-
 	void MappingError(int& fileDescriptor, string fileName);
 	void UnMappingError(int& fileDescriptor, string fileName);
 	void SeekingError(int& fileDescriptor, string fileName);
 	void ExtendingFileError(int& fileDescriptor, string fileName);
-
-	PListType *mapper;
-	PListType prevFileIndex;
-	bool dumpDeleted;
 };
 
 

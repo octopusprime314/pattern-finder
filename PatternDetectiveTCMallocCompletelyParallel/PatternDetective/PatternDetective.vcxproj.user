@@ -6,13 +6,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -d -mem 3000 -threads 9 -lev 1 -his 0 -v 1 -o 2 -HD</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerCommandArguments>/f Quarantine.avi /min 1 /max 100000 /d /threads 2</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -d -mem 300 -threads 9 -lev 1 -his 0 -v 1 -o 2 -RAM</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f Boosh.avi -min 1 -d -mem 3000 -threads 9 -lev 1 -his 0 -v 1 -o 2 -HD</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerSQLDebugging>true</LocalDebuggerSQLDebugging>
   </PropertyGroup>
