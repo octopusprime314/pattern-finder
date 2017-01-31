@@ -92,11 +92,11 @@ Forest::Forest(int argc, char **argv)
 	}
 
 	thread *memoryQueryThread = NULL;
-	if(!usingPureRAM)
-	{
+	//if(!usingPureRAM)
+	//{
 		//Kick off thread that processes how much memory the program uses at a certain interval
 		memoryQueryThread = new thread(&Forest::MemoryQuery, this);
-	}
+	//}
 	thread *msyncThread = NULL;
 	if(!usingPureRAM)
 	{
@@ -2889,6 +2889,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	}
 	else
 	{
+		cout << levelInfo.currLevel << endl;
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = (*prevLocalPListArray)[i]->size();
@@ -3176,7 +3177,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			pListLengths.reserve(0);
 
 			continueSearching = true;
-			DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
+			//DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
 		}
 	}
 	return continueSearching;
