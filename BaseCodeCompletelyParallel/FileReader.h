@@ -4,7 +4,13 @@
 #include <map>
 #include <future>
 #include "TypeDefines.h"
-#define DATA_FOLDER "../../Data/"
+
+#if defined(_WIN64) || defined(_WIN32)
+	#define DATA_FOLDER "../../../Data/"
+#elif defined(__linux__)
+	#define DATA_FOLDER "../../Data/"
+#endif
+
 using namespace std;
 
 class FileReader

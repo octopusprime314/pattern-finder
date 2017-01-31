@@ -14,7 +14,7 @@ bool Forest::overMemoryCount = false;
 Forest::Forest(int argc, char **argv)
 {
 #if defined(_WIN64) || defined(_WIN32)
-	system("del ..\\Log\\PList*.txt");
+	system("del ..\\..\\Log\\PList*.txt");
 #elif defined(__linux__)
 	system("rm -r ../Log/PList*");
 #endif
