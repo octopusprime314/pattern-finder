@@ -9,7 +9,7 @@
 using namespace std;
 
 #define SCROLLCOUNT 25
-const string LOGGERPATH = "../Log/";
+const string LOGGERPATH = "../../Log/";
 const bool cmdEnabled = false;
 const bool scrollEnabled = false;
 const bool disableLogging = false;

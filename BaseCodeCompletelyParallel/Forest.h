@@ -15,7 +15,7 @@
 #include "Dirent.h"
 
 using namespace std;
-#define ARCHIVE_FOLDER "../../Log/"
+#define ARCHIVE_FOLDER LOGGERPATH
 #define READMEPATH "../../ReadMe.txt"
 
 typedef std::vector<map<PatternType, PListType>>::iterator it_type;
