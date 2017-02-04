@@ -22,7 +22,7 @@ PListArchive::PListArchive(string fileName, bool create)
 		patternName = fileName;
 		string file;
 		
-		file.append("../Log/");
+		file.append(LOGGERPATH);
 		file.append(fileName);
 		file.append(".txt");
 		fd = -1;
@@ -348,6 +348,13 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			write(fd, "", 1);
 			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
 		}
+	#else
+		if((fileIndex + (offset*hdSectorSize) - 1) >= prevFileIndex)
+		{
+			result = _lseeki64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+			write(fd, "", 1);
+			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
+		}
 	#endif
 
 		int i;
@@ -658,7 +665,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 		string file;
 	
-		file.append("../Log/");
+		file.append(LOGGERPATH);
 		std::string::size_type i = fileName.find(".txt");
 		string tempString = fileName;
 		tempString.erase(i, 4);

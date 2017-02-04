@@ -1669,9 +1669,10 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				packedPListSize = packedPListArray.size();
 
 				std::string::size_type i = archiveCollection[a]->fileName.find(".txt");
+				std::string::size_type begin = archiveCollection[a]->fileName.find("P");
 				string tempString = archiveCollection[a]->fileName;
-				tempString.erase(i, 8);
-				tempString.erase(0, 7);
+				tempString.erase(i);
+				tempString.erase(0, begin);
 
 				fileNameForLater.append(tempString);
 				fileName = fileNameForLater;
@@ -1843,9 +1844,10 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				foundAHit = false;
 
 				std::string::size_type i = archiveCollection[a]->fileName.find(".txt");
+				std::string::size_type begin = archiveCollection[a]->fileName.find("P");
 				string tempString = archiveCollection[a]->fileName;
-				tempString.erase(i, 8);
-				tempString.erase(0, 7);
+				tempString.erase(i);
+				tempString.erase(0, begin);
 
 				fileNameForLater.append(tempString);
 				fileName = fileNameForLater;
@@ -2212,9 +2214,10 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			packedPListSize = packedPListArray.size();
 
 			std::string::size_type i = archiveCollection[a]->fileName.find(".txt");
+			std::string::size_type begin = archiveCollection[a]->fileName.find("P");
 			string tempString = archiveCollection[a]->fileName;
-			tempString.erase(i, 8);
-			tempString.erase(0, 7);
+			tempString.erase(i);
+			tempString.erase(0, begin);
 
 			fileNameForLater.append(tempString);
 			fileName = fileNameForLater;
@@ -2889,7 +2892,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	}
 	else
 	{
-		cout << levelInfo.currLevel << endl;
+
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = (*prevLocalPListArray)[i]->size();
@@ -2899,6 +2902,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 
 			}
 		}
+
 		prevLinearList.reserve(totalCount);
 
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
@@ -3177,7 +3181,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			pListLengths.reserve(0);
 
 			continueSearching = true;
-			//DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
+			DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
 		}
 	}
 	return continueSearching;
