@@ -1451,6 +1451,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 
 	return newFileList;
 }
+
 vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns)
 {
 	vector<vector<PListType>> balancedList(threadsToDispatch);
@@ -2567,7 +2568,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 											}
 											else
 											{
-												cout << "don't pattern bro at this index: " << ((*pList)[k]) << endl;
+												//cout << "don't pattern bro at this index: " << ((*pList)[k]) << endl;
 											}
 										}
 										catch(exception e)
@@ -2674,7 +2675,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 	return morePatternsToFind;
 }
 
-bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<vector<PListType>*>* prevLocalPListArray, LevelPackage levelInfo, bool& isThreadDefuncted)
+bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<PListType> &linearList, vector<PListType> &pListLengths, LevelPackage levelInfo, bool& isThreadDefuncted)
 {
 	bool dispatchedNewThreads = false;
 	bool alreadyUnlocked = false;
@@ -2682,18 +2683,30 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 
 	int threadsToDispatch = numThreads - 1;
 	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
-	if(prevLocalPListArray->size() < unusedCores && unusedCores > 1)
+	if(pListLengths.size() < unusedCores && unusedCores > 1)
 	{
-		unusedCores = (int)prevLocalPListArray->size();
+		unusedCores = (int)pListLengths.size();
 	}
 	//Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
-	if(unusedCores > 1 && morePatternsToFind && prevLocalPListArray->size() > 1)
+	if(unusedCores > 1 && morePatternsToFind && pListLengths.size() > 1)
 	{
 		
 		bool spawnThreads = true;
 		//If this thread is at the lowest level of progress spawn new threads
 		if(spawnThreads)
 		{
+			vector<vector<PListType>*>* prevLocalPListArray = new vector<vector<PListType>*>();
+			PListType indexing = 0;
+			for(int piss = 0; piss < pListLengths.size(); piss++)
+			{
+				prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing, linearList.begin() + indexing + pListLengths[piss]));
+				indexing += pListLengths[piss];
+			}
+
+			linearList.clear();
+			linearList.reserve(0);
+			pListLengths.clear();
+			pListLengths.reserve(0);
 
 			vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAM(unusedCores, prevLocalPListArray);
 			vector<unsigned int> localWorkingThreads;
@@ -2747,6 +2760,13 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					(*localThreadPool).clear();
 					delete localThreadPool;
 					morePatternsToFind = false;
+				}
+			}
+			else
+			{
+				for(int piss = 0; piss < pListLengths.size(); piss++)
+				{
+					delete (*prevLocalPListArray)[piss];
 				}
 			}
 		}
@@ -2912,6 +2932,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			{
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
 				prevPListLengths.push_back(pListLength);
+				delete (*prevLocalPListArray)[i];
 			}
 		}
 	}
@@ -2921,6 +2942,10 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 	PListType linearListIndex = 0;
 
 	PListType globalStride = 0;
+
+	//We have nothing to process!
+	if(totalCount == 0)
+		return false;
 
 	while(continueSearching)
 	{
@@ -2971,7 +2996,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				}
 			}
 		}
-
+		
 		if(globalStride == 0)
 		{
 			globalStride = (stride / strideCount);
@@ -2981,6 +3006,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			globalStride += (stride / strideCount);
 			globalStride /= 2.0f;
 		}
+			
 
 		globalStringConstruct.resize(stringIndexer);
 		stringIndexer = 0;
@@ -3171,6 +3197,9 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		}
 		else
 		{
+			continueSearching = true;
+			DispatchNewThreadsRAM(0, continueSearching, linearList, pListLengths, levelInfo, isThreadDefuncted);
+
 			prevLinearList.clear();
 			prevLinearList.reserve(linearList.size());
 			prevLinearList.swap((linearList));
@@ -3180,8 +3209,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			prevPListLengths.swap((pListLengths));
 			pListLengths.reserve(0);
 
-			continueSearching = true;
-			DispatchNewThreadsRAM(globalLocalPListArray->size(), continueSearching, prevLocalPListArray, levelInfo, isThreadDefuncted);
 		}
 	}
 	return continueSearching;
