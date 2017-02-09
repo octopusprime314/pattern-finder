@@ -2,7 +2,7 @@ all: PatternFinder
 
 
 PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o
-	g++ main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o -o PatternFinder -pthread
+	g++ -g main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o -o PatternFinder -pthread
 main.o: main.cpp
 	g++ -g -c -std=c++11 main.cpp -pthread
 Forest.o: Forest.cpp

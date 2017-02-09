@@ -10,6 +10,8 @@
     #include "sys/sysinfo.h"
 	#include <sys/wait.h>
 	#include <unistd.h>
+	#include "sys/times.h"
+	#include "sys/vtimes.h"
 #endif
 #include <string.h>
 #include <sstream>
@@ -20,12 +22,24 @@
 #include "TypeDefines.h"
 using namespace std;
 
+static bool init = false;
+#if defined(_WIN64) || defined(_WIN32)
+	static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
+	static int numProcessors;
+	static HANDLE self;
+	static SYSTEM_INFO sysInfo;
+	static FILETIME ftime, fsys, fuser;
+#elif defined(__linux__)
+	static clock_t lastCPU, lastSysCPU, lastUserCPU;
+	static int numProcessors;
+#endif
 class MemoryUtils
 {
 public:
 	#pragma region MemoryUtilities
 
 	static void print_trace()
+
 	{
 		
 #if defined(_WIN64) || defined(_WIN32)
@@ -121,6 +135,94 @@ public:
 		{
 			return false;
 		}
+	}
+
+	static double CPULoad()
+	{
+#if defined(_WIN64) || defined(_WIN32)
+		
+		if(!init)
+		{
+			GetSystemInfo(&sysInfo);
+			numProcessors = sysInfo.dwNumberOfProcessors;
+
+			GetSystemTimeAsFileTime(&ftime);
+			memcpy(&lastCPU, &ftime, sizeof(FILETIME));
+
+			self = GetCurrentProcess();
+			GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
+			memcpy(&lastSysCPU, &fsys, sizeof(FILETIME));
+			memcpy(&lastUserCPU, &fuser, sizeof(FILETIME));
+			this_thread::sleep_for(std::chrono::milliseconds(500));
+
+			init = true;
+		}
+
+		ULARGE_INTEGER now, sys, user;
+		double percent;
+
+		GetSystemTimeAsFileTime(&ftime);
+		memcpy(&now, &ftime, sizeof(FILETIME));
+
+		GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
+		memcpy(&sys, &fsys, sizeof(FILETIME));
+		memcpy(&user, &fuser, sizeof(FILETIME));
+		percent = (sys.QuadPart - lastSysCPU.QuadPart) +
+			(user.QuadPart - lastUserCPU.QuadPart);
+		percent /= (now.QuadPart - lastCPU.QuadPart);
+		//percent /= numProcessors;
+		lastCPU = now;
+		lastUserCPU = user;
+		lastSysCPU = sys;
+
+		return percent * 100;
+#elif defined(__linux__)
+
+	if(!init)
+	{
+		FILE* file;
+		struct tms timeSample;
+		char line[128];
+
+		lastCPU = times(&timeSample);
+		lastSysCPU = timeSample.tms_stime;
+		lastUserCPU = timeSample.tms_utime;
+
+		file = fopen("/proc/cpuinfo", "r");
+		numProcessors = 0;
+		while(fgets(line, 128, file) != NULL){
+			if (strncmp(line, "processor", 9) == 0) numProcessors++;
+		}
+		fclose(file);
+		
+		this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		init = true;
+	}
+
+    struct tms timeSample;
+    clock_t now;
+    double percent;
+
+    now = times(&timeSample);
+    if (now <= lastCPU || timeSample.tms_stime < lastSysCPU ||
+        timeSample.tms_utime < lastUserCPU){
+        //Overflow detection. Just skip this value.
+        percent = -1.0;
+    }
+    else{
+        percent = (timeSample.tms_stime - lastSysCPU) +
+            (timeSample.tms_utime - lastUserCPU);
+        percent /= (now - lastCPU);
+        //percent /= numProcessors;
+        percent *= 100;
+    }
+    lastCPU = now;
+    lastSysCPU = timeSample.tms_stime;
+    lastUserCPU = timeSample.tms_utime;
+
+    return percent;
+#endif
 	}
 
 	static PListType FileSize(string fileName)

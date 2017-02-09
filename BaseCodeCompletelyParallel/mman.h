@@ -43,7 +43,7 @@
 
 void*   mmap(void *addr, PListType len, int prot, int flags, int fildes, off_t off);
 //DWORD   getgranularity (void);
-void*   mmap64 (void *addr, PListType len, int prot, int flags, int fd,PListType offset);
+void*   mmap64 (void *addr, PListType len, int prot, int flags, int fd, unsigned long long offset);
 int     munmap(void *addr, PListType len);
 int     _mprotect(void *addr, PListType len, int prot);
 int     msync(void *addr, PListType len, int flags);

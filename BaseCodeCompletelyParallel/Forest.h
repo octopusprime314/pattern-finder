@@ -16,7 +16,12 @@
 
 using namespace std;
 #define ARCHIVE_FOLDER LOGGERPATH
-#define READMEPATH "../../ReadMe.txt"
+#if defined(_WIN64) || defined(_WIN32)
+	#define READMEPATH "../../ReadMe.txt"
+#elif defined(__linux__)
+	#define READMEPATH "../ReadMe.txt"
+#endif
+
 
 typedef std::vector<map<PatternType, PListType>>::iterator it_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;

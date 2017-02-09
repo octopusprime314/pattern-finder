@@ -58,7 +58,7 @@ static DWORD __map_mmap_prot_file(const int prot)
 
 void*
 mmap64 (void *addr, PListType len, int prot, int flags, int fildes,
-		PListType off)
+		unsigned long long off)
 {
 	HANDLE fm, h;
     
@@ -74,7 +74,7 @@ mmap64 (void *addr, PListType len, int prot, int flags, int fildes,
 	const DWORD protect = __map_mmap_prot_page(prot);
     const DWORD desiredAccess = __map_mmap_prot_file(prot);
 
-    const PListType maxSize = (PListType)off + (PListType)len;
+    const unsigned long long maxSize = (PListType)off + (PListType)len;
 	const DWORD dwMaxSizeLow = maxSize & 0x00000000FFFFFFFF;
 	const DWORD dwMaxSizeHigh = ((maxSize >> 32) & 0x00000000FFFFFFFF);
 

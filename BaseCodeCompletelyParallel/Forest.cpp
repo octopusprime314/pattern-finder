@@ -64,8 +64,7 @@ Forest::Forest(int argc, char **argv)
 		gatedMutexes.push_back(new mutex());
 	}
 
-
-
+	
 	//main thread is a hardware thread so dispatch threads requested minus 1
 	int threadsToDispatch = 0;
 	if(findBestThreadNumber)
@@ -74,12 +73,6 @@ Forest::Forest(int argc, char **argv)
 	}
 	threadsToDispatch = numThreads - 1;
 
-	//Assume start with RAM
-	usedRAM.resize(threadsToDispatch);
-	for(int i = 0; i < threadsToDispatch; i++)
-	{
-		usedRAM[i] = true;
-	}
 
 	memoryCeiling = (PListType)MemoryUtils::GetAvailableRAMMB() - 1000;
 
@@ -92,49 +85,67 @@ Forest::Forest(int argc, char **argv)
 	}
 
 	thread *memoryQueryThread = NULL;
-	//if(!usingPureRAM)
-	//{
-		//Kick off thread that processes how much memory the program uses at a certain interval
-		memoryQueryThread = new thread(&Forest::MemoryQuery, this);
-	//}
 	thread *msyncThread = NULL;
-	if(!usingPureRAM)
-	{
-		//Kick off thread that processes how much memory the program uses at a certain interval
-		msyncThread = new thread(&Forest::MonitorMSYNCThreads, this);
-	}
-
+	
 	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
 	stringstream crappy;
 	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
 	Logger::WriteLog(crappy.str());
-	for(int z = 0; z < threadsToDispatch; z++)
-	{
-		currentLevelVector.push_back(0);
-		activeThreads.push_back(false);
-	}
+	
 	for(f = 0; f < files.size(); f++)
 	{
 		PListType earlyApproximation = files[f]->fileString.size()/(256);
+		unordered_map<uint8_t, double> threadMap;
 
-		for(unsigned int threadIteration = 0; threadIteration < testIterations; threadIteration = numThreads)
+		for(unsigned int threadIteration = 0; threadIteration <= testIterations; threadIteration = threadsToDispatch)
 		{
-			//Initialize all possible values for the first list to NULL
-			for(int i = 0; i < 256*threadsToDispatch; i++)
+			fileID = 0;
+			initTime.Start();
+
+			prevFileNameList.clear();
+			newFileNameList.clear();
+			prevFileNameList.resize(numThreads - 1);
+			newFileNameList.resize(numThreads - 1);
+
+			//if(!usingPureRAM)
+			//{
+				//Kick off thread that processes how much memory the program uses at a certain interval
+				memoryQueryThread = new thread(&Forest::MemoryQuery, this);
+			//}
+
+			if(!usingPureRAM)
 			{
-				prevPListArray->push_back(NULL);
+				//Kick off thread that processes how much memory the program uses at a certain interval
+				msyncThread = new thread(&Forest::MonitorMSYNCThreads, this);
 			}
 
+			//Initialize all possible values for the first list to NULL
+			prevPListArray->resize(256*threadsToDispatch);
+			for(int i = 0; i < 256*threadsToDispatch; i++)
+			{
+				(*prevPListArray)[i] = NULL;
+			}
+
+			//Assume start with RAM
+			usedRAM.resize(threadsToDispatch);
+			for(int i = 0; i < threadsToDispatch; i++)
+			{
+				usedRAM[i] = true;
+			}
+
+			currentLevelVector.resize(threadsToDispatch);
+			activeThreads.resize(threadsToDispatch);
+			for(int i = 0; i < threadsToDispatch; i++)
+			{
+				currentLevelVector[i] = 0;
+				activeThreads[i] = false;
+			}
 
 			memoryPerThread = memoryBandwidthMB/threadsToDispatch;
 			cout << "Memory that can be used per thread: " << memoryPerThread << " MB." << endl;
 
 			StopWatch time;
-
-			StopWatch firstLevelTime;
-
 			
-
 			PListType overallFilePosition = 0;
 
 			//make this value 1 so calculations work correctly then reset
@@ -251,14 +262,6 @@ Forest::Forest(int argc, char **argv)
 						localWorkingThreads.push_back(i);
 					}
 					WaitForThreads(localWorkingThreads, threadPlantSeedPoolRAM); 
-
-
-					firstLevelTime.Stop();
-					crappy.str("");
-					crappy << "Time taken to finish first level: ";
-					Logger::WriteLog(crappy.str());
-					cout << crappy.str() << endl;
-					firstLevelTime.Display();
 
 					//double totalStats = 0.0f;
 					//double avgStats = 0.0f;
@@ -386,19 +389,18 @@ Forest::Forest(int argc, char **argv)
 
 			DisplayPatternsFound();       
 
-			StopWatch RestOfLevelTime;
-
 			//Start searching
 			if(2 <= maximum)
 			{
 				NextLevelTreeSearch(2);
 			}
 
-			RestOfLevelTime.Stop();
-			crappy.str("");
-			crappy << "Time taken to finish levels after first: ";
-			Logger::WriteLog(crappy.str());
-			RestOfLevelTime.Display();
+			time.Stop();
+			threadMap[threadsToDispatch] = time.GetTime();
+			time.Display();
+			stringstream buffery;
+			buffery << threadsToDispatch << " threads were used to process file" << endl;
+			Logger::WriteLog(buffery.str());
 
 			for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
 			{
@@ -406,6 +408,7 @@ Forest::Forest(int argc, char **argv)
 				stringstream buff;
 				buff << "Level " << j + 1 << " count is " << levelRecordings[j] << /*" with most common pattern being: \"" << mostCommonPattern[j] << "\" occured " << mostCommonPatternCount[j] << " and coverage was " << coverage[j] << "%" <<*/ endl;
 				Logger::WriteLog(buff.str());
+				levelRecordings[j] = 0;
 				//cout << buff.str();
 			}
 
@@ -427,20 +430,44 @@ Forest::Forest(int argc, char **argv)
 			}
 			globalPListArray->clear();
 
-			time.Stop();
-			time.Display();
-			cout << threadsToDispatch << " threads were used to process file" << endl;
-
-			//numThreads = (numThreads * 2) - 1;
-			//threadsToDispatch = numThreads - 1;
+			numThreads = (numThreads * 2) - 1;
+			threadsToDispatch = numThreads - 1;
+			
 
 			//reset global level in case we are testing
 			globalLevel = 1;
 
 			crappy.str("");
-			crappy << "File Size " << files[f]->fileStringSize << " and eliminated patterns " << eradicatedPatterns << endl;
+			crappy << "File Size " << files[f]->fileStringSize << " and eliminated patterns " << eradicatedPatterns << "\n\n\n";
 			Logger::WriteLog(crappy.str());
 
+			if(memoryQueryThread != NULL)
+			{
+				processingFinished = true;
+				memoryQueryThread->join();
+				delete memoryQueryThread;
+				memoryQueryThread = NULL;
+				processingFinished = false;
+			}
+
+			if(msyncThread != NULL)
+			{
+				processingMSYNCFinished = true;
+				msyncThread->join();
+				delete msyncThread;
+				msyncThread = NULL;
+				processingMSYNCFinished = false; 
+			}
+			eradicatedPatterns = 0;
+		}
+
+		stringstream loggingIt;
+		for(pair<uint32_t, double> threadTime : threadMap)
+		{
+			loggingIt.str("");
+			loggingIt << "Thread " << threadTime.first << " processed for " << threadTime.second << " milliseconds!\n";
+			Logger::WriteLog(loggingIt.str());
+			cout << loggingIt.str();
 		}
 
 		//Close file handle once and for all
@@ -450,21 +477,6 @@ Forest::Forest(int argc, char **argv)
 
 		delete files[f];
 
-	}
-
-
-	if(memoryQueryThread != NULL)
-	{
-		processingFinished = true;
-		memoryQueryThread->join();
-		delete memoryQueryThread;
-	}
-
-	if(msyncThread != NULL)
-	{
-		processingMSYNCFinished = true;
-		msyncThread->join();
-		delete msyncThread;
 	}
 
 	for(int i = 0; i < 256; i++)
@@ -501,7 +513,7 @@ void Forest::MonitorMSYNCThreads()
 {
 	int prevIndex = 0;
 	int currIndex = 0;
-	while(!processingMSYNCFinished)
+	while(!processingMSYNCFinished || currIndex != PListArchive::threadKillList.size())
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(100));
 		prevIndex = currIndex;
@@ -544,6 +556,8 @@ void Forest::MonitorMSYNCThreads()
 			PListArchive::threadKillList[i] = NULL;
 		}
 	}
+	PListArchive::threadKillList.resize(0);
+	PListArchive::threadKillList.clear();
 }
 
 void Forest::MemoryQuery()
@@ -577,11 +591,15 @@ void Forest::MemoryQuery()
 			{
 				loggingIt << "Thread " << j << " is at level: " << currentLevelVector[j] << endl;
 			}
-			cout << loggingIt.str() << endl;
+			cout << loggingIt.str();
 			Logger::WriteLog(loggingIt.str());
 			loggingIt.str("");
-			loggingIt << "Percentage of file processed is: " << (((double)eradicatedPatterns)/((double)files[f]->fileStringSize))*100.0f;
-			cout << loggingIt.str() << endl;
+			loggingIt << "Percentage of file processed is: " << (((double)eradicatedPatterns)/((double)files[f]->fileStringSize))*100.0f << "%\n";
+			cout << loggingIt.str();
+			Logger::WriteLog(loggingIt.str());
+			loggingIt.str("");
+			loggingIt << "Percentage of cpu usage: " << MemoryUtils::CPULoad() << "%\n";
+			cout << loggingIt.str();
 			Logger::WriteLog(loggingIt.str());
 			initTime.DisplayNow();
 		}
@@ -839,12 +857,9 @@ void Forest::CommandLineParser(int argc, char **argv)
 	testIterations = 1;
 	if (findBestThreadNumber)
 	{
-		numThreads = 1;
-		testIterations = concurentThreadsSupported - 1;
+		numThreads = 2;
+		testIterations = concurentThreadsSupported;
 	}
-
-	prevFileNameList.resize(numThreads - 1);
-	newFileNameList.resize(numThreads - 1);
 }
 
 bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount)
@@ -1278,11 +1293,6 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 					{
 						(*localThreadPool)[localWorkingThreads[k]].get();
 
-						/*stringstream buff;
-						buff << "Recursive thread " << level << " finished all processing" << endl;
-						Logger::WriteLog(buff.str());*/
-						//cout << buff.str();
-
 						threadsFinished++;
 					}
 					else
@@ -1290,22 +1300,17 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 						(*localThreadPool)[localWorkingThreads[k]].get();
 						threadsFinished++;
 
-						StopWatch time = initTime;
-						time.Stop();
-						time.Display();
-
 						countMutex->lock();
 						activeThreads[k] = false;
 						countMutex->unlock();
 
-
-						stringstream buff;
-						buff << "Thread " << localWorkingThreads[k] << " finished all processing" << endl;
-						Logger::WriteLog(buff.str());
-						//cout << buff.str();
-
+						if(level != 0)
+						{
+							stringstream buff;
+							buff << "Thread " << localWorkingThreads[k] << " finished all processing" << endl;
+							Logger::WriteLog(buff.str());
+						}
 					}
-
 				}
 				else
 				{
@@ -1317,43 +1322,11 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 			{
 				localWorkingThreads.push_back(currentThreads[i]);
 			}
-
-			//Used to make sure the command prompt never idles to keep it alive on linux
-			//Prints time spent every minute on program
-			if(!recursive && oneSecondTimer.GetTime() > 60000.0f)
-			{
-				oneSecondTimer.Start();
-				cout << "Finished threads: ";
-				for(int j = 0; j < activeThreads.size(); j++)
-				{
-					if(!activeThreads[j])
-					{
-						cout << j << ", ";
-					}
-				}
-				cout << endl;
-				initTime.DisplayNow();
-			}
 		}
 	}
 	catch(exception e)
 	{
 		cout << e.what() << endl;
-	}
-
-	//Final assessment
-	if(!recursive)
-	{
-		cout << "Finished threads: ";
-		for(int j = 0; j < activeThreads.size(); j++)
-		{
-			if(!activeThreads[j])
-			{
-				cout << j << ", ";
-			}
-		}
-		cout << endl;
-		initTime.DisplayNow();
 	}
 }
 
@@ -2112,10 +2085,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 	}
 	coverage[currLevel - 1] += ((float)(interimCount))/((float)files[f]->fileStringSize);
 
-	stringstream buffy;
-	buffy << currLevel << " with a total of " << levelRecordings[currLevel - 1] << " using HD" << endl;
-	Logger::WriteLog(buffy.str());
-
 	if(currLevel > currentLevelVector[threadNum])
 	{
 		currentLevelVector[threadNum] = currLevel;
@@ -2761,6 +2730,13 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					delete localThreadPool;
 					morePatternsToFind = false;
 				}
+				else
+				{
+					for(int piss = 0; piss < pListLengths.size(); piss++)
+					{
+						delete (*prevLocalPListArray)[piss];
+					}
+				}
 			}
 			else
 			{
@@ -2909,6 +2885,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				threadCountage = 0;
 			}
 		}
+		delete prevLocalPListArray;
 	}
 	else
 	{
@@ -2935,6 +2912,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				delete (*prevLocalPListArray)[i];
 			}
 		}
+		delete prevLocalPListArray;
 	}
 	globalStringConstruct.resize(totalCount);
 	linearList.reserve(totalCount);
@@ -3266,10 +3244,10 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 		}
 	}
 
-	if(prevLocalPListArray != NULL)
+	/*if(prevLocalPListArray != NULL)
 	{
 		delete prevLocalPListArray;
-	}
+	}*/
 
 	if(globalLocalPListArray != NULL)
 	{
