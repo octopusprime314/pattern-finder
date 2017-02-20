@@ -12,7 +12,15 @@
 #include "PListArchive.h"
 #include "StopWatch.h"
 #include <array>
+#if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
+#elif defined(__linux__)
+#include "sys/stat.h"
+#include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <stdio.h>
+#endif
 
 using namespace std;
 #define ARCHIVE_FOLDER LOGGERPATH
@@ -74,6 +82,8 @@ private:
 	bool usingPureHD;
 	vector<vector<string>> prevFileNameList;
 	vector<vector<string>> newFileNameList;
+	vector<string> filesToBeRemoved;
+	mutex filesToBeRemovedLock;
 	double MemoryUsedPriorToThread;
 	double MemoryUsageAtInception;
 	vector<bool> usedRAM;
@@ -92,6 +102,7 @@ private:
 	map<unsigned int, unsigned int> chunkIndexToFileChunk;
 	vector<string> fileChunks;
 	vector<double> statisticsModel;
+	int f;
 
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
@@ -104,6 +115,7 @@ private:
 	void FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsigned int z);
 	string CreateChunkFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo);
 	string CreateChunkFile(string fileName, TreeHD &leaf, LevelPackage levelInfo);
+	PListArchive* CreateChunkFileHandle(string fileName, TreeHD& leaf, LevelPackage levelInfo);
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 	void DeleteChunk(string fileChunkName, string folderLocation);
 	void DeleteArchives(vector<string> fileNames, string folderLocation);
@@ -127,8 +139,6 @@ private:
 
 
 public:
-
-	int f;
 
 	static bool outlierScans;
 	static bool overMemoryCount;

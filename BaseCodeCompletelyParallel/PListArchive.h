@@ -10,6 +10,7 @@
 #include <list>
 #include <thread>
 #include <deque>
+#include <unordered_map>
 #if defined(_WIN64) || defined(_WIN32)
 	#include "mman.h"
 	#include <io.h>
@@ -26,8 +27,7 @@
 #endif
 
 using namespace std;
-const static PListType hdSectorSize = 2097152;
-const static PListType totalLoops = hdSectorSize/sizeof(PListType);
+
 
 class PListArchive
 {
@@ -58,6 +58,22 @@ public:
 	static mutex syncLock;
 	list<PListType*> memLocals;
 	PListType totalWritten;
+	bool created;
+	bool patternsDumped;
+	bool dataWritten;
+
+	static vector<int> prevFileHandleList;
+	static vector<int> newFileHandleList;
+	static mutex fileLock;
+	static unordered_map<string, int> fileNameToHandleMapping;
+	static mutex mapLock;
+	static vector<PListType*> mappedList;
+	static PListType hdSectorSize;
+	static PListType totalLoops;
+	static PListType writeSize;
+
+	static mutex charLock;
+	static vector<char*> charList;
 
 private:
 

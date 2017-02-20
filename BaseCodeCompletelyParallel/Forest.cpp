@@ -3,21 +3,21 @@
 #include <locale>
 #include <list>
 #include <algorithm>
-#if defined(_WIN64) || defined(_WIN32)
-#include <direct.h>
-#elif defined(__linux__)
-#include "sys/stat.h"
-#endif
+
 
 bool Forest::outlierScans = false;
 bool Forest::overMemoryCount = false;
 Forest::Forest(int argc, char **argv)
 {
 #if defined(_WIN64) || defined(_WIN32)
-	system("del ..\\..\\Log\\PList*.txt");
+	//Hard code page size to 2 MB for windows
+	PListArchive::hdSectorSize = 2097152;
 #elif defined(__linux__)
-	system("rm -r ../Log/PList*");
+	PListArchive::hdSectorSize = sysconf (_SC_PAGESIZE);
 #endif
+
+	PListArchive::totalLoops = PListArchive::hdSectorSize/sizeof(PListType);
+	PListArchive::writeSize = PListArchive::hdSectorSize/8;
 
 	f = 0;
 	writingFlag = false;
@@ -97,8 +97,27 @@ Forest::Forest(int argc, char **argv)
 		PListType earlyApproximation = files[f]->fileString.size()/(256);
 		unordered_map<uint8_t, double> threadMap;
 
+		chunkIndexToFileChunk.clear();
+
 		for(unsigned int threadIteration = 0; threadIteration <= testIterations; threadIteration = threadsToDispatch)
 		{
+
+#if defined(_WIN64) || defined(_WIN32)
+			system("del ..\\..\\Log\\PList*.txt");
+#elif defined(__linux__)
+			system("rm -r ../Log/PList*");
+#endif
+
+			stringstream loggingIt;
+			loggingIt.str("");
+			std::string::size_type i = files[f]->fileName.find(DATA_FOLDER);
+			string nameage = files[f]->fileName;
+			if (i != std::string::npos)
+				nameage.erase(i, sizeof(DATA_FOLDER)-1);
+
+			loggingIt << "\nFile processing starting for: " << nameage << endl << endl;
+			cout << loggingIt.str();
+
 			fileID = 0;
 			initTime.Start();
 
@@ -182,11 +201,10 @@ Forest::Forest(int argc, char **argv)
 			files[f]->copyBuffer->clear();
 			files[f]->copyBuffer->seekg(0, ios::beg);
 
-
+			cout << "Number of threads processing file is " << threadsToDispatch << endl;
 
 			for(int z = 0; z < fileIterations; z++)
 			{
-				cout << "Number of threads processing file is " << threadsToDispatch << endl;
 				PListType position = 0;
 				PListType patternCount = 0;
 				if(files[f]->fileStringSize <= fileReadSize*z + fileReadSize)
@@ -430,8 +448,11 @@ Forest::Forest(int argc, char **argv)
 			}
 			globalPListArray->clear();
 
-			numThreads = (numThreads * 2) - 1;
-			threadsToDispatch = numThreads - 1;
+			if(findBestThreadNumber)
+			{
+				numThreads = (numThreads * 2) - 1;
+				threadsToDispatch = numThreads - 1;
+			}
 			
 
 			//reset global level in case we are testing
@@ -460,8 +481,17 @@ Forest::Forest(int argc, char **argv)
 			}
 			eradicatedPatterns = 0;
 		}
-
+		
 		stringstream loggingIt;
+		loggingIt.str("");
+		std::string::size_type i = files[f]->fileName.find(DATA_FOLDER);
+		string nameage = files[f]->fileName;
+		if (i != std::string::npos)
+			nameage.erase(i, sizeof(DATA_FOLDER)-1);
+
+		loggingIt << "\nEnded processing for: " << nameage << endl << endl;
+		cout << loggingIt.str();
+
 		for(pair<uint32_t, double> threadTime : threadMap)
 		{
 			loggingIt.str("");
@@ -476,6 +506,12 @@ Forest::Forest(int argc, char **argv)
 		files[f]->fileString.reserve(0);
 
 		delete files[f];
+
+		if(findBestThreadNumber)
+		{
+			numThreads = 2;
+			threadsToDispatch = numThreads - 1;
+		}
 
 	}
 
@@ -582,6 +618,18 @@ void Forest::MemoryQuery()
 			exit(0);
 		}
 
+		/*filesToBeRemovedLock.lock();
+		if(filesToBeRemoved.size() > 0)
+		{
+			for(int z = 0; z < filesToBeRemoved.size(); z++)
+			{
+				remove(filesToBeRemoved[z].c_str());
+			}
+			filesToBeRemoved.clear();
+		}
+		filesToBeRemovedLock.unlock();
+		*/
+
 		if(swTimer.GetTime() > 10000.0f)
 		{
 			loggingIt.str("");
@@ -601,6 +649,7 @@ void Forest::MemoryQuery()
 			loggingIt << "Percentage of cpu usage: " << MemoryUtils::CPULoad() << "%\n";
 			cout << loggingIt.str();
 			Logger::WriteLog(loggingIt.str());
+			//cout << "Memory Maps in service: " << PListArchive::mappedList.size() << endl;
 			initTime.DisplayNow();
 		}
 	}
@@ -694,37 +743,67 @@ void Forest::CommandLineParser(int argc, char **argv)
 			string header = DATA_FOLDER;
 			tempFileName.append(argv[i + 1]);
 			string fileTest = argv[i + 1];
-			if(fileTest.find('.') != string::npos)
+			if(fileTest.find('.') != string::npos && fileTest.find('-') == string::npos) 
 			{
 				files.push_back(new FileReader(tempFileName));
+				i++;
 			}
 			else
 			{
+#if defined(_WIN64) || defined(_WIN32)
 				DIR *dir;
 				struct dirent *ent;
-				if ((dir = opendir (tempFileName.c_str())) != NULL) 
+				if ((dir = opendir (header.c_str())) != NULL) 
 				{
+					Logger::WriteLog("Files to be processed: \n");
 					/* print all the files and directories within directory */
 					while ((ent = readdir (dir)) != NULL) 
 					{
-						printf ("%s\n", ent->d_name);
-						string test = ent->d_name;
-						if(test.size() > 4)
+						if(*ent->d_name)
 						{
-							string tempName = header;
-							tempName.append(ent->d_name);
-							files.push_back(new FileReader(tempName));
+							string fileName = string(ent->d_name);
+
+							if(!fileName.empty() && fileName != "." && fileName !=  "..")
+							{
+								string name = string(ent->d_name);
+								Logger::WriteLog(name + "\n");
+								cout << name << endl;
+								string tempName = header;
+								tempName.append(ent->d_name);
+								files.push_back(new FileReader(tempName));
+							}
 						}
 					}
 					closedir (dir);
 				} else
 				{
-					/* could not open directory */
-					perror ("");
+					cout << "Problem reading from directory!" << endl;
 				}
+#elif defined(__linux__)
+				DIR *dir;
+				struct dirent *entry;
+
+				if (!(dir = opendir(header.c_str())))
+					return;
+				if (!(entry = readdir(dir)))
+					return;
+				do {
+					
+					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+						continue;
+
+					string name = string(entry->d_name);
+					Logger::WriteLog(name + "\n");
+					cout << name << endl;
+					string tempName = header;
+					tempName.append(entry->d_name);
+					files.push_back(new FileReader(tempName));
+					
+				} while (entry = readdir(dir));
+				closedir(dir);
+#endif		
 			}
 			fileEnter = true;
-			i++;
 		}
 		else if (arg.compare("-v") == 0)
 		{
@@ -854,7 +933,7 @@ void Forest::CommandLineParser(int argc, char **argv)
 
 	int bestThreadCount = 0;
 	double fastestTime = 1000000000.0f;
-	testIterations = 1;
+	testIterations = 0;
 	if (findBestThreadNumber)
 	{
 		numThreads = 2;
@@ -1012,7 +1091,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 					threadFiles[threadNumber]->WriteArchiveMapMMAP(*(*prevLocalPListArray)[prevIndex]);
 					delete (*prevLocalPListArray)[prevIndex];
 
-					if(threadFiles[threadNumber]->totalWritten >= 262144) 
+					if(threadFiles[threadNumber]->totalWritten >= PListArchive::writeSize) 
 					{
 						threadFiles[threadNumber]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 					}
@@ -1112,7 +1191,7 @@ void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& 
 
 				delete (*prevLocalPListArray)[i];
 
-				if(threadFile->totalWritten >= 262144) 
+				if(threadFile->totalWritten >= PListArchive::writeSize) 
 				{
 					threadFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 				}
@@ -1342,15 +1421,15 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 	if(prevFileNames.size() >= threadsToDispatch)
 	{
 
-		Logger::WriteLog("Not distributing files!");
+		//Logger::WriteLog("Not distributing files!");
 		for(int a = 0; a < prevFileNames.size(); a++)
 		{
 
 			newFileList[threadNumber].push_back(prevFileNames[a]);
 
-			stringstream stringbuilder;
+			/*stringstream stringbuilder;
 			stringbuilder << "Original file being non distributed : " << newFileList[threadNumber][newFileList[threadNumber].size() - 1] << endl;
-			Logger::WriteLog(stringbuilder.str());
+			Logger::WriteLog(stringbuilder.str());*/
 
 			//Increment chunk
 			threadNumber++;
@@ -1363,7 +1442,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 	else
 	{
 
-		Logger::WriteLog("Distributing files!\n");
+		//Logger::WriteLog("Distributing files!\n");
 
 		for(unsigned int a = 0; a < threadsToDispatch; a++)
 		{
@@ -1376,9 +1455,9 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 			threadFiles.push_back(new PListArchive(threadFilesNames.str(), true));
 			newFileList[a].push_back(threadFilesNames.str());
 
-			stringstream stringbuilder;
+			/*stringstream stringbuilder;
 			stringbuilder << "New file being distributed : " << threadFilesNames.str() << " at level " << levelInfo.currLevel << " at inception " << levelInfo.inceptionLevelLOL << endl;
-			Logger::WriteLog(stringbuilder.str());
+			Logger::WriteLog(stringbuilder.str());*/
 
 		}
 
@@ -2312,9 +2391,9 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 	}
 	coverage[currLevel - 1] += ((float)(interimCount))/((float)files[f]->fileStringSize);
 
-	stringstream buffy;
-	buffy << currLevel << " with a total of " << levelRecordings[currLevel - 1] << endl;
-	Logger::WriteLog(buffy.str());
+	//stringstream buffy;
+	//buffy << currLevel << " with a total of " << levelRecordings[currLevel - 1] << endl;
+	//Logger::WriteLog(buffy.str());
 
 	if(currLevel > currentLevelVector[threadNum])
 	{
@@ -2933,7 +3012,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		PListType prevStride = 0;
 
 		totalTallyRemovedPatterns = 0;
-		PListType prevPListSize = prevLocalPListArray->size();
 		PListType minIndex = -1;
 		PListType maxIndex = 0;
 		PListType stringIndexer = 0;
@@ -3455,7 +3533,44 @@ string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage level
 	{
 		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
 		// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
-		if(archiveCollective->totalWritten >= 262144 && overMemoryCount) 
+		//if(archiveCollective->totalWritten >= PListArchive::writeSize && overMemoryCount) 
+		//{
+		//	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
+		//}
+		iterator = leaf.leaves.erase(iterator);
+	}
+	map<string, TreeHD> test;
+	test.swap(leaf.leaves);
+	leaf.pList.clear();
+
+	archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
+	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
+	archiveCollective->CloseArchiveMMAP();
+
+	delete archiveCollective;
+
+	return fileNameToReOpen;
+}
+
+PListArchive* Forest::CreateChunkFileHandle(string fileName, TreeHD& leaf, LevelPackage levelInfo)
+{
+	string fileNameToReOpen;
+
+	stringstream archiveName;
+	string archiveFileType = "PListChunks";
+
+	archiveName << archiveFileType << fileName << "_" << leaf.leaves.size();
+
+	PListArchive* archiveCollective = new PListArchive(archiveName.str(), true);
+	fileNameToReOpen = archiveName.str();
+	typedef std::map<string, TreeHD>::iterator it_type;
+
+	it_type iterator = leaf.leaves.begin();
+	while(iterator != leaf.leaves.end()) 
+	{
+		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
+		// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
+		if(archiveCollective->totalWritten >= PListArchive::writeSize && overMemoryCount) 
 		{
 			archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 		}
@@ -3467,11 +3582,11 @@ string Forest::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage level
 
 	archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
 	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true/*, true*/);
-	archiveCollective->CloseArchiveMMAP();
+	//archiveCollective->CloseArchiveMMAP();
 
-	delete archiveCollective;
+	//delete archiveCollective;
 
-	return fileNameToReOpen;
+	return archiveCollective;
 }
 
 string Forest::CreateChunkFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo)
@@ -3495,7 +3610,7 @@ string Forest::CreateChunkFile(string fileName, vector<vector<PListType>*> leave
 			stringbuilder << ((char)i);
 			archiveCollective->WriteArchiveMapMMAP(*leaves[i], stringbuilder.str(), false);
 			// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
-			if(archiveCollective->totalWritten >= 262144 && overMemoryCount) 
+			if(archiveCollective->totalWritten >= PListArchive::writeSize && overMemoryCount) 
 			{
 				archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 			}
@@ -3522,36 +3637,21 @@ void Forest::DeleteChunks(vector<string> fileNames, string folderLocation)
 		fileNameToBeRemoved.append(fileNames[i].c_str());
 		fileNameToBeRemoved.append(".txt");
 
-		if( remove( fileNameToBeRemoved.c_str() ) != 0)
-		{
-			/*stringstream builder;
-			builder << "Chunks Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
-			Logger::WriteLog(builder.str());*/
-		}
-		else
-		{
-			/*stringstream builder;
-			builder << "Chunk succesfully deleted " << fileNameToBeRemoved << '\n';
-			Logger::WriteLog(builder.str());*/
-		}
+		//filesToBeRemovedLock.lock();
+		//filesToBeRemoved.push_back(fileNameToBeRemoved);
+		//filesToBeRemovedLock.unlock();
+
+		remove( fileNameToBeRemoved.c_str());
 
 		string fileNameToBeRemovedPatterns = folderLocation;
 		fileNameToBeRemovedPatterns.append(fileNames[i].c_str());
 		fileNameToBeRemovedPatterns.append("Patterns.txt");
 
-		if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0)
-		{
-			/*stringstream builder;
-			builder << "Chunks Failed to delete " << fileNameToBeRemovedPatterns << ": " << strerror(errno) << '\n';
-			Logger::WriteLog(builder.str());*/
+		//filesToBeRemovedLock.lock();
+		//filesToBeRemoved.push_back(fileNameToBeRemovedPatterns);
+		//filesToBeRemovedLock.unlock();
 
-		}
-		else
-		{
-			/*stringstream builder;
-			builder << "Chunk succesfully deleted " << fileNameToBeRemovedPatterns << '\n';
-			Logger::WriteLog(builder.str());*/
-		}
+		remove( fileNameToBeRemovedPatterns.c_str() );
 	}
 }
 
@@ -3565,15 +3665,15 @@ void Forest::DeleteArchives(vector<string> fileNames, string folderLocation)
 
 		if( remove( fileNameToBeRemoved.c_str() ) != 0)
 		{
-			/*stringstream builder;
-			builder << "Archives Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
-			Logger::WriteLog(builder.str());*/
+			//stringstream builder;
+			//builder << "Archives Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+			//Logger::WriteLog(builder.str());
 		}
 		else
 		{
-			/*stringstream builder;
-			builder << "Archives succesfully deleted " << fileNameToBeRemoved << '\n';
-			Logger::WriteLog(builder.str());*/
+			//stringstream builder;
+			//builder << "Archives succesfully deleted " << fileNameToBeRemoved << '\n';
+			//Logger::WriteLog(builder.str());
 		}
 	}
 }
@@ -3586,15 +3686,15 @@ void Forest::DeleteArchive(string fileNames, string folderLocation)
 
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
-		/*stringstream builder;
-		builder << "Archive Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Archive Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 	else
 	{
-		/*stringstream builder;
-		builder << "Archive succesfully deleted " << fileNameToBeRemoved << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Archive succesfully deleted " << fileNameToBeRemoved << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 }
 void Forest::DeleteChunk(string fileChunkName, string folderLocation)
@@ -3606,15 +3706,15 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
-		/*stringstream builder;
-		builder << "Chunk Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Chunk Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 	else
 	{
-		/*stringstream builder;
-		builder << "Chunk succesfully deleted " << fileNameToBeRemoved << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Chunk succesfully deleted " << fileNameToBeRemoved << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 
 	string fileNameToBeRemovedPatterns = folderLocation;
@@ -3623,15 +3723,15 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 
 	if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0)
 	{
-		/*stringstream builder;
-		builder << "Chunk Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Chunk Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 	else
 	{
-		/*stringstream builder;
-		builder << "Chunk succesfully deleted " << fileNameToBeRemovedPatterns << '\n';
-		Logger::WriteLog(builder.str());*/
+		//stringstream builder;
+		//builder << "Chunk succesfully deleted " << fileNameToBeRemovedPatterns << '\n';
+		//Logger::WriteLog(builder.str());
 	}
 
 }

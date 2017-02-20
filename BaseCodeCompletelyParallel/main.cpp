@@ -14,7 +14,12 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	
+
+	//Makes total files handles at once 2048
+#if defined(_WIN64) || defined(_WIN32)
+	_setmaxstdio(2048);
+#endif
+
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetBreakAlloc(991);

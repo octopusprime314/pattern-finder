@@ -73,3 +73,4 @@ PatternDetectiveTCMallocCompletelyParallel/PatternDetective/My Amplifier XE Resu
 *.inspxe
 *.db3
 *.data
+*.o

@@ -39,7 +39,6 @@ public:
 	#pragma region MemoryUtilities
 
 	static void print_trace()
-
 	{
 		
 #if defined(_WIN64) || defined(_WIN32)

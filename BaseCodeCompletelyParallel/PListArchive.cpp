@@ -2,9 +2,21 @@
 #include "MemoryUtils.h"
 #include <exception>
 #include "Forest.h"
+#include <algorithm>
 
 vector<thread*> PListArchive::threadKillList;
 mutex PListArchive::syncLock;
+
+vector<int> PListArchive::prevFileHandleList;
+vector<int> PListArchive::newFileHandleList;
+mutex PListArchive::fileLock;
+unordered_map<string, int> PListArchive::fileNameToHandleMapping;
+
+mutex PListArchive::mapLock;
+vector<PListType*> PListArchive::mappedList;
+PListType PListArchive::hdSectorSize;
+PListType PListArchive::totalLoops;
+PListType PListArchive::writeSize;
 
 PListArchive::PListArchive(void)
 {
@@ -14,6 +26,9 @@ PListArchive::PListArchive(string fileName, bool create)
 {
 	try
 	{
+		dataWritten = false;
+		created = create;
+		patternsDumped = false;
 		totalWritten = 0;
 		mapper = NULL;
 		prevFileIndex = 0;
@@ -36,12 +51,37 @@ PListArchive::PListArchive(string fileName, bool create)
 	#endif
 			if(fd == -1)
 			{
+				stringstream shit;
+				shit << "Why are we truncating file " << file << endl;
+				Logger::WriteLog(shit.str());
+				cout << shit.str() << endl;
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
+			}
+
+			if(fd != -1)
+			{
+				fileLock.lock();
+				fileNameToHandleMapping[file] = fd;
+				fileLock.unlock();
+			}
+			else
+			{
 			}
 		}
 		else
 		{
-			fd = open(file.c_str(), O_RDWR);
+			if(fileNameToHandleMapping.find(file) != fileNameToHandleMapping.end())
+			{
+				fd = fileNameToHandleMapping[file];
+			}
+			else
+			{
+				//stringstream shit;
+				//shit << "Why are we re-opening file " << file << endl;
+				//Logger::WriteLog(shit.str());
+				//cout << shit.str() << endl;
+				fd = open(file.c_str(), O_RDONLY);
+			}
 		}
 
 		this->fileName = file;
@@ -64,7 +104,10 @@ PListArchive::PListArchive(string fileName, bool create)
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method PListArchive constructor -> " << e.what() << endl;
+		string error("Exception occurred in method PListArchive Costructor -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 }
 PListArchive::~PListArchive(void)
@@ -73,26 +116,94 @@ PListArchive::~PListArchive(void)
 
 void PListArchive::MappingError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
-	fileDescriptor = -1;
+
+#if defined(__linux__)
+	DIR *dp;
+   	struct dirent *ep;
+	
+	int pid = getpid();
+	stringstream folder;
+	folder << "/proc/" << pid << "/fd/";
+   	dp = opendir (folder.str().c_str());
+   	if (dp != NULL)
+     	{
+       		while (ep = readdir (dp))
+         		cout << ep->d_name << endl;
+       		(void) closedir (dp);
+     	}
+   	else
+     		perror ("Couldn't open the directory");
+
+	folder.str("");
+	folder << "/proc/" << pid << "/map_files/";
+	cout << folder.str() << endl;
+	dp = opendir (folder.str().c_str());
+	int counter = 0;
+   	if (dp != NULL)
+     	{
+       		while (ep = readdir (dp))
+			{
+         		//cout << ep->d_name << endl;
+				counter++;
+			}
+       		(void) closedir (dp);
+     	}
+   	else
+     		perror ("Couldn't open the directory");
+	cout << "Number of mapped files is: " << counter << endl;
+#endif
+
 	stringstream handle;
+	handle << "Errno is "<< errno << endl;
 	handle << "error mapping the file " << fileName << endl;
+	handle << "file handle list size: " << fileNameToHandleMapping.size() << endl;
+	handle << "file descriptor: " << fileDescriptor << endl;
+	handle << "was file created: " << created << endl;
+	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
+	cout << handle.str();
+	close(fileDescriptor);
+
+	fileLock.lock();
+	if(fileNameToHandleMapping.find(fileName) != fileNameToHandleMapping.end())
+	{
+		fileNameToHandleMapping.erase(fileName);
+	}
+	fileLock.unlock();
+
+	fileDescriptor = -1;
+	endOfFileReached = true;
 }
 	
 void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
-	fileDescriptor = -1;
 	stringstream handle;
+	handle << "Errno is "<< errno << endl;
 	handle << "error un-mapping the file " << fileName << endl;
+	handle << "file handle list size: " << fileNameToHandleMapping.size() << endl;
+	handle << "file descriptor: " << fileDescriptor << endl;
+	handle << "was file created: " << created << endl;
+	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
+	cout << handle.str();
+	close(fileDescriptor);
+
+	fileLock.lock();
+	if(fileNameToHandleMapping.find(fileName) != fileNameToHandleMapping.end())
+	{
+		fileNameToHandleMapping.erase(fileName);
+	}
+	fileLock.unlock();
+
+	fileDescriptor = -1;
+	endOfFileReached = true;
 }
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
 	close(fileDescriptor);
 	fileDescriptor = -1;
+	endOfFileReached = true;
 	stringstream handle;
 	handle << "error calling lseek() to 'stretch' the file " << fileName << endl;
 	Logger::WriteLog(handle.str());
@@ -102,6 +213,7 @@ void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
 	close(fileDescriptor);
 	fileDescriptor = -1;
+	endOfFileReached = true;
 	stringstream handle;
 	handle << "error writing last byte of the file " << fileName << endl;
 	Logger::WriteLog(handle.str());
@@ -127,6 +239,10 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 		{
 			
 			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
+
+			/*mapLock.lock();
+			PListArchive::mappedList.push_back(mapper);
+			mapLock.unlock();*/
 	
 			if (map == MAP_FAILED) 
 			{
@@ -224,11 +340,21 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				UnMappingError(fd, this->fileName);
 				return;
 			}
+			/*mapLock.lock();
+			std::vector<PListType*>::iterator found = find(mappedList.begin(), mappedList.end(), mapper);
+			if(found != mappedList.end())
+			{
+				mappedList.erase(found);
+			}
+			mapLock.unlock();*/
 		}
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method GetPListArchiveMMAP -> " << e.what() << endl;
+		string error("Exception occurred in method GetPListArchiveMMAP -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 }
 
@@ -253,12 +379,26 @@ void PListArchive::FlushMapList(list<PListType*> memLocalList, list<char*> charL
 {
 	for(PListType* temp : memLocalList)
 	{
-		msync(temp, hdSectorSize, MS_SYNC);
+		msync(temp, hdSectorSize, MS_ASYNC);
+		//Deallocate only when it has been completely used
+		/*if (munmap(temp, hdSectorSize) == -1) 
+		{
+			//UnMappingError(fd, this->fileName);
+			//return;
+		}*/
 	}
 	for(char* tempChar : charLocalList)
 	{
-		msync(tempChar, hdSectorSize, MS_SYNC);
+		msync(tempChar, hdSectorSize, MS_ASYNC);
+		//Deallocate only when it has been completely used
+		/*if (munmap(tempChar, hdSectorSize) == -1) 
+		{
+			UnMappingError(fd, this->fileName);
+			return;
+		}*/
 	}
+
+	
 }
 
 void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern, bool flush, bool forceClose)
@@ -277,29 +417,38 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 					UnMappingError(fd, this->fileName);
 					return;
 				}
+				/*mapLock.lock();
+				std::vector<PListType*>::iterator found = find(mappedList.begin(), mappedList.end(), mapper);
+				if(found != mappedList.end())
+				{
+					mappedList.erase(found);
+				}
+				mapLock.unlock();*/
+
 				mapper = NULL;
 			}
-			totalWritten = 0;
+			
 			/*syncLock.lock();
 			threadKillList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
 			syncLock.unlock();*/
 			//Not enough work to dispatch a thread
-			if(fileIndex <= hdSectorSize)
-			{
+			//if(fileIndex <= hdSectorSize)
+			//{
 				for(PListType* temp : memLocals)
 				{
-					msync(temp, hdSectorSize, MS_SYNC);
+					msync(temp, hdSectorSize, MS_ASYNC);
 				}
 				for(char* tempChar : charLocals)
 				{
-					msync(tempChar, hdSectorSize, MS_SYNC);
+					msync(tempChar, hdSectorSize, MS_ASYNC);
 				}
-			}
-			else
-			{
-				localThreadList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
-			}
+			//}
+			//else
+			//{
+			//	localThreadList.push_back(new thread(&PListArchive::FlushMapList, this, memLocals, charLocals));
+			//}
 			memLocals.clear();
+			totalWritten = 0;
 			
 			return;
 		}
@@ -348,13 +497,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			write(fd, "", 1);
 			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
 		}
-	#else
-		if((fileIndex + (offset*hdSectorSize) - 1) >= prevFileIndex)
-		{
-			result = _lseeki64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
-			write(fd, "", 1);
-			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
-		}
 	#endif
 
 		int i;
@@ -370,10 +512,22 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 						UnMappingError(fd, this->fileName);
 						return;
 					}
+					/*mapLock.lock();
+					std::vector<PListType*>::iterator found = find(mappedList.begin(), mappedList.end(), mapper);
+					if(found != mappedList.end())
+					{
+						mappedList.erase(found);
+					}
+					mapLock.unlock();*/
+
 					mapper = NULL;
 				}
 
 				mapper = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
+
+				/*mapLock.lock();
+				PListArchive::mappedList.push_back(mapper);
+				mapLock.unlock();*/
 			
 				memLocals.push_back(mapper);
 				
@@ -382,6 +536,8 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 					MappingError(fd, this->fileName);
 					return;
 				}
+
+				dataWritten = true;
 			}
 
 			
@@ -429,121 +585,13 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method WriteArchiveMapMMAP -> " << e.what() << endl;
-		cout << "Vector size man! " << pListVector.size() << endl;
+		string error("Exception occurred in method WriteArchiveMapMMAP -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 
 }
-
-//vector<const char*>* PListArchive::GetPatterns(unsigned int level, PListType count)
-//{
-//	if(fd == -1)
-//	{
-//		return NULL;
-//	}
-//
-//	PListType preservedFileIndex = fileIndex;
-//
-//	long long result;
-//	char *mapChar;  /* mmapped array of char's */
-//
-//	//Add plus two to account for patternLength and mapEntries.
-//	PListType sizeToReadForPatterns = count*level;
-//	PListType totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize));
-//	if(totalReadsForPatterns == 0)
-//	{
-//		totalReadsForPatterns++;
-//	}
-//	vector<const char*> *newStringBuffer = NULL;
-//	PListType newStringBufferIndex = 0;
-//	PListType offstep = 0;
-//	unsigned int prevIndexForChar = 0;
-//
-//	PListType sizeToRead = 0;
-//	if(count == 0)
-//	{
-//		return NULL;
-//	}
-//	else
-//	{
-//		newStringBuffer = new vector<const char*>(count);
-//	}
-//
-//	string completePattern( level, ' ');
-//
-//	try
-//	{
-//		for(PListType piss = 0; piss < totalReadsForPatterns; piss++)
-//		{
-//
-//	#if defined(_WIN64) || defined(_WIN32)
-//			result = _lseeki64(fd, fileIndex, SEEK_SET);
-//	#elif defined(__linux__)
-//			result = lseek64(fd, fileIndex, SEEK_SET);
-//	#endif
-//			mapChar = (char *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
-//
-//			if (mapChar == MAP_FAILED) 
-//			{
-//				MappingError(fd, this->fileName);
-//				return NULL;
-//			}
-//		
-//			PListType PListBuffSize = hdSectorSize/sizeof(char);
-//			/* Now do something with the information. */
-//
-//			if(piss < totalReadsForPatterns)
-//			{
-//				PListBuffSize = hdSectorSize/sizeof(char);
-//
-//				bool shitWhistle = false;
-//				PListType i = 0;
-//				while (i < PListBuffSize && offstep < count) 
-//				{
-//					for(PListType charIt = prevIndexForChar; charIt < level; charIt++)
-//					{
-//						if(i >= PListBuffSize)
-//						{
-//							prevIndexForChar = charIt;
-//							shitWhistle = true;
-//							break;
-//						}
-//						else
-//						{
-//							prevIndexForChar = 0;
-//						}
-//					
-//						if(!shitWhistle)
-//						{
-//							completePattern[charIt] = mapChar[i];
-//						}
-//						i++;
-//					}
-//					if(!shitWhistle)
-//					{ 
-//						(*newStringBuffer)[newStringBufferIndex++] = completePattern.c_str();
-//						offstep++;
-//					}
-//				}
-//
-//				if (munmap(mapChar, PListBuffSize) == -1) 
-//				{
-//					UnMappingError(fd, this->fileName);
-//					return NULL;
-//				}
-//			}
-//		
-//			fileIndex += hdSectorSize;
-//		}
-//		fileIndex = preservedFileIndex;
-//		newStringBuffer->shrink_to_fit();
-//	}
-//	catch(exception e)
-//	{
-//		cout << "Exception occurred in method GetPatterns -> " << e.what() << endl;
-//	}
-//	return newStringBuffer;
-//}
 
 vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 {
@@ -593,6 +641,10 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	#endif
 			mapChar = (char *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 
+			/*mapLock.lock();
+			PListArchive::mappedList.push_back(mapper);
+			mapLock.unlock();*/
+
 			if (mapChar == MAP_FAILED) 
 			{
 				MappingError(fd, this->fileName);
@@ -641,6 +693,13 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 					UnMappingError(fd, this->fileName);
 					return NULL;
 				}
+				/*mapLock.lock();
+				std::vector<PListType*>::iterator found = find(mappedList.begin(), mappedList.end(), mapper);
+				if(found != mappedList.end())
+				{
+					mappedList.erase(found);
+				}
+				mapLock.unlock();*/
 			}
 		
 			fileIndex += hdSectorSize;
@@ -650,7 +709,10 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method GetPatterns -> " << e.what() << endl;
+		string error("Exception occurred in method GetPatterns -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 	return newStringBuffer;
 }
@@ -659,6 +721,8 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 {
 	try
 	{
+		patternsDumped = true;
+
 		long long result;
 		
 		char *mapForChars = NULL;  /* mmapped array of char's */
@@ -680,6 +744,21 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 	#elif defined(__linux__)
 		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
 	#endif
+
+		if(mapFD != -1)
+		{
+			fileLock.lock();
+			if(fileNameToHandleMapping.find(file) == fileNameToHandleMapping.end())
+			{
+				fileNameToHandleMapping[file] = mapFD;
+			}
+			else
+			{
+				//fd = fileNameToHandleMapping[file];
+				Logger::WriteLog("Oh, shit, fuck!\n");
+			}
+			fileLock.unlock();
+		}
 
 
 		bool doneWithThisShit = false;
@@ -717,10 +796,17 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		{
 			mapForChars = (char *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, mapFD, fileIndex);
 
+			/*mapLock.lock();
+			PListArchive::mappedList.push_back(mapper);
+			mapLock.unlock();*/
+
 			charLocals.push_back(mapForChars);
 		
 			if (mapForChars == MAP_FAILED) 
 			{
+				stringstream uhoh;
+				uhoh << "fileIndex : " << fileIndex << endl;
+				Logger::WriteLog(uhoh.str());
 				MappingError(mapFD, file);
 				return;
 			}
@@ -768,13 +854,24 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 				UnMappingError(mapFD, file);
 				return;
 			}
+			/*mapLock.lock();
+			std::vector<PListType*>::iterator found = find(mappedList.begin(), mappedList.end(), mapper);
+			if(found != mappedList.end())
+			{
+				mappedList.erase(found);
+			}
+			mapLock.unlock();*/
 		}
 		
-		close(mapFD);
+		//close(mapFD);
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method DumpPatternsToDisk -> " << e.what() << endl;
+		
+		string error("Exception occurred in method DumpPatternsToDisk -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 }
 
@@ -794,12 +891,19 @@ void PListArchive::CloseArchiveMMAP()
 
 		/* Un-mmaping doesn't close the file, so we still need to do that.
 		 */
-		if(fd != -1)
+		if((!created && fd != -1) || (fd != -1 && dataWritten == false))
 		{
-			/*stringstream stringbuilder;
-			stringbuilder << fileName.c_str() << " closed!" << endl;
-			Logger::WriteLog(stringbuilder.str());*/
+			//stringstream stringbuilder;
+			//stringbuilder << fileName.c_str() << " closed!" << endl;
+			//Logger::WriteLog(stringbuilder.str());
 			close(fd);
+			
+			fileLock.lock();
+			if(fileNameToHandleMapping.find(fileName) != fileNameToHandleMapping.end())
+			{
+				fileNameToHandleMapping.erase(fileName);
+			}
+			fileLock.unlock();
 		}
 		/*else
 		{
@@ -810,7 +914,11 @@ void PListArchive::CloseArchiveMMAP()
 	}
 	catch(exception e)
 	{
-		cout << "Exception occurred in method CloseArchiveMMAP -> " << e.what() << endl;
+		
+		string error("Exception occurred in method CloseArchiveMMAP -> ");
+		error.append(e.what());
+		Logger::WriteLog(error + "\n");
+		cout << error << endl;
 	}
 }
 
