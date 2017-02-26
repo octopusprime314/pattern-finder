@@ -11,7 +11,7 @@ Forest::Forest(int argc, char **argv)
 {
 #if defined(_WIN64) || defined(_WIN32)
 	//Hard code page size to 2 MB for windows
-	PListArchive::hdSectorSize = 2097152;
+	PListArchive::hdSectorSize = 2097152;//4096;
 #elif defined(__linux__)
 	PListArchive::hdSectorSize = sysconf (_SC_PAGESIZE);
 #endif
@@ -116,6 +116,7 @@ Forest::Forest(int argc, char **argv)
 				nameage.erase(i, sizeof(DATA_FOLDER)-1);
 
 			loggingIt << "\nFile processing starting for: " << nameage << endl << endl;
+			Logger::WriteLog(loggingIt.str());
 			cout << loggingIt.str();
 
 			fileID = 0;
@@ -490,6 +491,7 @@ Forest::Forest(int argc, char **argv)
 			nameage.erase(i, sizeof(DATA_FOLDER)-1);
 
 		loggingIt << "\nEnded processing for: " << nameage << endl << endl;
+		Logger::WriteLog(loggingIt.str());
 		cout << loggingIt.str();
 
 		for(pair<uint32_t, double> threadTime : threadMap)
@@ -618,17 +620,17 @@ void Forest::MemoryQuery()
 			exit(0);
 		}
 
-		/*filesToBeRemovedLock.lock();
+		filesToBeRemovedLock.lock();
 		if(filesToBeRemoved.size() > 0)
 		{
-			for(int z = 0; z < filesToBeRemoved.size(); z++)
+			while(filesToBeRemoved.front() != filesToBeRemoved.back())
 			{
-				remove(filesToBeRemoved[z].c_str());
+				remove(filesToBeRemoved.front().c_str());
+				filesToBeRemoved.pop();
 			}
-			filesToBeRemoved.clear();
 		}
 		filesToBeRemovedLock.unlock();
-		*/
+		
 
 		if(swTimer.GetTime() > 10000.0f)
 		{
@@ -1016,10 +1018,10 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 			files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
 		}
 
-		stringstream stringbuilder;
-		stringbuilder << "Using RAM! Total size for level " << levelInfo.currLevel << " processing is " << predictedMemoryForLevelProcessing << " MB" << endl;
-		cout << stringbuilder.str();
-		Logger::WriteLog(stringbuilder.str());
+		//stringstream stringbuilder;
+		//stringbuilder << "Using RAM! Total size for level " << levelInfo.currLevel << " processing is " << predictedMemoryForLevelProcessing << " MB" << endl;
+		//cout << stringbuilder.str();
+		//Logger::WriteLog(stringbuilder.str());
 
 		return false;
 	}
@@ -2957,6 +2959,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
 				delete  (*prevLocalPListArray)[i];
 			}
+			//delete (*prevLocalPListArray)[i];
 
 			if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
 			{
@@ -2964,7 +2967,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				threadCountage = 0;
 			}
 		}
-		delete prevLocalPListArray;
+		//delete prevLocalPListArray;
 	}
 	else
 	{
@@ -2990,8 +2993,9 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				prevPListLengths.push_back(pListLength);
 				delete (*prevLocalPListArray)[i];
 			}
+			//delete (*prevLocalPListArray)[i];
 		}
-		delete prevLocalPListArray;
+		//delete prevLocalPListArray;
 	}
 	globalStringConstruct.resize(totalCount);
 	linearList.reserve(totalCount);
@@ -3061,6 +3065,12 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		{
 			globalStride += (stride / strideCount);
 			globalStride /= 2.0f;
+		}
+
+		if(prevPListLengths.size() == 0)
+		{
+			continueSearching = false;
+			break;
 		}
 			
 
@@ -3145,7 +3155,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		}
 		else
 		{
-
 			PListType prevPListSize = prevLinearList.size();
 			PListType indexes[256] = {0};
 			PListType indexesToPush[256] = {0};
@@ -3253,17 +3262,44 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		}
 		else
 		{
-			continueSearching = true;
-			DispatchNewThreadsRAM(0, continueSearching, linearList, pListLengths, levelInfo, isThreadDefuncted);
+			//Have to add prediction here 
+			bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, levelRecordings[levelInfo.currLevel - 2]);
+			if(prediction)
+			{
 
-			prevLinearList.clear();
-			prevLinearList.reserve(linearList.size());
-			prevLinearList.swap((linearList));
+				PListType indexing = 0;
+				prevLocalPListArray->clear();
+				for(int piss = 0; piss < pListLengths.size(); piss++)
+				{
+					prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing, linearList.begin() + indexing + pListLengths[piss]));
+					indexing += pListLengths[piss];
+				}
 
-			prevPListLengths.clear();
-			prevPListLengths.reserve(pListLengths.size());
-			prevPListLengths.swap((pListLengths));
-			pListLengths.reserve(0);
+				linearList.clear();
+				linearList.reserve(0);
+				pListLengths.clear();
+				pListLengths.reserve(0);
+				break;
+			}
+			else
+			{
+				//if(prevLocalPListArray != NULL)
+				//{
+				//	delete prevLocalPListArray;
+				//	prevLocalPListArray = NULL;
+				//}
+				continueSearching = true;
+				DispatchNewThreadsRAM(0, continueSearching, linearList, pListLengths, levelInfo, isThreadDefuncted);
+
+				prevLinearList.clear();
+				prevLinearList.reserve(linearList.size());
+				prevLinearList.swap((linearList));
+
+				prevPListLengths.clear();
+				prevPListLengths.reserve(pListLengths.size());
+				prevPListLengths.swap((pListLengths));
+				pListLengths.reserve(0);
+			}
 
 		}
 	}
@@ -3638,7 +3674,7 @@ void Forest::DeleteChunks(vector<string> fileNames, string folderLocation)
 		fileNameToBeRemoved.append(".txt");
 
 		//filesToBeRemovedLock.lock();
-		//filesToBeRemoved.push_back(fileNameToBeRemoved);
+		//filesToBeRemoved.push(fileNameToBeRemoved);
 		//filesToBeRemovedLock.unlock();
 
 		remove( fileNameToBeRemoved.c_str());
@@ -3648,7 +3684,7 @@ void Forest::DeleteChunks(vector<string> fileNames, string folderLocation)
 		fileNameToBeRemovedPatterns.append("Patterns.txt");
 
 		//filesToBeRemovedLock.lock();
-		//filesToBeRemoved.push_back(fileNameToBeRemovedPatterns);
+		//filesToBeRemoved.push(fileNameToBeRemovedPatterns);
 		//filesToBeRemovedLock.unlock();
 
 		remove( fileNameToBeRemovedPatterns.c_str() );
@@ -3662,6 +3698,10 @@ void Forest::DeleteArchives(vector<string> fileNames, string folderLocation)
 		string fileNameToBeRemoved = folderLocation;
 		fileNameToBeRemoved.append(fileNames[i].c_str());
 		fileNameToBeRemoved.append(".txt");
+
+		//filesToBeRemovedLock.lock();
+		//filesToBeRemoved.push(fileNameToBeRemoved);
+		//filesToBeRemovedLock.unlock();
 
 		if( remove( fileNameToBeRemoved.c_str() ) != 0)
 		{
@@ -3684,6 +3724,10 @@ void Forest::DeleteArchive(string fileNames, string folderLocation)
 	fileNameToBeRemoved.append(fileNames.c_str());
 	fileNameToBeRemoved.append(".txt");
 
+	//filesToBeRemovedLock.lock();
+	//filesToBeRemoved.push(fileNameToBeRemoved);
+	//filesToBeRemovedLock.unlock();
+
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
 		//stringstream builder;
@@ -3703,6 +3747,10 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 	string fileNameToBeRemoved = folderLocation;
 	fileNameToBeRemoved.append(fileChunkName.c_str());
 	fileNameToBeRemoved.append(".txt");
+	
+	//filesToBeRemovedLock.lock();
+	//filesToBeRemoved.push(fileNameToBeRemoved);
+	//filesToBeRemovedLock.unlock();
 
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
@@ -3720,6 +3768,10 @@ void Forest::DeleteChunk(string fileChunkName, string folderLocation)
 	string fileNameToBeRemovedPatterns = folderLocation;
 	fileNameToBeRemovedPatterns.append(fileChunkName.c_str());
 	fileNameToBeRemovedPatterns.append("Patterns.txt");
+	
+	//filesToBeRemovedLock.lock();
+	//filesToBeRemoved.push(fileNameToBeRemovedPatterns);
+	//filesToBeRemovedLock.unlock();
 
 	if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0)
 	{

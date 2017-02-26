@@ -12,6 +12,7 @@
 #include "PListArchive.h"
 #include "StopWatch.h"
 #include <array>
+#include <queue>
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
 #elif defined(__linux__)
@@ -82,7 +83,7 @@ private:
 	bool usingPureHD;
 	vector<vector<string>> prevFileNameList;
 	vector<vector<string>> newFileNameList;
-	vector<string> filesToBeRemoved;
+	queue<string> filesToBeRemoved;
 	mutex filesToBeRemovedLock;
 	double MemoryUsedPriorToThread;
 	double MemoryUsageAtInception;
