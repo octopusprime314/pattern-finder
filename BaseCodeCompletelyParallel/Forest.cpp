@@ -97,8 +97,6 @@ Forest::Forest(int argc, char **argv)
 		PListType earlyApproximation = files[f]->fileString.size()/(256);
 		unordered_map<uint8_t, double> threadMap;
 
-		chunkIndexToFileChunk.clear();
-
 		for(unsigned int threadIteration = 0; threadIteration <= testIterations; threadIteration = threadsToDispatch)
 		{
 
@@ -126,6 +124,12 @@ Forest::Forest(int argc, char **argv)
 			newFileNameList.clear();
 			prevFileNameList.resize(numThreads - 1);
 			newFileNameList.resize(numThreads - 1);
+
+			fileChunks.clear();
+			fileChunks.reserve(0);
+
+			chunkIndexToFileChunk.clear();
+
 
 			//if(!usingPureRAM)
 			//{
