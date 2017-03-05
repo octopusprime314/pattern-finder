@@ -3,7 +3,7 @@
 #include <locale>
 #include <list>
 #include <algorithm>
-
+#include <signal.h>
 
 bool Forest::outlierScans = false;
 bool Forest::overMemoryCount = false;
@@ -252,17 +252,17 @@ Forest::Forest(int argc, char **argv)
 					if(prediction)
 					{
 #if defined(_WIN64) || defined(_WIN32)
-						threadPlantSeedPoolHD->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
+						threadPlantSeedPoolHD->push_back(std::async(std::launch::async, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 #else
-						threadPlantSeedPoolHD->push_back(std::async(launch::async, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
+						threadPlantSeedPoolHD->push_back(std::async(std::launch::async, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
 #endif
 					}
 					else
 					{
 #if defined(_WIN64) || defined(_WIN32)
-						threadPlantSeedPoolRAM->push_back(std::async(std::launch::any, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span, i));
+						threadPlantSeedPoolRAM->push_back(std::async(std::launch::async, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span, i));
 #else
-						threadPlantSeedPoolRAM->push_back(std::async(launch::async, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span, i));
+						threadPlantSeedPoolRAM->push_back(std::async(std::launch::async, &Forest::PlantTreeSeedThreadRAM, this, overallFilePosition, position, span, i));
 #endif
 					}
 					position += span;
@@ -928,7 +928,7 @@ void Forest::CommandLineParser(int argc, char **argv)
 		minimum = 0;
 	}
 	//If numCores is not specified then we use number of threads supported cores plus the main thread
-	if (!threadsEnter || numThreads > concurentThreadsSupported)
+	if (!threadsEnter /*|| numThreads > concurentThreadsSupported*/)
 	{
 		numThreads = concurentThreadsSupported + 1;
 	}
@@ -1287,9 +1287,9 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 			vector<string> temp2;
 
 #if defined(_WIN64) || defined(_WIN32)
-			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
+			threadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 #else
-			threadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
+			threadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, balancedTruncList[i], temp2, levelInfo));
 #endif
 		}
 		countMutex->unlock();
@@ -1325,9 +1325,9 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 			threadsDispatched++;
 			vector<PListType> temp;
 #if defined(_WIN64) || defined(_WIN32)
-			threadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
+			threadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 #else
-			threadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
+			threadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfo));
 #endif
 		}
 		countMutex->unlock();
@@ -1355,8 +1355,8 @@ bool Forest::NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalP
 
 void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive, unsigned int level)
 {
-	try
-	{
+	//try
+	//{
 		PListType threadsFinished = 0;
 		StopWatch oneSecondTimer;
 		while (threadsFinished != localThreadPool->size())
@@ -1367,7 +1367,8 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 #if defined(_WIN64) || defined(_WIN32)
 				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
 #else	
-				if ((*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready)
+				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
+				//if ((*localThreadPool)[localWorkingThreads[k]].wait_for(chrono::milliseconds(5)) == std::future_status::ready)
 #endif	
 				{
 					if(recursive)
@@ -1395,6 +1396,7 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 				}
 				else
 				{
+					//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 					currentThreads.push_back(localWorkingThreads[k]);
 				}
 			}
@@ -1404,11 +1406,12 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
 				localWorkingThreads.push_back(currentThreads[i]);
 			}
 		}
-	}
-	catch(exception e)
-	{
-		cout << e.what() << endl;
-	}
+	//}
+	//catch(std::exception& e)
+	//{
+	//	cout << "Wait for threads exception: " << e.what() << endl;
+	//	//raise (SIGABRT);
+	//}
 }
 
 vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, LevelPackage levelInfo, vector<string> prevFileNames)
@@ -2733,18 +2736,23 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 
 	int threadsToDispatch = numThreads - 1;
 	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
+	
 	if(pListLengths.size() < unusedCores && unusedCores > 1)
 	{
 		unusedCores = (int)pListLengths.size();
 	}
+	//Be conservative with thread allocation
+	//Only create new thread for work if the new job will have atleast 10 patterns
+	//Stack overflow can occur if there are too many little jobs being assigned
 	//Need to have an available core, need to still have patterns to search and need to have more than 1 pattern to be worth splitting up the work
-	if(unusedCores > 1 && morePatternsToFind && pListLengths.size() > 1)
+	if(unusedCores > 1 && morePatternsToFind && pListLengths.size()/unusedCores > 10)
 	{
 		
 		bool spawnThreads = true;
 		//If this thread is at the lowest level of progress spawn new threads
 		if(spawnThreads)
 		{
+			//cout << "PList size: " << linearList.size() << " with " << pListLengths.size() << " pattern nodes!" << endl;
 			vector<vector<PListType>*>* prevLocalPListArray = new vector<vector<PListType>*>();
 			PListType indexing = 0;
 			for(int piss = 0; piss < pListLengths.size(); piss++)
@@ -2796,9 +2804,9 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					{
 						threadsDispatched++;
 #if defined(_WIN64) || defined(_WIN32)
-						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
 #else
-						localThreadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevLocalPListArray, balancedTruncList[i], vector<string>(), levelInfoRecursion));
 #endif
 					}
 					countMutex->unlock();
@@ -2890,9 +2898,9 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 
 						vector<PListType> temp;
 #if defined(_WIN64) || defined(_WIN32)
-						localThreadPool->push_back(std::async(std::launch::any, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 #else
-						localThreadPool->push_back(std::async(launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
 #endif
 					}
 					countMutex->unlock();
@@ -3289,6 +3297,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				//	prevLocalPListArray = NULL;
 				//}
 				continueSearching = true;
+				
 				DispatchNewThreadsRAM(0, continueSearching, linearList, pListLengths, levelInfo, isThreadDefuncted);
 
 				prevLinearList.clear();
