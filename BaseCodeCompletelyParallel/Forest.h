@@ -93,7 +93,7 @@ private:
 	PListType eradicatedPatterns;
 	vector<PListType> levelRecordings;
 	vector<PListType> mostCommonPatternCount;
-	vector<string> mostCommonPattern;
+	vector<PListType> mostCommonPatternIndex;
 	StopWatch initTime;
 	bool processingFinished;
 	bool processingMSYNCFinished;
@@ -105,6 +105,7 @@ private:
 	vector<double> statisticsModel;
 	int f;
 
+	void FindFiles(string directory);
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
 	void PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex);

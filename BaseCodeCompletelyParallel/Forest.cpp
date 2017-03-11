@@ -314,26 +314,42 @@ Forest::Forest(int argc, char **argv)
 						levelRecordings.resize(levelInfo.currLevel);
 					}
 					levelRecordings[0] = 256;
-					//if(mostCommonPattern.size() < levelInfo.currLevel)
-					//{
-					//	mostCommonPattern.resize(levelInfo.currLevel);
-					//	mostCommonPatternCount.resize(levelInfo.currLevel);
-					//}
-					//
-					//for (PListType i = 0; i < prevPListArray->size(); i++)
-					//{
-					//	if((*prevPListArray)[i] != nullptr)
-					//	{
-					//		
-					//		levelRecordings[0]++;
-					//		if( (*prevPListArray)[i]->size() > mostCommonPatternCount[levelInfo.currLevel - 1])
-					//		{
-					//			mostCommonPatternCount[levelInfo.currLevel - 1] = (*prevPListArray)[i]->size();
-					//			//cout << (*(*prevPListArray)[i])[0] << endl;
-					//			mostCommonPattern[levelInfo.currLevel - 1] = files[f]->fileString.substr(((*(*prevPListArray)[i])[0] - (levelInfo.currLevel)), levelInfo.currLevel);
-					//		}
-					//	}
-					//}
+					if(mostCommonPatternIndex.size() < levelInfo.currLevel)
+					{
+						mostCommonPatternIndex.resize(levelInfo.currLevel);
+						mostCommonPatternCount.resize(levelInfo.currLevel);
+					}
+					
+					std::map<string, PListType> countMap;
+					std::map<string, vector<PListType>> indexMap;
+					for (PListType i = 0; i < prevPListArray->size(); i++)
+					{
+						if((*prevPListArray)[i] != nullptr && (*prevPListArray)[i]->size() > 0)
+						{
+							countMap[files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)] += (*prevPListArray)[i]->size();
+							
+							if( countMap[files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)] > mostCommonPatternCount[levelInfo.currLevel - 1])
+							{
+								mostCommonPatternCount[levelInfo.currLevel - 1] = countMap[files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)];
+								mostCommonPatternIndex[levelInfo.currLevel - 1] = (*(*prevPListArray)[i])[0] - (levelInfo.currLevel);
+							}
+
+							if((*prevPListArray)[i]->size() >= 1)
+							{
+								indexMap[files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)].push_back(i);
+							}
+						}
+					}
+					levelRecordings[levelInfo.currLevel - 1] = countMap.size();
+					for(map<string, vector<PListType>>::iterator it = indexMap.begin(); it != indexMap.end(); it++)
+					{
+						if(it->second.size() == 1 && (*prevPListArray)[it->second[0]]->size() == 1)
+						{
+							(*prevPListArray)[it->second[0]]->clear();
+							levelRecordings[levelInfo.currLevel - 1]--;
+							eradicatedPatterns++;
+						}
+					}
 					//
 					//if(coverage.size() < levelInfo.currLevel)
 					//{
@@ -378,9 +394,9 @@ Forest::Forest(int argc, char **argv)
 			if(!usingPureRAM && prediction)
 			{
 				//Close file handle once and for all
-				files[f]->copyBuffer->clear();
-				files[f]->fileString.clear();
-				files[f]->fileString.reserve(0);
+				//files[f]->copyBuffer->clear();
+				//files[f]->fileString.clear();
+				//files[f]->fileString.reserve(0);
 			}
 			//Read in whole file if we are processing RAM potentially
 			else
@@ -402,13 +418,16 @@ Forest::Forest(int argc, char **argv)
 			{
 				if(levelToOutput == 0 || (levelToOutput != 0 && globalLevel >= levelToOutput))
 				{
-					ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
+					//ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
+					ProcessChunksAndGenerate(backupFilenames, temp, memDivisor, 0, 1, levelInfo.coreIndex, true);
 				}
 			}
 			else
 			{
 				//nothing for now
 			}
+
+			//Logger::WriteLog("Eradicated patterns: " + std::to_string(eradicatedPatterns) + "\n");
 
 			DisplayPatternsFound();       
 
@@ -429,9 +448,11 @@ Forest::Forest(int argc, char **argv)
 			{
 
 				stringstream buff;
-				buff << "Level " << j + 1 << " count is " << levelRecordings[j] << /*" with most common pattern being: \"" << mostCommonPattern[j] << "\" occured " << mostCommonPatternCount[j] << " and coverage was " << coverage[j] << "%" <<*/ endl;
+				buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1) << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
 				Logger::WriteLog(buff.str());
 				levelRecordings[j] = 0;
+				mostCommonPatternCount[j] = 0;
+				mostCommonPatternIndex[j] = 0;
 				//cout << buff.str();
 			}
 
@@ -707,6 +728,62 @@ void Forest::FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsig
 	(*threadPlantSeedPoolHD).clear();
 }
 
+void Forest::FindFiles(string directory)
+{
+#if defined(_WIN64) || defined(_WIN32)
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir (directory.c_str())) != NULL) 
+	{
+		Logger::WriteLog("Files to be processed: \n");
+		/* print all the files and directories within directory */
+		while ((ent = readdir (dir)) != NULL) 
+		{
+			if(*ent->d_name)
+			{
+				string fileName = string(ent->d_name);
+
+				if(!fileName.empty() && fileName != "." && fileName !=  "..")
+				{
+					string name = string(ent->d_name);
+					Logger::WriteLog(name + "\n");
+					cout << name << endl;
+					string tempName = directory;
+					tempName.append(ent->d_name);
+					files.push_back(new FileReader(tempName));
+				}
+			}
+		}
+		closedir (dir);
+	} else
+	{
+		cout << "Problem reading from directory!" << endl;
+	}
+#elif defined(__linux__)
+	DIR *dir;
+	struct dirent *entry;
+
+	if (!(dir = opendir(directory.c_str())))
+		return;
+	if (!(entry = readdir(dir)))
+		return;
+	do {
+					
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			continue;
+
+		string name = string(entry->d_name);
+		Logger::WriteLog(name + "\n");
+		cout << name << endl;
+		string tempName = directory;
+		tempName.append(entry->d_name);
+		files.push_back(new FileReader(tempName));
+					
+	} while (entry = readdir(dir));
+	closedir(dir);
+#endif		
+}
+
 void Forest::CommandLineParser(int argc, char **argv)
 {
 	bool minEnter = false;
@@ -754,60 +831,21 @@ void Forest::CommandLineParser(int argc, char **argv)
 				files.push_back(new FileReader(tempFileName));
 				i++;
 			}
+			else if(fileTest.find('.') == string::npos && fileTest.find('-') == string::npos)
+			{
+			#if defined(_WIN64) || defined(_WIN32)
+				header = "../../../";
+			#elif defined(__linux__)
+				header = "../../";
+			#endif
+				header.append(fileTest);
+				header.append("/");
+				FindFiles(header);
+				i++;
+			}
 			else
 			{
-#if defined(_WIN64) || defined(_WIN32)
-				DIR *dir;
-				struct dirent *ent;
-				if ((dir = opendir (header.c_str())) != NULL) 
-				{
-					Logger::WriteLog("Files to be processed: \n");
-					/* print all the files and directories within directory */
-					while ((ent = readdir (dir)) != NULL) 
-					{
-						if(*ent->d_name)
-						{
-							string fileName = string(ent->d_name);
-
-							if(!fileName.empty() && fileName != "." && fileName !=  "..")
-							{
-								string name = string(ent->d_name);
-								Logger::WriteLog(name + "\n");
-								cout << name << endl;
-								string tempName = header;
-								tempName.append(ent->d_name);
-								files.push_back(new FileReader(tempName));
-							}
-						}
-					}
-					closedir (dir);
-				} else
-				{
-					cout << "Problem reading from directory!" << endl;
-				}
-#elif defined(__linux__)
-				DIR *dir;
-				struct dirent *entry;
-
-				if (!(dir = opendir(header.c_str())))
-					return;
-				if (!(entry = readdir(dir)))
-					return;
-				do {
-					
-					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-						continue;
-
-					string name = string(entry->d_name);
-					Logger::WriteLog(name + "\n");
-					cout << name << endl;
-					string tempName = header;
-					tempName.append(entry->d_name);
-					files.push_back(new FileReader(tempName));
-					
-				} while (entry = readdir(dir));
-				closedir(dir);
-#endif		
+				FindFiles(header);	
 			}
 			fileEnter = true;
 		}
@@ -1861,18 +1899,19 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 							currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 							interimCount++;
 
-							//if(mostCommonPattern.size() < currLevel)
-							//{
-							//	mostCommonPattern.resize(currLevel);
-							//	mostCommonPatternCount.resize(currLevel);
-							//}
+							if(mostCommonPatternIndex.size() < currLevel)
+							{
+								mostCommonPatternIndex.resize(currLevel);
+								mostCommonPatternCount.resize(currLevel);
+							}
 
-							//if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
-							//{
-							//	//mostCommonPatternCount[currLevel - 1] = iterator->second->size();
+							if(iterator->second->size() > mostCommonPatternCount[currLevel - 1])
+							{
+								mostCommonPatternCount[currLevel - 1] = iterator->second->size();
 
-							//	mostCommonPattern[currLevel - 1] = iterator->first;
-							//}
+								mostCommonPatternIndex[currLevel - 1] = (*iterator->second)[0] - currLevel;
+							}
+
 						}
 						else
 						{
@@ -2111,9 +2150,9 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 				interimCount++;
 
-				/*if(mostCommonPattern.size() < currLevel)
+				if(mostCommonPatternIndex.size() < currLevel)
 				{
-					mostCommonPattern.resize(currLevel);
+					mostCommonPatternIndex.resize(currLevel);
 					mostCommonPatternCount.resize(currLevel);
 				}
 
@@ -2121,8 +2160,8 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				{
 					mostCommonPatternCount[currLevel - 1] = iterator->second->size();
 
-					mostCommonPattern[currLevel - 1] = iterator->first;
-				}*/
+					mostCommonPatternIndex[currLevel - 1] = (*iterator->second)[0] - currLevel;
+				}
 			}
 			else
 			{
@@ -2421,7 +2460,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 	unsigned int currLevel = levelInfo.currLevel;
 	PListType newPatternCount = 0;
 	//Divide between file load and previous level pLists and leave some for new lists haha 
-	PListType memDivisor = (PListType)((memoryPerThread*1000000)/3.0f);
+	PListType memDivisor = (PListType)(((memoryPerThread*1000000)/3.0f));
 
 	bool morePatternsToFind = false;
 
@@ -2625,6 +2664,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 											}
 											else
 											{
+												eradicatedPatterns++;
 												//cout << "don't pattern bro at this index: " << ((*pList)[k]) << endl;
 											}
 										}
@@ -2697,6 +2737,7 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 		{
 			newPatternCount += ProcessChunksAndGenerate(fileNamesToReOpen, newFileNames, memDivisor, threadNum, currLevel, levelInfo.coreIndex);
 		}
+		//Logger::WriteLog("Eradicated patterns: " + std::to_string(eradicatedPatterns) + "\n");
 	}
 	catch(exception e)
 	{
@@ -3251,13 +3292,36 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		}
 		levelRecordings[levelInfo.currLevel - 1] += pListLengths.size();
 
+		if(mostCommonPatternIndex.size() < levelInfo.currLevel)
+		{
+			mostCommonPatternIndex.resize(levelInfo.currLevel);
+			mostCommonPatternCount.resize(levelInfo.currLevel);
+		}
+					
+		PListType countage = 0;
+		for (PListType i = 0; i < pListLengths.size(); i++)
+		{
+			if(pListLengths[i] > 0)
+			{
+				if( pListLengths[i] > mostCommonPatternCount[levelInfo.currLevel - 1])
+				{
+					mostCommonPatternCount[levelInfo.currLevel - 1] = pListLengths[i];
+					mostCommonPatternIndex[levelInfo.currLevel - 1] = linearList[countage] - levelInfo.currLevel;
+				}
+			}
+			countage += pListLengths[i];
+		}
+
 		levelInfo.currLevel++;
 
 		if(levelInfo.currLevel > currentLevelVector[levelInfo.threadIndex])
 		{
 			currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
 		}
+
 		countMutex->unlock();
+
+		//Logger::WriteLog("Eradicated patterns: " + std::to_string(eradicatedPatterns) + "\n");
 
 		if(linearList.size() == 0 || levelInfo.currLevel - 1 >= maximum)
 		{
@@ -3460,7 +3524,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 #endif
 #ifdef BYTES
 
-		int temp = i + 1;
+		int temp = i + positionInFile + 1;
 		uint8_t tempIndex = (uint8_t)files[f]->fileString[i];
 		if(patternToSearchFor.size() == 0 || files[f]->fileString[i] == patternToSearchFor[0])
 		{
