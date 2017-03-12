@@ -129,7 +129,22 @@ void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 
 	for(map<PListType, PListType>::iterator it = finalPattern.begin(); it != finalPattern.end(); it++)
 	{
-		csvFile << it->first << "," << it->second << "," << endl;
+		csvFile << it->first << "," << it->second << endl;
+	}
+	
+	csvFile.close();
+}
+
+void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
+{
+	ofstream csvFile(CSVPATH + "ThreadsVsThroughput" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+
+	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
+	{
+		for(map<int, double>::iterator it2 = it->begin(); it2 != it->end(); it2++)
+		{
+			csvFile << it2->first << "," << it->begin()->second/it2->second << endl;
+		}
 	}
 	
 	csvFile.close();

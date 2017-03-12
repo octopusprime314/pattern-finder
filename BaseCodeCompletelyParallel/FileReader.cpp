@@ -5,26 +5,36 @@
 #include <fstream>
 #include "MemoryUtils.h"
 
-FileReader::FileReader(string fileName)
+FileReader::FileReader(string fileName, bool &isFile, bool openStream)
 {
 	fileString = "";
 	fileStringSize = 0;
 	this->fileName = fileName;
 
-	const char * c = fileName.c_str();
-	
-	// Open the file for the shortest time possible.
-	copyBuffer = new ifstream(c, ios::binary);
-
-	// Make sure we have something to read.
-	if (!copyBuffer->is_open()) 
+	if(openStream)
 	{
-		cout << "Could not open file: " << fileName << endl;
+		const char * c = fileName.c_str();
+		
+		// Open the file for the shortest time possible.
+		copyBuffer = new ifstream(c, ios::binary);
 
-		return;
+		// Make sure we have something to read.
+		if (!copyBuffer->is_open()) 
+		{
+			//cout << "Could not open file: " << fileName << endl;
+			isFile = false;
+			copyBuffer->clear();
+			copyBuffer->close();
+			delete copyBuffer;
+			return;
+		}
 	}
-
+	isFile = true;
 	fileStringSize = MemoryUtils::FileSize(fileName);
+	if(fileStringSize == 0)
+	{
+		isFile = false;
+	}
 
 }
 

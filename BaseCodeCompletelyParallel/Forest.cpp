@@ -98,12 +98,27 @@ Forest::Forest(int argc, char **argv)
 	stringstream crappy;
 	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
 	Logger::WriteLog(crappy.str());
+
+	vector<map<int, double>> threadMap;
+
 	
 	for(f = 0; f < files.size(); f++)
 	{
 		PListType earlyApproximation = files[f]->fileString.size()/(256);
-		unordered_map<uint8_t, double> threadMap;
 
+		const char * c = files[f]->fileName.c_str();
+	
+		// Open the file for the shortest time possible.
+		files[f]->copyBuffer = new ifstream(c, ios::binary);
+
+		if(files[f]->fileString.size() == 0 && usingPureRAM)
+		{
+			//new way to read in file
+			files[f]->fileString.clear();
+			files[f]->fileString.resize(files[f]->fileStringSize);
+			files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
+		}
+		
 		for(unsigned int threadIteration = 0; threadIteration <= testIterations; threadIteration = threadsToDispatch)
 		{
 
@@ -169,7 +184,6 @@ Forest::Forest(int argc, char **argv)
 			memoryPerThread = memoryBandwidthMB/threadsToDispatch;
 			cout << "Memory that can be used per thread: " << memoryPerThread << " MB." << endl;
 
-			StopWatch time;
 			
 			PListType overallFilePosition = 0;
 
@@ -207,6 +221,9 @@ Forest::Forest(int argc, char **argv)
 			files[f]->copyBuffer->clear();
 			files[f]->copyBuffer->seekg(0, ios::beg);
 
+			//Only start processing time after file is read in
+			StopWatch time;
+
 			cout << "Number of threads processing file is " << threadsToDispatch << endl;
 
 			for(int z = 0; z < fileIterations; z++)
@@ -228,11 +245,16 @@ Forest::Forest(int argc, char **argv)
 					patternCount = files[f]->fileStringSize;
 				}
 
-				//new way to read in file
-				files[f]->fileString.clear();
-				files[f]->fileString.resize(patternCount);
-				files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
+				if(!usingPureRAM)
+				{
+					//new way to read in file
+					files[f]->fileString.clear();
+					files[f]->fileString.resize(patternCount);
+					files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
+				}
 
+				
+			
 				PListType cycles = patternCount/threadsToDispatch;
 				PListType lastCycle = patternCount - (cycles*threadsToDispatch);
 				PListType span = cycles;
@@ -419,8 +441,8 @@ Forest::Forest(int argc, char **argv)
 			{
 				if(levelToOutput == 0 || (levelToOutput != 0 && globalLevel >= levelToOutput))
 				{
-					ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
-					//ProcessChunksAndGenerate(backupFilenames, temp, memDivisor, 0, 1, levelInfo.coreIndex, true);
+					//ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
+					ProcessChunksAndGenerate(backupFilenames, temp, memDivisor, 0, 1, levelInfo.coreIndex, true);
 				}
 			}
 			else
@@ -439,8 +461,9 @@ Forest::Forest(int argc, char **argv)
 			}
 
 			time.Stop();
-			threadMap[threadsToDispatch] = time.GetTime();
-			processingTimes.push_back(threadMap[threadsToDispatch]);
+			threadMap.push_back(map<int, double>());
+			threadMap[f][threadsToDispatch] = time.GetTime();
+			processingTimes.push_back(threadMap[f][threadsToDispatch]);
 			time.Display();
 			stringstream buffery;
 			buffery << threadsToDispatch << " threads were used to process file" << endl;
@@ -457,6 +480,8 @@ Forest::Forest(int argc, char **argv)
 			}
 
 			finalPattern[levelRecordings.size()]++;
+			levelRecordings.clear();
+			currentLevelVector.clear();
 
 			for (int i = 0; i < prevPListArray->size(); i++)
 			{
@@ -520,7 +545,7 @@ Forest::Forest(int argc, char **argv)
 		Logger::WriteLog(loggingIt.str());
 		cout << loggingIt.str();
 
-		for(pair<uint32_t, double> threadTime : threadMap)
+		for(pair<uint32_t, double> threadTime : threadMap[f])
 		{
 			loggingIt.str("");
 			loggingIt << "Thread " << threadTime.first << " processed for " << threadTime.second << " milliseconds!\n";
@@ -546,6 +571,11 @@ Forest::Forest(int argc, char **argv)
 	Logger::generateTimeVsFileSizeCSV(processingTimes, fileSizes);
 
 	Logger::generateFinalPatternVsCount(finalPattern);
+
+	if(findBestThreadNumber)
+	{
+		Logger::generateThreadsVsThroughput(threadMap);
+	}
 
 	for(int i = 0; i < 256; i++)
 	{
@@ -709,7 +739,8 @@ void Forest::DisplayPatternsFound()
 
 void Forest::DisplayHelpMessage()
 {
-	FileReader tempHelpFile(READMEPATH);
+	bool isFile;
+	FileReader tempHelpFile(READMEPATH, isFile, true);
 	tempHelpFile.LoadFile();
 	cout << tempHelpFile.fileString << endl;
 }
@@ -735,6 +766,7 @@ void Forest::FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsig
 
 void Forest::FindFiles(string directory)
 {
+	bool isFile = false;
 #if defined(_WIN64) || defined(_WIN32)
 	DIR *dir;
 	struct dirent *ent;
@@ -752,11 +784,19 @@ void Forest::FindFiles(string directory)
 				{
 					string name = string(ent->d_name);
 					Logger::WriteLog(name + "\n");
-					cout << name << endl;
+					//cout << name << endl;
 					string tempName = directory;
 					tempName.append(ent->d_name);
-					files.push_back(new FileReader(tempName));
-					fileSizes.push_back(files.back()->fileStringSize);
+					FileReader* file = new FileReader(tempName, isFile);
+					if(isFile)
+					{
+						files.push_back(file);
+						fileSizes.push_back(files.back()->fileStringSize);
+					}
+					else //This is probably a directory then
+					{
+						FindFiles(directory + fileName + "/");
+					}
 				}
 				else if(fileName != "." && fileName !=  ".." && fileName.find(".ini") == std::string::npos)
 				{
@@ -767,7 +807,7 @@ void Forest::FindFiles(string directory)
 		closedir (dir);
 	} else
 	{
-		cout << "Problem reading from directory!" << endl;
+		//cout << "Problem reading from directory!" << endl;
 	}
 #elif defined(__linux__)
 	DIR *dir;
@@ -778,22 +818,31 @@ void Forest::FindFiles(string directory)
 	if (!(entry = readdir(dir)))
 		return;
 	do {
-					
-		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-			continue;
+		
+		string fileName = string(entry->d_name);
 
-		if(entry->d_name.find(".") != std::string::npos)
+		if(!fileName.empty() && fileName != "." && fileName !=  ".." && fileName.find(".") != std::string::npos && fileName.find(".ini") == std::string::npos)
 		{
 			string name = string(entry->d_name);
 			Logger::WriteLog(name + "\n");
-			cout << name << endl;
+			//cout << name << endl;
 			string tempName = directory;
 			tempName.append(entry->d_name);
-			files.push_back(new FileReader(tempName));
+
+			FileReader* file = new FileReader(tempName, isFile);
+			if(isFile)
+			{
+				files.push_back(file);
+				fileSizes.push_back(files.back()->fileStringSize);
+			}
+			else //This is probably a directory then
+			{
+				FindFiles(directory + fileName + "/");
+			}
 		}
-		else
+		else if(fileName != "." && fileName !=  ".." && fileName.find(".ini") == std::string::npos)
 		{
-			FindFiles(directory + fileName);
+			FindFiles(directory + fileName + "/");
 		}
 					
 	} while (entry = readdir(dir));
@@ -838,19 +887,19 @@ void Forest::CommandLineParser(int argc, char **argv)
 		}
 		else if (arg.compare("-f") == 0)
 		{
-
+			bool isFile = false;
 			// We know the next argument *should* be the filename
 			string header = DATA_FOLDER;
 			tempFileName.append(argv[i + 1]);
 			string fileTest = argv[i + 1];
 
-			if(fileTest.find('.') != string::npos /*&& fileTest.find('-') == string::npos*/) 
+			if(fileTest.find('.') != string::npos && fileTest[0] != '-') 
 			{
-				files.push_back(new FileReader(tempFileName));
+				files.push_back(new FileReader(tempFileName, isFile));
 				fileSizes.push_back(files.back()->fileStringSize);
 				i++;
 			}
-			else if(fileTest.find('.') == string::npos /*&& fileTest.find('-') == string::npos*/)
+			else if(fileTest.find('.') == string::npos && fileTest[0] != '-')
 			{
 			#if defined(_WIN64) || defined(_WIN32)
 				header = "../../../";
@@ -2581,7 +2630,8 @@ bool Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &
 								fileChunks[fileChunks.size() - 1].resize(patternCount);
 
 								PListType offset = memDivisor*j;
-								FileReader fileReaderTemp(files[f]->fileName);
+								bool isFile;
+								FileReader fileReaderTemp(files[f]->fileName, isFile, true);
 								fileReaderTemp.copyBuffer->seekg( offset );
 								fileReaderTemp.copyBuffer->read( &fileChunks[fileChunks.size() - 1][0], patternCount );
 
