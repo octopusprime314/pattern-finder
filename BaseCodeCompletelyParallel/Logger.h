@@ -6,6 +6,8 @@
 #include <fstream>
 #include <mutex>
 #include "TypeDefines.h"
+#include <vector>
+#include <map>
 using namespace std;
 
 #define SCROLLCOUNT 25
@@ -13,6 +15,12 @@ using namespace std;
 	const string LOGGERPATH = "../../Log/";
 #elif defined(__linux__)
 	const string LOGGERPATH = "../Log/";
+#endif
+
+#if defined(_WIN64) || defined(_WIN32)
+	const string CSVPATH = "../../Runs/";
+#elif defined(__linux__)
+	const string CSVPATH = "../Runs/";
 #endif
 
 const bool cmdEnabled = false;
@@ -34,6 +42,9 @@ public:
 	static string GetFormattedTime();
 
 	static int verbosity;
+
+	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
+	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 
 private:
 	static string stringBuffer;

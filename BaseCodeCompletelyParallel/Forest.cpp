@@ -9,6 +9,13 @@ bool Forest::outlierScans = false;
 bool Forest::overMemoryCount = false;
 Forest::Forest(int argc, char **argv)
 {
+
+#if defined(_WIN64) || defined(_WIN32)
+	system("del ..\\..\\Log\\PList*.txt");
+#elif defined(__linux__)
+	system("rm -r ../Log/PList*");
+#endif
+
 #if defined(_WIN64) || defined(_WIN32)
 	//Hard code page size to 2 MB for windows
 	PListArchive::hdSectorSize = 2097152;//4096;
@@ -99,12 +106,6 @@ Forest::Forest(int argc, char **argv)
 
 		for(unsigned int threadIteration = 0; threadIteration <= testIterations; threadIteration = threadsToDispatch)
 		{
-
-#if defined(_WIN64) || defined(_WIN32)
-			system("del ..\\..\\Log\\PList*.txt");
-#elif defined(__linux__)
-			system("rm -r ../Log/PList*");
-#endif
 
 			stringstream loggingIt;
 			loggingIt.str("");
@@ -418,8 +419,8 @@ Forest::Forest(int argc, char **argv)
 			{
 				if(levelToOutput == 0 || (levelToOutput != 0 && globalLevel >= levelToOutput))
 				{
-					//ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
-					ProcessChunksAndGenerate(backupFilenames, temp, memDivisor, 0, 1, levelInfo.coreIndex, true);
+					ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
+					//ProcessChunksAndGenerate(backupFilenames, temp, memDivisor, 0, 1, levelInfo.coreIndex, true);
 				}
 			}
 			else
@@ -439,6 +440,7 @@ Forest::Forest(int argc, char **argv)
 
 			time.Stop();
 			threadMap[threadsToDispatch] = time.GetTime();
+			processingTimes.push_back(threadMap[threadsToDispatch]);
 			time.Display();
 			stringstream buffery;
 			buffery << threadsToDispatch << " threads were used to process file" << endl;
@@ -446,15 +448,15 @@ Forest::Forest(int argc, char **argv)
 
 			for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
 			{
-
 				stringstream buff;
 				buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1) << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
 				Logger::WriteLog(buff.str());
 				levelRecordings[j] = 0;
 				mostCommonPatternCount[j] = 0;
 				mostCommonPatternIndex[j] = 0;
-				//cout << buff.str();
 			}
+
+			finalPattern[levelRecordings.size()]++;
 
 			for (int i = 0; i < prevPListArray->size(); i++)
 			{
@@ -480,7 +482,6 @@ Forest::Forest(int argc, char **argv)
 				threadsToDispatch = numThreads - 1;
 			}
 			
-
 			//reset global level in case we are testing
 			globalLevel = 1;
 
@@ -541,6 +542,10 @@ Forest::Forest(int argc, char **argv)
 		}
 
 	}
+
+	Logger::generateTimeVsFileSizeCSV(processingTimes, fileSizes);
+
+	Logger::generateFinalPatternVsCount(finalPattern);
 
 	for(int i = 0; i < 256; i++)
 	{
@@ -743,7 +748,7 @@ void Forest::FindFiles(string directory)
 			{
 				string fileName = string(ent->d_name);
 
-				if(!fileName.empty() && fileName != "." && fileName !=  "..")
+				if(!fileName.empty() && fileName != "." && fileName !=  ".." && fileName.find(".") != std::string::npos && fileName.find(".ini") == std::string::npos)
 				{
 					string name = string(ent->d_name);
 					Logger::WriteLog(name + "\n");
@@ -751,6 +756,11 @@ void Forest::FindFiles(string directory)
 					string tempName = directory;
 					tempName.append(ent->d_name);
 					files.push_back(new FileReader(tempName));
+					fileSizes.push_back(files.back()->fileStringSize);
+				}
+				else if(fileName != "." && fileName !=  ".." && fileName.find(".ini") == std::string::npos)
+				{
+					FindFiles(directory + fileName + "/");
 				}
 			}
 		}
@@ -772,12 +782,19 @@ void Forest::FindFiles(string directory)
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 			continue;
 
-		string name = string(entry->d_name);
-		Logger::WriteLog(name + "\n");
-		cout << name << endl;
-		string tempName = directory;
-		tempName.append(entry->d_name);
-		files.push_back(new FileReader(tempName));
+		if(entry->d_name.find(".") != std::string::npos)
+		{
+			string name = string(entry->d_name);
+			Logger::WriteLog(name + "\n");
+			cout << name << endl;
+			string tempName = directory;
+			tempName.append(entry->d_name);
+			files.push_back(new FileReader(tempName));
+		}
+		else
+		{
+			FindFiles(directory + fileName);
+		}
 					
 	} while (entry = readdir(dir));
 	closedir(dir);
@@ -826,12 +843,14 @@ void Forest::CommandLineParser(int argc, char **argv)
 			string header = DATA_FOLDER;
 			tempFileName.append(argv[i + 1]);
 			string fileTest = argv[i + 1];
-			if(fileTest.find('.') != string::npos && fileTest.find('-') == string::npos) 
+
+			if(fileTest.find('.') != string::npos /*&& fileTest.find('-') == string::npos*/) 
 			{
 				files.push_back(new FileReader(tempFileName));
+				fileSizes.push_back(files.back()->fileStringSize);
 				i++;
 			}
-			else if(fileTest.find('.') == string::npos && fileTest.find('-') == string::npos)
+			else if(fileTest.find('.') == string::npos /*&& fileTest.find('-') == string::npos*/)
 			{
 			#if defined(_WIN64) || defined(_WIN32)
 				header = "../../../";
@@ -840,6 +859,14 @@ void Forest::CommandLineParser(int argc, char **argv)
 			#endif
 				header.append(fileTest);
 				header.append("/");
+
+				//Access files with full path
+				if(fileTest.find(":") != std::string::npos)
+				{
+					header = fileTest;
+					header.append("/");
+				}
+
 				FindFiles(header);
 				i++;
 			}
@@ -1120,32 +1147,35 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 				threadFiles.push_back(new PListArchive(threadFilesNames.str(), true));
 				fileList[a].push_back(threadFilesNames.str());
 			}
-			for(PListType prevIndex = 0; prevIndex < prevLocalPListArray->size(); prevIndex++)
+			for(PListType prevIndex = 0; prevIndex < prevLocalPListArray->size(); )
 			{
-				if((*prevLocalPListArray)[prevIndex] != NULL)
+				list<PListType> *sorting = new list<PListType>();
+
+				for(int threadCount = 0; threadCount < threadsToDispatch; threadCount++)
 				{
-					list<PListType> *sorting = new list<PListType>();
-					copy( (*prevLocalPListArray)[prevIndex]->begin(), (*prevLocalPListArray)[prevIndex]->end(), std::back_inserter(*sorting));
-					((*prevLocalPListArray)[prevIndex])->erase(((*prevLocalPListArray)[prevIndex])->begin(), ((*prevLocalPListArray)[prevIndex])->end());
-					sorting->sort();
-					std::copy( sorting->begin(), sorting->end(), std::back_inserter(*((*prevLocalPListArray)[prevIndex])));
-					sorting->clear();
-					delete sorting;
-
-					threadFiles[threadNumber]->WriteArchiveMapMMAP(*(*prevLocalPListArray)[prevIndex]);
-					delete (*prevLocalPListArray)[prevIndex];
-
-					if(threadFiles[threadNumber]->totalWritten >= PListArchive::writeSize) 
+					if((*prevLocalPListArray)[prevIndex] != NULL)
 					{
-						threadFiles[threadNumber]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
+						copy( (*prevLocalPListArray)[prevIndex]->begin(), (*prevLocalPListArray)[prevIndex]->end(), std::back_inserter(*sorting));
+						((*prevLocalPListArray)[prevIndex])->erase(((*prevLocalPListArray)[prevIndex])->begin(), ((*prevLocalPListArray)[prevIndex])->end());
+						delete (*prevLocalPListArray)[prevIndex];
+						prevIndex++;
 					}
+				}
+				vector<PListType> finalVector;
+				sorting->sort();
+				std::copy( sorting->begin(), sorting->end(), std::back_inserter(finalVector));
+				sorting->clear();
+				delete sorting;
 
-					//Increment chunk
-					threadNumber++;
-					if(threadNumber >= threadsToDispatch)
-					{
-						threadNumber = 0;
-					}
+				threadFiles[threadNumber]->WriteArchiveMapMMAP(finalVector);
+				threadFiles[threadNumber]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
+				
+
+				//Increment chunk
+				threadNumber++;
+				if(threadNumber >= threadsToDispatch)
+				{
+					threadNumber = 0;
 				}
 			}
 			//Clear out the array also after deletion
@@ -3611,7 +3641,7 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 #endif
 #ifdef BYTES
 
-		int temp = i + 1;
+		int temp = i + positionInFile + 1;
 		uint8_t tempIndex = (uint8_t)files[f]->fileString[i];
 		if(patternToSearchFor.size() == 0 || files[f]->fileString[i] == patternToSearchFor[0])
 		{

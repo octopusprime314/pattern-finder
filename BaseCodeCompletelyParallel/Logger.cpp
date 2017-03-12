@@ -109,4 +109,29 @@ string Logger::GetFormattedTime()
 	return timeBuff.str();
 }
 
+void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes)
+{
+	ofstream csvFile(CSVPATH + "TimeVsFileSize" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+
+	if(processTimes.size() == fileSizes.size())
+	{
+		for(int i = 0; i < processTimes.size(); i++)
+		{
+			csvFile << processTimes[i] << "," << fileSizes[i] << endl;
+		}
+	}
+	csvFile.close();
+}
+
+void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
+{
+	ofstream csvFile(CSVPATH + "FinalPatternVsCount" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+
+	for(map<PListType, PListType>::iterator it = finalPattern.begin(); it != finalPattern.end(); it++)
+	{
+		csvFile << it->first << "," << it->second << "," << endl;
+	}
+	
+	csvFile.close();
+}
 

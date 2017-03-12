@@ -104,6 +104,9 @@ private:
 	vector<string> fileChunks;
 	vector<double> statisticsModel;
 	int f;
+	vector<PListType> fileSizes;
+	vector<double> processingTimes;
+	map<PListType, PListType> finalPattern;
 
 	void FindFiles(string directory);
 	void MemoryQuery();
