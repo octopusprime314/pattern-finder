@@ -90,6 +90,7 @@ private:
 	void UnMappingError(int& fileDescriptor, string fileName);
 	void SeekingError(int& fileDescriptor, string fileName);
 	void ExtendingFileError(int& fileDescriptor, string fileName);
+	void FlushFileHandles();
 };
 
 

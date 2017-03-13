@@ -195,7 +195,7 @@ Forest::Forest(int argc, char **argv)
 			levelInfo.useRAM = usedRAM[0];
 			levelInfo.coreIndex = 0;
 
-			bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, 1);
+			bool prediction = true;//PredictHardDiskOrRAMProcessing(levelInfo, 1);
 			for(int i = 0; i < threadsToDispatch; i++)
 			{
 				usedRAM[i] = !prediction;
@@ -469,18 +469,20 @@ Forest::Forest(int argc, char **argv)
 			buffery << threadsToDispatch << " threads were used to process file" << endl;
 			Logger::WriteLog(buffery.str());
 
-			for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
+			if(Logger::verbosity)
 			{
-				stringstream buff;
-				buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1) << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
-				Logger::WriteLog(buff.str());
-				levelRecordings[j] = 0;
-				mostCommonPatternCount[j] = 0;
-				mostCommonPatternIndex[j] = 0;
+				for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
+				{
+					stringstream buff;
+					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1) << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
+					Logger::WriteLog(buff.str());
+				}
 			}
 
 			finalPattern[levelRecordings.size()]++;
 			levelRecordings.clear();
+			mostCommonPatternCount.clear();
+			mostCommonPatternIndex.clear();
 			currentLevelVector.clear();
 
 			for (int i = 0; i < prevPListArray->size(); i++)
@@ -902,9 +904,9 @@ void Forest::CommandLineParser(int argc, char **argv)
 			else if(fileTest.find('.') == string::npos && fileTest[0] != '-')
 			{
 			#if defined(_WIN64) || defined(_WIN32)
-				header = "../../../";
+				header = "../../../../Database/";
 			#elif defined(__linux__)
-				header = "../../";
+				header = "../../Database/";
 			#endif
 				header.append(fileTest);
 				header.append("/");
@@ -1086,7 +1088,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	if(potentialPatterns > files[f]->fileStringSize - (levelInfo.currLevel - 1))
 	{
 		//Factor in eradicated patterns because those places no longer need to be checked in the file
-		potentialPatterns = (files[f]->fileStringSize - eradicatedPatterns) - (levelInfo.currLevel - 1);
+		potentialPatterns = files[f]->fileStringSize - eradicatedPatterns;
 		//cout << "Potential patterns has exceed file size so we downgrade to " << potentialPatterns << endl;
 	}
 
@@ -1112,11 +1114,16 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	PListType previousLevelMemoryMB = 0;
 	PListType predictedMemoryForLevelProcessing = 0;
 
-	previousLevelMemoryMB = (PListType)(MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception);
+	double prevMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
+	if(prevMemoryMB > 0.0f)
+	{
+		previousLevelMemoryMB = (PListType)prevMemoryMB;
+	}
 
 	//cout << "Size used for previous level " << levelInfo.currLevel - 1 << " is " << previousLevelMemoryMB << " MB" << endl;
 
 	predictedMemoryForLevelProcessing = previousLevelMemoryMB + predictedMemoryForNextLevelMB;
+
 	if(predictedMemoryForLevelProcessing > memoryBandwidthMB)
 	{
 
@@ -1242,6 +1249,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 	{
 		if(!usedRAM[0])
 		{
+			prevLocalPListArray->clear();
 			for(PListType i = 0; i < tempFileList.size(); i++)
 			{
 				for(PListType prevChunkCount = 0; prevChunkCount < tempFileList[i].size(); prevChunkCount++)
@@ -1267,6 +1275,14 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 				{
 					DeleteArchives(tempFileList[i], ARCHIVE_FOLDER);
 				}
+			}
+			//Transition to using entire file when first level was hard disk processing and next level is pure ram
+			if(files[f]->fileString.size() != files[f]->fileStringSize)
+			{
+				//new way to read in file
+				files[f]->copyBuffer->seekg( 0 );
+				files[f]->fileString.resize(files[f]->fileStringSize);
+				files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
 			}
 		}
 	}
@@ -1700,24 +1716,63 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAMFirstLevel(unsigned i
 		balancedSizeList.push_back(0);
 	}
 
-	vector<PListType> patternTotals(256, 0);
-
-	for(PListType i = 0; i < 256; i++)
+	if(patterns->size() == threadsToDispatch*256)
 	{
-		for(PListType z = 0; z < threadsToDispatch; z++)
+		vector<PListType> patternTotals(256, 0);
+		for(PListType i = 0; i < 256; i++)
 		{
-			patternTotals[i] += (*patterns)[i*threadsToDispatch + z]->size();
+			for(PListType z = 0; z < threadsToDispatch; z++)
+			{
+				patternTotals[i] += (*patterns)[i*threadsToDispatch + z]->size();
+			}
+		}
+
+		for(PListType i = 0; i < patternTotals.size(); i++)
+		{
+			bool found = false;
+			PListType smallestIndex = 0;
+			PListType smallestAmount = -1;
+			for(PListType j = 0; j < threadsToDispatch; j++)
+			{
+				if((*patterns)[i*threadsToDispatch + j] != NULL)
+				{
+					for(PListType z = 0; z < threadsToDispatch; z++)
+					{
+						if(balancedSizeList[z] < smallestAmount)
+						{
+							smallestAmount = balancedSizeList[z];
+							smallestIndex = z;
+							found = true;
+						}
+					}
+
+				}
+			}
+			if(found)
+			{
+				balancedSizeList[smallestIndex] += patternTotals[i];
+				for(PListType j = 0; j < threadsToDispatch; j++)
+				{
+					balancedList[smallestIndex].push_back((i*threadsToDispatch) + j);
+				}
+			}
 		}
 	}
-
-	for(PListType i = 0; i < patternTotals.size(); i++)
+	else
 	{
-		bool found = false;
-		PListType smallestIndex = 0;
-		PListType smallestAmount = -1;
-		for(PListType j = 0; j < threadsToDispatch; j++)
+		vector<PListType> patternTotals;
+		for(PListType i = 0; i < patterns->size(); i++)
 		{
-			if((*patterns)[i*threadsToDispatch + j] != NULL)
+			patternTotals.push_back((*patterns)[i]->size());
+		}
+
+		for(PListType i = 0; i < patternTotals.size(); i++)
+		{
+			bool found = false;
+			PListType smallestIndex = 0;
+			PListType smallestAmount = -1;
+			
+			if((*patterns)[i] != NULL)
 			{
 				for(PListType z = 0; z < threadsToDispatch; z++)
 				{
@@ -1730,16 +1785,15 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAMFirstLevel(unsigned i
 				}
 
 			}
-		}
-		if(found)
-		{
-			balancedSizeList[smallestIndex] += patternTotals[i];
-			for(PListType j = 0; j < threadsToDispatch; j++)
+			
+			if(found)
 			{
-				balancedList[smallestIndex].push_back((i*threadsToDispatch) + j);
+				balancedSizeList[smallestIndex] += patternTotals[i];
+				balancedList[smallestIndex].push_back(i);
 			}
 		}
 	}
+
 	PListType sizeToTruncate = 0;
 	for(unsigned int i = 0; i < threadsToDispatch; i++)
 	{
@@ -3078,7 +3132,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			if(pListLength > 0)
 			{
 				totalCount += pListLength;
-
 			}
 		}
 		prevLinearList.reserve(totalCount);
@@ -3094,7 +3147,15 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			}
 			//delete (*prevLocalPListArray)[i];
 
-			if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
+			if(prevLocalPListArray->size() == threadsToDispatch*256)
+			{
+				if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
+				{
+					prevPListLengths.push_back(threadCountage);
+					threadCountage = 0;
+				}
+			}
+			else
 			{
 				prevPListLengths.push_back(threadCountage);
 				threadCountage = 0;
@@ -3111,7 +3172,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			if(pListLength > 0)
 			{
 				totalCount += pListLength;
-
 			}
 		}
 
@@ -3555,6 +3615,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 		leaves[i]->reserve(earlyApproximation);
 	}
 
+	PListType counting = 0;
 	PListType memDivisorInMB = (PListType)(memoryPerThread/3.0f);
 	//used primarily for just storage containment
 	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
@@ -3609,8 +3670,9 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 		if(patternToSearchFor.size() == 0 || files[f]->fileString[i] == patternToSearchFor[0])
 		{
 			leaves[tempIndex]->push_back(temp);
+			counting++;
 		}
-		if(overMemoryCount)
+		if(overMemoryCount && counting >= PListArchive::hdSectorSize)
 		{
 			stringstream stringBuilder;
 			fileIDMutex->lock();
@@ -3618,6 +3680,11 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 			stringBuilder << fileID;
 			fileIDMutex->unlock();
 			newFileNameList[threadNum].push_back(CreateChunkFile(stringBuilder.str(), leaves, levelInfo));
+			for(int i = 0; i < 256; i++)
+			{
+				leaves[i] = new vector<PListType>();
+				leaves[i]->reserve(earlyApproximation);
+			}
 		}
 #endif
 	}

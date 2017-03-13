@@ -53,6 +53,7 @@ PListArchive::PListArchive(string fileName, bool create)
 			{
 				stringstream shit;
 				shit << "Why are we truncating file " << file << endl;
+				shit << " and errno is "<< errno << endl;
 				Logger::WriteLog(shit.str());
 				cout << shit.str() << endl;
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
@@ -70,18 +71,23 @@ PListArchive::PListArchive(string fileName, bool create)
 		}
 		else
 		{
+			/*bool foundIt = false;
+			fileLock.lock();
 			if(fileNameToHandleMapping.find(file) != fileNameToHandleMapping.end())
 			{
 				fd = fileNameToHandleMapping[file];
+				foundIt = true;
 			}
-			else
-			{
+			fileLock.unlock();
+			
+			if(!foundIt)
+			{*/
 				//stringstream shit;
 				//shit << "Why are we re-opening file " << file << endl;
 				//Logger::WriteLog(shit.str());
 				//cout << shit.str() << endl;
 				fd = open(file.c_str(), O_RDONLY);
-			}
+			//}
 		}
 
 		this->fileName = file;
@@ -754,7 +760,6 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 			else
 			{
-				//fd = fileNameToHandleMapping[file];
 				Logger::WriteLog("Oh, shit, fuck!\n");
 			}
 			fileLock.unlock();
@@ -863,7 +868,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			mapLock.unlock();*/
 		}
 		
-		//close(mapFD);
+		close(mapFD);
 	}
 	catch(exception e)
 	{
@@ -891,7 +896,8 @@ void PListArchive::CloseArchiveMMAP()
 
 		/* Un-mmaping doesn't close the file, so we still need to do that.
 		 */
-		if((!created && fd != -1) || (fd != -1 && dataWritten == false))
+		//if((!created && fd != -1) || (fd != -1 && dataWritten == false))
+		if(fd != -1)
 		{
 			//stringstream stringbuilder;
 			//stringbuilder << fileName.c_str() << " closed!" << endl;
@@ -920,5 +926,22 @@ void PListArchive::CloseArchiveMMAP()
 		Logger::WriteLog(error + "\n");
 		cout << error << endl;
 	}
+}
+
+void PListArchive::FlushFileHandles()
+{
+	fileLock.lock();
+	for(unordered_map<string, int>::iterator it = fileNameToHandleMapping.begin(); it != fileNameToHandleMapping.end(); it++)
+	{
+		if(close(it->second) != -1)
+		{
+			fileNameToHandleMapping.erase(fileName);
+		}
+		else
+		{
+
+		}
+	}
+	fileLock.unlock();
 }
 
