@@ -107,6 +107,7 @@ private:
 	vector<PListType> fileSizes;
 	vector<double> processingTimes;
 	map<PListType, PListType> finalPattern;
+	bool firstLevelProcessedHD;
 
 	void FindFiles(string directory);
 	void MemoryQuery();

@@ -49,6 +49,7 @@ Forest::Forest(int argc, char **argv)
 	usingPureHD = false;
 	//Default pattern occurence size to 2
 	minOccurrence = 2;
+	firstLevelProcessedHD = false;
 
 	CommandLineParser(argc, argv);
 
@@ -111,6 +112,17 @@ Forest::Forest(int argc, char **argv)
 		// Open the file for the shortest time possible.
 		files[f]->copyBuffer = new ifstream(c, ios::binary);
 
+		if (!files[f]->copyBuffer->is_open()) 
+		{
+			//Close file handle once and for all
+			files[f]->copyBuffer->clear();
+			files[f]->fileString.clear();
+			files[f]->fileString.reserve(0);
+
+			delete files[f];
+			continue;
+		}
+
 		if(files[f]->fileString.size() == 0 && usingPureRAM)
 		{
 			//new way to read in file
@@ -129,7 +141,7 @@ Forest::Forest(int argc, char **argv)
 			if (i != std::string::npos)
 				nameage.erase(i, sizeof(DATA_FOLDER)-1);
 
-			loggingIt << "\nFile processing starting for: " << nameage << endl << endl;
+			loggingIt << "\n" << Logger::GetTime() << " File processing starting for: " << nameage << endl << endl;
 			Logger::WriteLog(loggingIt.str());
 			cout << loggingIt.str();
 
@@ -194,8 +206,8 @@ Forest::Forest(int argc, char **argv)
 			levelInfo.threadIndex = 0;
 			levelInfo.useRAM = usedRAM[0];
 			levelInfo.coreIndex = 0;
-
-			bool prediction = true;//PredictHardDiskOrRAMProcessing(levelInfo, 1);
+			bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, 1);
+			firstLevelProcessedHD = prediction;
 			for(int i = 0; i < threadsToDispatch; i++)
 			{
 				usedRAM[i] = !prediction;
@@ -468,16 +480,19 @@ Forest::Forest(int argc, char **argv)
 			stringstream buffery;
 			buffery << threadsToDispatch << " threads were used to process file" << endl;
 			Logger::WriteLog(buffery.str());
-
+			vector<string> patternData;
 			if(Logger::verbosity)
 			{
 				for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
 				{
+					patternData.push_back(files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1));
 					stringstream buff;
-					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1) << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
+					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << patternData.back() << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
 					Logger::WriteLog(buff.str());
 				}
 			}
+
+			Logger::fillPatternData(patternData);
 
 			finalPattern[levelRecordings.size()]++;
 			levelRecordings.clear();
@@ -516,6 +531,13 @@ Forest::Forest(int argc, char **argv)
 			crappy << "File Size " << files[f]->fileStringSize << " and eliminated patterns " << eradicatedPatterns << "\n\n\n";
 			Logger::WriteLog(crappy.str());
 
+			if(files[f]->fileStringSize != eradicatedPatterns)
+			{
+				Logger::WriteLog("Houston we are not processing patterns properly!");
+				throw std::exception( "Erroneous file processing" );
+				exit(0);
+			}
+
 			if(memoryQueryThread != NULL)
 			{
 				processingFinished = true;
@@ -543,7 +565,7 @@ Forest::Forest(int argc, char **argv)
 		if (i != std::string::npos)
 			nameage.erase(i, sizeof(DATA_FOLDER)-1);
 
-		loggingIt << "\nEnded processing for: " << nameage << endl << endl;
+		loggingIt << "\n" << Logger::GetTime() << " Ended processing for: " << nameage << endl << endl;
 		Logger::WriteLog(loggingIt.str());
 		cout << loggingIt.str();
 
@@ -1734,7 +1756,7 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAMFirstLevel(unsigned i
 			PListType smallestAmount = -1;
 			for(PListType j = 0; j < threadsToDispatch; j++)
 			{
-				if((*patterns)[i*threadsToDispatch + j] != NULL)
+				if((*patterns)[(i*threadsToDispatch) + j] != NULL)
 				{
 					for(PListType z = 0; z < threadsToDispatch; z++)
 					{
@@ -3147,7 +3169,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			}
 			//delete (*prevLocalPListArray)[i];
 
-			if(prevLocalPListArray->size() == threadsToDispatch*256)
+			if(!firstLevelProcessedHD)
 			{
 				if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
 				{

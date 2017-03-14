@@ -1,6 +1,8 @@
 #include "Logger.h"
 
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
+
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
 int Logger::index;
@@ -64,11 +66,13 @@ void Logger::CloseLog()
 	logMutex->lock();
 	ClearLog(); 
 	(*outputFile).close();
+	(*patternDataFile).close();
 	logMutex->unlock();
 
 	delete outputFile;
 	delete scrollLogMutex;
 	delete logMutex;
+	delete patternDataFile;
 }
 
 
@@ -106,6 +110,28 @@ string Logger::GetFormattedTime()
 	srand ((unsigned int)(time(NULL)));
 	timeBuff << rand();
 
+	return timeBuff.str();
+}
+
+string Logger::GetTime()
+{
+	time_t t = time(0);   // get time now
+    struct tm * now = new struct tm();
+	now = localtime( & t );
+	stringstream timeBuff;
+
+	timeBuff << now->tm_hour << ":";
+	if(now->tm_min < 10)
+	{
+		timeBuff << "0";	
+	}
+	timeBuff << now->tm_min << ":";
+	if(now->tm_sec < 10)
+	{
+		timeBuff << "0";	
+	}
+	timeBuff << now->tm_sec;
+	
 	return timeBuff.str();
 }
 
@@ -148,5 +174,15 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	}
 	
 	csvFile.close();
+}
+
+void Logger::fillPatternData(const vector<string> &patternData)
+{
+	
+	for(vector<string>::const_iterator it = patternData.begin(); it != patternData.end(); it++)
+	{
+		(*patternDataFile) << (*it).size() << *it;
+	}
+	(*patternDataFile) << "-";
 }
 

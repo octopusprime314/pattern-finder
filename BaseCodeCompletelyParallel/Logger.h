@@ -40,16 +40,19 @@ public:
 	static void CloseLog();
 
 	static string GetFormattedTime();
+	static string GetTime();
 
 	static int verbosity;
 
 	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
+	static void fillPatternData(const vector<string> &patternData);
 
 private:
 	static string stringBuffer;
 	static ofstream *outputFile;
+	static ofstream* patternDataFile;
 	static mutex* logMutex;
 	static mutex* scrollLogMutex;
 	static int index;
