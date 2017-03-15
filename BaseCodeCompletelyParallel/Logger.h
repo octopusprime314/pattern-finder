@@ -47,7 +47,7 @@ public:
 	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
-	static void fillPatternData(const vector<string> &patternData);
+	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes);
 
 private:
 	static string stringBuffer;

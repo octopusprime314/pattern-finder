@@ -79,34 +79,34 @@ void Logger::CloseLog()
 string Logger::GetFormattedTime()
 {
 	time_t t = time(0);   // get time now
-    struct tm * now = new struct tm();
-	now = localtime( & t );
+    struct tm now;
+	now = *localtime( & t );
 	stringstream timeBuff;
 	//timeBuff << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-' <<  now->tm_mday << " ";
 	string amorpm;
 
-	if(now->tm_hour > 0 && now->tm_hour <= 12)
+	if(now.tm_hour > 0 && now.tm_hour <= 12)
 	{
-		now->tm_hour = now->tm_hour;
+		now.tm_hour = now.tm_hour;
 		amorpm = "am";
 	}
 	else
 	{
-		now->tm_hour = now->tm_hour%12;
+		now.tm_hour = now.tm_hour%12;
 		amorpm = "pm";
 	}
 
-	timeBuff << now->tm_hour << "_";
-	if(now->tm_min < 10)
+	timeBuff << now.tm_hour << "_";
+	if(now.tm_min < 10)
 	{
 		timeBuff << "0";	
 	}
-	timeBuff << now->tm_min << "_";
-	if(now->tm_sec < 10)
+	timeBuff << now.tm_min << "_";
+	if(now.tm_sec < 10)
 	{
 		timeBuff << "0";	
 	}
-	timeBuff << now->tm_sec /*<< " " << amorpm*/;
+	timeBuff << now.tm_sec /*<< " " << amorpm*/;
 	srand ((unsigned int)(time(NULL)));
 	timeBuff << rand();
 
@@ -116,22 +116,22 @@ string Logger::GetFormattedTime()
 string Logger::GetTime()
 {
 	time_t t = time(0);   // get time now
-    struct tm * now = new struct tm();
-	now = localtime( & t );
+    struct tm now;
+	now = *localtime( & t );
 	stringstream timeBuff;
 
-	timeBuff << now->tm_hour << ":";
-	if(now->tm_min < 10)
+	timeBuff << now.tm_hour << ":";
+	if(now.tm_min < 10)
 	{
 		timeBuff << "0";	
 	}
-	timeBuff << now->tm_min << ":";
-	if(now->tm_sec < 10)
+	timeBuff << now.tm_min << ":";
+	if(now.tm_sec < 10)
 	{
 		timeBuff << "0";	
 	}
-	timeBuff << now->tm_sec;
-	
+	timeBuff << now.tm_sec;
+
 	return timeBuff.str();
 }
 
@@ -176,12 +176,13 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	csvFile.close();
 }
 
-void Logger::fillPatternData(const vector<string> &patternData)
+void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes)
 {
-	
-	for(vector<string>::const_iterator it = patternData.begin(); it != patternData.end(); it++)
+	int j = 0;
+	for(vector<PListType>::const_iterator it = patternIndexes.begin(); it != patternIndexes.end(); it++)
 	{
-		(*patternDataFile) << (*it).size() << *it;
+		(*patternDataFile) << j + 1 << file.substr(*it, j + 1);
+		j++;
 	}
 	(*patternDataFile) << "-";
 }

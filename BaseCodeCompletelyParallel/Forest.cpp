@@ -492,7 +492,7 @@ Forest::Forest(int argc, char **argv)
 				}
 			}
 
-			Logger::fillPatternData(patternData);
+			Logger::fillPatternData(files[f]->fileString, mostCommonPatternIndex);
 
 			finalPattern[levelRecordings.size()]++;
 			levelRecordings.clear();
@@ -531,10 +531,11 @@ Forest::Forest(int argc, char **argv)
 			crappy << "File Size " << files[f]->fileStringSize << " and eliminated patterns " << eradicatedPatterns << "\n\n\n";
 			Logger::WriteLog(crappy.str());
 
-			if(files[f]->fileStringSize != eradicatedPatterns)
+			//If we aren't doing a deep search in levels then there isn't a need to check that pattern finder is properly functioning..it's impossible
+			if(files[f]->fileStringSize != eradicatedPatterns && maximum == -1)
 			{
+				cout << "Houston we are not processing patterns properly!" << endl;
 				Logger::WriteLog("Houston we are not processing patterns properly!");
-				throw std::exception( "Erroneous file processing" );
 				exit(0);
 			}
 
@@ -1059,11 +1060,11 @@ void Forest::CommandLineParser(int argc, char **argv)
 	Logger::WriteLog(buff.str());
 	cout << buff.str();
 
-	//If max not specified then make the largest pattern the fileSize
-	if (!maxEnter)
-	{
-		maximum = files[f]->fileStringSize;
-	}
+	////If max not specified then make the largest pattern the fileSize
+	//if (!maxEnter)
+	//{
+	//	maximum = files[f]->fileStringSize;
+	//}
 	//If min not specified then make the smallest pattern of 0
 	if (!minEnter)
 	{
@@ -1492,7 +1493,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		countMutex->unlock();
 		WaitForThreads(localWorkingThreads, threadPool);
 	}
-
+	
 	prevPListArray->clear();
 	prevPListArray->swap((*globalPListArray));
 
@@ -3019,21 +3020,24 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatterns
 					(*localThreadPool).clear();
 					delete localThreadPool;
 					morePatternsToFind = false;
+					delete prevLocalPListArray;
 				}
 				else
 				{
-					for(int piss = 0; piss < pListLengths.size(); piss++)
+					for(int piss = 0; piss < prevLocalPListArray->size(); piss++)
 					{
 						delete (*prevLocalPListArray)[piss];
 					}
+					delete prevLocalPListArray;
 				}
 			}
 			else
 			{
-				for(int piss = 0; piss < pListLengths.size(); piss++)
+				for(int piss = 0; piss < prevLocalPListArray->size(); piss++)
 				{
 					delete (*prevLocalPListArray)[piss];
 				}
+				delete prevLocalPListArray;
 			}
 		}
 		else
@@ -3167,7 +3171,10 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
 				delete  (*prevLocalPListArray)[i];
 			}
-			//delete (*prevLocalPListArray)[i];
+			else
+			{
+				delete (*prevLocalPListArray)[i];
+			}
 
 			if(!firstLevelProcessedHD)
 			{
@@ -3206,6 +3213,10 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			{
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
 				prevPListLengths.push_back(pListLength);
+				delete (*prevLocalPListArray)[i];
+			}
+			else
+			{
 				delete (*prevLocalPListArray)[i];
 			}
 			//delete (*prevLocalPListArray)[i];
@@ -3287,7 +3298,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			continueSearching = false;
 			break;
 		}
-			
 
 		globalStringConstruct.resize(stringIndexer);
 		stringIndexer = 0;
@@ -3597,10 +3607,17 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 		}
 	}
 
-	/*if(prevLocalPListArray != NULL)
+	if(prevLocalPListArray != NULL)
 	{
+		/*for(PListType i = 0; i < prevLocalPListArray->size(); i++)
+		{
+			if((*prevLocalPListArray)[i] != NULL)
+			{
+				delete (*prevLocalPListArray)[i];
+			}
+		}*/
 		delete prevLocalPListArray;
-	}*/
+	}
 
 	if(globalLocalPListArray != NULL)
 	{
@@ -3793,7 +3810,7 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 	{
 		(*prevPListArray)[threadIndex + i*threadsToDispatch] = leaves[i];
 	}
-
+	
 	currentLevelVector[threadIndex] = 2;
 }
 
