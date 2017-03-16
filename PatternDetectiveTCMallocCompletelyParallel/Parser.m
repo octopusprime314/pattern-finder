@@ -9,7 +9,7 @@ function patternMapping = Parser(filetext, patternCap)
     patternInfoIndex = 1;
     patternCount = 0;
     extraWait = 0;
-
+    
     for index = filetext
 
         if extraWait == 0
@@ -17,7 +17,7 @@ function patternMapping = Parser(filetext, patternCap)
             if totalCounter == incrementor
                 totalCounter = 0;
                 patternInfoIndex = 1;
-                if incrementor == patternCap
+                if incrementor <= patternCap
                     tf = isKey(patternMapping,patternInfo);
                     if tf == 0
                         patternMapping(patternInfo) = 1;

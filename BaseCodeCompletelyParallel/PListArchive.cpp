@@ -53,7 +53,7 @@ PListArchive::PListArchive(string fileName, bool create)
 			{
 				stringstream shit;
 				shit << "Why are we truncating file " << file << endl;
-				shit << " and errno is "<< errno << endl;
+				shit << " and errno is "<< strerror(errno) << endl;
 				Logger::WriteLog(shit.str());
 				cout << shit.str() << endl;
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
@@ -96,7 +96,7 @@ PListArchive::PListArchive(string fileName, bool create)
 			
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " file not found!";
-			stringbuilder << " and errno is "<< errno << endl;
+			stringbuilder << " and errno is "<< strerror(errno) << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;
 			return;
@@ -160,7 +160,7 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 #endif
 
 	stringstream handle;
-	handle << "Errno is "<< errno << endl;
+	handle << "Errno is "<< strerror(errno) << endl;
 	handle << "error mapping the file " << fileName << endl;
 	handle << "file handle list size: " << fileNameToHandleMapping.size() << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
@@ -184,7 +184,7 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 {
 	stringstream handle;
-	handle << "Errno is "<< errno << endl;
+	handle << "Errno is "<< strerror(errno) << endl;
 	handle << "error un-mapping the file " << fileName << endl;
 	handle << "file handle list size: " << fileNameToHandleMapping.size() << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
@@ -764,6 +764,18 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 			fileLock.unlock();
 		}
+
+		if(mapFD < 0)
+		{
+			
+			stringstream stringbuilder;
+			stringbuilder << file.c_str() << " file not found!";
+			stringbuilder << " and errno is "<< strerror(errno) << endl;
+			Logger::WriteLog(stringbuilder.str());
+			endOfFileReached = true;
+			return;
+		}
+
 
 
 		bool doneWithThisShit = false;
