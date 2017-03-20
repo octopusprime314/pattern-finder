@@ -176,6 +176,19 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	csvFile.close();
 }
 
+void Logger::fileCoverageCSV(const vector<float>& coverage)
+{
+	ofstream csvFile(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	PListType i = 1;
+	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
+	{
+		csvFile << i << "," << *it << endl;
+		i++;
+	}
+	
+	csvFile.close();
+}
+
 void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes)
 {
 	int j = 0;

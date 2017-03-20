@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ChunkFactory.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\Dirent.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\FileReader.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\Forest.cpp" />
@@ -31,6 +32,7 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAM.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ChunkFactory.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\Dirent.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\FileReader.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\Forest.h" />

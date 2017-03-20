@@ -1,16 +1,35 @@
-data = csvread('Runs/TimeVsFileSize5_06_029074.csv');
-data2 = csvread('Runs/FinalPatternVsCount5_06_029074.csv');
+clear
+
+close all
+
+timevsfilesize = csvread('Runs/TimeVsFileSize10_30_0028723.csv');
+finalpatternvscount = csvread('Runs/FinalPatternVsCount10_30_0128726.csv');
 
 figure 
 
-scatter(data(1:end, 1), data(1:end, 2));
-
+scatter(timevsfilesize(1:end, 1), timevsfilesize(1:end, 2));
 xlabel('Processing Time (milliSeconds)');
 ylabel('File size (Bytes)');
 
+hold on
+
+%quadratic fit trend line
+my_poly=polyfit(timevsfilesize(1:end, 1),timevsfilesize(1:end, 2),2);
+X2= 1:0.1:max(timevsfilesize(1:end, 1)); % X data range 
+Y2=polyval(my_poly,X2);
+plot(X2,Y2);
+
+%linear fit trend line
+my_poly=polyfit(timevsfilesize(1:end, 1),timevsfilesize(1:end, 2),1);
+X2= 1:0.1:max(timevsfilesize(1:end, 1)); % X data range 
+Y2=polyval(my_poly,X2);
+plot(X2,Y2);
+
+
 figure 
 
-plot(data2(1:end, 1), data2(1:end, 2));
+stem(finalpatternvscount(1:end, 1), finalpatternvscount(1:end, 2));
 
+axis([0 100 0 inf])
 xlabel('Pattern Size');
 ylabel('File Count');

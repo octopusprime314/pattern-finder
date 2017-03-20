@@ -3,19 +3,19 @@ clear
 close all
 
 %put whatever file you want to parse here!
-filetext = fileread('CollectivePatternData7_54_3813812.txt');
+filetext = fileread('CollectivePatternData8_59_3811017.txt');
 
 %the maximum pattern length
 patternCap = 100;
 
 %get the map of all the collected patterns
-patternMapping = Parser(filetext, patternCap)
+patternMapping = Parser(filetext, patternCap);
 
 %pull out the keys and values
 keyVals = keys(patternMapping);
 
 %find out the actual maximum pattern from processing
-patternCap = max(cellfun('length', keyVals))
+patternCap = max(cellfun('length', keyVals));
 
 %pull out the pattern counts
 patternCounts = values(patternMapping);
@@ -28,6 +28,8 @@ patternData = {};
 mostCommonValue = {};
 mostCommonIndex = {};
 mostCommonPattern = {};
+overlappingPatterns = {};
+patternCollectionList = {};
 for j = 1:patternCap
     maxVal = 0;
     mostCommonValue{end+1} = 0;
@@ -35,12 +37,15 @@ for j = 1:patternCap
     mostCommonPattern{end+1} = 0;
     for i = 1:length(keyVals)
         pattern=keyVals{i};
-        if(length(pattern) == j && mostCommonValue{j} < patternCounts{i})
-            patternData{end+1} = pattern;
-            index = index + 1;
-            mostCommonValue{j} = patternCounts{i};
-            mostCommonIndex{j} = i;
-            mostCommonPattern{j} = pattern;
+        if(length(pattern) == j)
+            
+            if(mostCommonValue{j} < patternCounts{i})
+                patternData{end+1} = pattern;
+                index = index + 1;
+                mostCommonValue{j} = patternCounts{i};
+                mostCommonIndex{j} = i;
+                mostCommonPattern{j} = pattern;
+            end
         end
     end
 end
@@ -48,7 +53,7 @@ end
 coverage = {};
 
 for j = 1:length(mostCommonIndex)
-    keyVals{mostCommonIndex{j}}
+    keyVals{mostCommonIndex{j}};
 end
 
 for j = 1:length(mostCommonIndex)

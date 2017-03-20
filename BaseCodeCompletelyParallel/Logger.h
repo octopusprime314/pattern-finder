@@ -48,6 +48,7 @@ public:
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
 	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes);
+	static void fileCoverageCSV(const vector<float>& coverage);
 
 private:
 	static string stringBuffer;

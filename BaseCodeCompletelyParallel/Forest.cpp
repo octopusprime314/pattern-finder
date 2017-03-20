@@ -321,28 +321,6 @@ Forest::Forest(int argc, char **argv)
 					}
 					WaitForThreads(localWorkingThreads, threadPlantSeedPoolRAM); 
 
-					//double totalStats = 0.0f;
-					//double avgStats = 0.0f;
-					//double stanDev = 0.0f;
-					//cout << "File statistics..." << endl;
-					//for (int i = 0; i < prevPListArray->size(); i++)
-					//{
-					//	statisticsModel.push_back((double)(*prevPListArray)[i]->size() / (double)files[f]->fileStringSize);
-					//	cout << "Byte: " << char(i) << " was observed in " << statisticsModel[i]*100.0f << " % of the file" << endl;
-					//	totalStats += statisticsModel[i];
-					//	
-					//}
-					//avgStats = totalStats / (double)prevPListArray->size();
-
-					//for (int i = 0; i < prevPListArray->size(); i++)
-					//{
-					//	stanDev += powf(statisticsModel[i] - avgStats, 2.0f);
-					//}
-					//stanDev = stanDev / (double)prevPListArray->size();
-					//stanDev = sqrtf(stanDev);
-					//
-					//cout << "Average: " << avgStats*100.0f << endl;
-					//cout << "Standard Deviation: " << stanDev*100.0f << endl;
 
 					if(levelRecordings.size() < levelInfo.currLevel)
 					{
@@ -355,6 +333,8 @@ Forest::Forest(int argc, char **argv)
 						mostCommonPatternCount.resize(levelInfo.currLevel);
 					}
 					
+					
+					PListType indexOfList = 0;
 					std::map<string, PListType> countMap;
 					std::map<string, vector<PListType>> indexMap;
 					for (PListType i = 0; i < prevPListArray->size(); i++)
@@ -367,6 +347,7 @@ Forest::Forest(int argc, char **argv)
 							{
 								mostCommonPatternCount[levelInfo.currLevel - 1] = countMap[files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)];
 								mostCommonPatternIndex[levelInfo.currLevel - 1] = (*(*prevPListArray)[i])[0] - (levelInfo.currLevel);
+								indexOfList = i;
 							}
 
 							if((*prevPListArray)[i]->size() >= 1)
@@ -375,7 +356,53 @@ Forest::Forest(int argc, char **argv)
 							}
 						}
 					}
+
 					levelRecordings[levelInfo.currLevel - 1] = countMap.size();
+
+
+					PListType countage = 0;
+					if(coverage.size() < levelInfo.currLevel)
+					{
+						coverage.resize(levelInfo.currLevel);
+					}
+
+					//Monitor number of patterns that do not overlap ie coverage
+					PListType index = indexOfList % 256;
+					PListType count = mostCommonPatternCount[levelInfo.currLevel - 1];
+					PListType totalTally = 0;
+					PListType prevIndex = 0;
+
+					for(int i = 0; i < threadsToDispatch; i++)
+					{
+						if((*prevPListArray)[index + i]->size() > 1)
+						{
+							prevIndex = (*(*prevPListArray)[index + i])[0];
+							totalTally++;
+		
+							for(PListType j = 1; j < (*prevPListArray)[index + i]->size(); j++)
+							{
+								PListType span = (*(*prevPListArray)[index])[j] - prevIndex;
+								if(span >= levelInfo.currLevel)
+								{
+									PListType pIndex = (*(*prevPListArray)[index])[j] - levelInfo.currLevel;
+									totalTally++;
+									prevIndex = pIndex;
+								}
+							}
+						}
+					}
+					//Coverage of most common pattern per level
+					if(totalTally * levelInfo.currLevel > coverage[levelInfo.currLevel - 1])
+					{
+						coverage[levelInfo.currLevel - 1] = ((double)(totalTally * levelInfo.currLevel)) / ((double)(files[f]->fileStringSize));
+					}
+					if(totalTally != count)
+					{
+						//cout << "Number of overlapping patterns: " << count - totalTally << endl;
+					}
+
+
+
 					for(map<string, vector<PListType>>::iterator it = indexMap.begin(); it != indexMap.end(); it++)
 					{
 						if(it->second.size() == 1 && (*prevPListArray)[it->second[0]]->size() == 1)
@@ -385,12 +412,6 @@ Forest::Forest(int argc, char **argv)
 							eradicatedPatterns++;
 						}
 					}
-					//
-					//if(coverage.size() < levelInfo.currLevel)
-					//{
-					//	coverage.resize(levelInfo.currLevel);
-					//}
-					//coverage[0] = ((float)(files[f]->fileStringSize - (256 - levelRecordings[0])))/((float)files[f]->fileStringSize);
 				}
 				overallFilePosition += position;
 
@@ -480,14 +501,13 @@ Forest::Forest(int argc, char **argv)
 			stringstream buffery;
 			buffery << threadsToDispatch << " threads were used to process file" << endl;
 			Logger::WriteLog(buffery.str());
-			vector<string> patternData;
 			if(Logger::verbosity)
 			{
 				for(int j = 0; j < levelRecordings.size() && levelRecordings[j] != 0; j++)
 				{
-					patternData.push_back(files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1));
+					string pattern = files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1);
 					stringstream buff;
-					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << patternData.back() << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
+					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << pattern << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
 					Logger::WriteLog(buff.str());
 				}
 			}
@@ -499,7 +519,8 @@ Forest::Forest(int argc, char **argv)
 				files[f]->fileString.resize(files[f]->fileStringSize);
 				files[f]->copyBuffer->read( &files[f]->fileString[0], files[f]->fileString.size());
 			}
-			Logger::fillPatternData(files[f]->fileString, mostCommonPatternIndex);
+			//Logger::fillPatternData(files[f]->fileString, mostCommonPatternIndex);
+			Logger::fileCoverageCSV(coverage);
 
 			finalPattern[levelRecordings.size()]++;
 			levelRecordings.clear();
@@ -3242,7 +3263,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				threadCountage = 0;
 			}
 		}
-		//delete prevLocalPListArray;
 	}
 	else
 	{
@@ -3271,9 +3291,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			{
 				delete (*prevLocalPListArray)[i];
 			}
-			//delete (*prevLocalPListArray)[i];
 		}
-		//delete prevLocalPListArray;
 	}
 	globalStringConstruct.resize(totalCount);
 	linearList.reserve(totalCount);
@@ -3521,8 +3539,10 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			mostCommonPatternIndex.resize(levelInfo.currLevel);
 			mostCommonPatternCount.resize(levelInfo.currLevel);
 		}
-					
+		
 		PListType countage = 0;
+		PListType indexOfList = 0;
+		bool chosen = false;
 		for (PListType i = 0; i < pListLengths.size(); i++)
 		{
 			if(pListLengths[i] > 0)
@@ -3531,9 +3551,50 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				{
 					mostCommonPatternCount[levelInfo.currLevel - 1] = pListLengths[i];
 					mostCommonPatternIndex[levelInfo.currLevel - 1] = linearList[countage] - levelInfo.currLevel;
+					indexOfList = countage;
+					chosen = true;
 				}
 			}
 			countage += pListLengths[i];
+		}
+
+		if(coverage.size() < levelInfo.currLevel)
+		{
+			coverage.resize(levelInfo.currLevel);
+		}
+
+		if(chosen)
+		{
+			//Monitor number of patterns that do not overlap ie coverage
+			PListType index = indexOfList;
+			PListType count = mostCommonPatternCount[levelInfo.currLevel - 1];
+			PListType totalTally = 0;
+			PListType prevIndex = 0;
+			if(count > 1)
+			{
+				prevIndex = linearList[index];
+				totalTally++;
+		
+				for(PListType i = index + 1; i < count + index; i++)
+				{
+					PListType span = linearList[i] - prevIndex;
+					if(span >= levelInfo.currLevel)
+					{
+						PListType pIndex = linearList[i] - levelInfo.currLevel;
+						totalTally++;
+						prevIndex = pIndex;
+					}
+				}
+			}
+			//Coverage of most common pattern per level
+			if(totalTally * levelInfo.currLevel > coverage[levelInfo.currLevel - 1])
+			{
+				coverage[levelInfo.currLevel - 1] = ((double)(totalTally * levelInfo.currLevel)) / ((double)(files[f]->fileStringSize));
+			}
+			if(totalTally != count)
+			{
+				//cout << "Number of overlapping patterns: " << count - totalTally << endl;
+			}
 		}
 
 		levelInfo.currLevel++;
@@ -3543,9 +3604,8 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			currentLevelVector[levelInfo.threadIndex] = levelInfo.currLevel;
 		}
 
-		countMutex->unlock();
 
-		//Logger::WriteLog("Eradicated patterns: " + std::to_string(eradicatedPatterns) + "\n");
+		countMutex->unlock();
 
 		if(linearList.size() == 0 || levelInfo.currLevel - 1 >= maximum)
 		{
@@ -3583,11 +3643,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			}
 			else
 			{
-				//if(prevLocalPListArray != NULL)
-				//{
-				//	delete prevLocalPListArray;
-				//	prevLocalPListArray = NULL;
-				//}
 				continueSearching = true;
 				
 				DispatchNewThreadsRAM(0, continueSearching, linearList, pListLengths, levelInfo, isThreadDefuncted);
@@ -3601,7 +3656,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 				prevPListLengths.swap((pListLengths));
 				pListLengths.reserve(0);
 			}
-
 		}
 	}
 	return continueSearching;
