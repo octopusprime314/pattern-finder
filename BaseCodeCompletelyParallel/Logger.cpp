@@ -2,6 +2,8 @@
 
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
+ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	
 
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
@@ -67,12 +69,14 @@ void Logger::CloseLog()
 	ClearLog(); 
 	(*outputFile).close();
 	(*patternDataFile).close();
+	(*coverageFile).close();
 	logMutex->unlock();
 
 	delete outputFile;
 	delete scrollLogMutex;
 	delete logMutex;
 	delete patternDataFile;
+	delete coverageFile;
 }
 
 
@@ -176,18 +180,36 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	csvFile.close();
 }
 
+//void Logger::fileCoverageCSV(const vector<float>& coverage)
+//{
+//	ofstream csvFile(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+//	PListType i = 1;
+//	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
+//	{
+//		csvFile << i << "," << *it << endl;
+//		i++;
+//	}
+//	
+//	csvFile.close();
+//}
+
 void Logger::fileCoverageCSV(const vector<float>& coverage)
 {
-	ofstream csvFile(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 	PListType i = 1;
 	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
 	{
-		csvFile << i << "," << *it << endl;
+		(*coverageFile) << i << ",";
 		i++;
 	}
-	
-	csvFile.close();
+	(*coverageFile) << endl;
+
+	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
+	{
+		(*coverageFile) << *it << ",";
+	}
+	(*coverageFile) << endl;
 }
+
 
 void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes)
 {

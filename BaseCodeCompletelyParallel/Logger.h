@@ -54,6 +54,7 @@ private:
 	static string stringBuffer;
 	static ofstream *outputFile;
 	static ofstream* patternDataFile;
+	static ofstream* coverageFile;
 	static mutex* logMutex;
 	static mutex* scrollLogMutex;
 	static int index;

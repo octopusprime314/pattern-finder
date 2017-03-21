@@ -13,6 +13,7 @@
 #include "StopWatch.h"
 #include <array>
 #include <queue>
+#include "ChunkFactory.h"
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
 #elif defined(__linux__)
@@ -36,23 +37,17 @@ typedef std::vector<map<PatternType, PListType>>::iterator it_type;
 typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
 typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
 
-struct LevelPackage
-{
-	unsigned int currLevel;
-	unsigned int threadIndex;
-	unsigned int inceptionLevelLOL;
-	bool useRAM;
-	unsigned int coreIndex;
-};
 
 class Forest
 {
 
 private:
+
+	ChunkFactory* chunkFactorio;
+
 	PListType memoryCeiling;
 	double mostMemoryOverflow;
 	double currMemoryOverflow;
-	PListType fileID;
 	vector<mutex*> gatedMutexes;
 	vector<unsigned int> currentLevelVector;
 	vector<bool> activeThreads;
@@ -76,7 +71,6 @@ private:
 	//If /c is in commands then cycle from 1 thread to MAX threads on machine and output best thread scheme
 	bool findBestThreadNumber;
 	mutex *countMutex;
-	mutex *fileIDMutex;
 	bool usingMemoryBandwidth;
 	unsigned int testIterations;
 	bool usingPureRAM;
@@ -119,13 +113,6 @@ private:
 	void ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo);
 	bool PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount);
 	void FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsigned int z);
-	string CreateChunkFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo);
-	string CreateChunkFile(string fileName, TreeHD &leaf, LevelPackage levelInfo);
-	PListArchive* CreateChunkFileHandle(string fileName, TreeHD& leaf, LevelPackage levelInfo);
-	void DeleteChunks(vector<string> fileNames, string folderLocation);
-	void DeleteChunk(string fileChunkName, string folderLocation);
-	void DeleteArchives(vector<string> fileNames, string folderLocation);
-	void DeleteArchive(string fileNames, string folderLocation);
 	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex, bool firstLevel = false);
 	PListType ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 	bool ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &isThreadDefuncted);

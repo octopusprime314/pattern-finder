@@ -2,6 +2,9 @@ clear
 
 close all
 
+addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
+addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
+
 %put whatever file you want to parse here!
 filetext = fileread('CollectivePatternData8_59_3811017.txt');
 

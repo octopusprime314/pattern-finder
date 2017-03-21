@@ -22,3 +22,12 @@ typedef unsigned long long PatternType;
 #if BYTES
 typedef string PatternType;
 #endif
+
+struct LevelPackage
+{
+	unsigned int currLevel;
+	unsigned int threadIndex;
+	unsigned int inceptionLevelLOL;
+	bool useRAM;
+	unsigned int coreIndex;
+};

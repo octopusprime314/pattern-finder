@@ -2,8 +2,11 @@ clear
 
 close all
 
-timevsfilesize = csvread('Runs/TimeVsFileSize10_30_0028723.csv');
-finalpatternvscount = csvread('Runs/FinalPatternVsCount10_30_0128726.csv');
+addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
+addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
+
+timevsfilesize = csvread('TimeVsFileSize10_30_0028723.csv');
+finalpatternvscount = csvread('FinalPatternVsCount10_30_0128726.csv');
 
 figure 
 
