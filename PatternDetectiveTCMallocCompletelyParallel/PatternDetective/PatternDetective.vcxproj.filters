@@ -45,6 +45,15 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\Dirent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ChunkFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ProcessorConfig.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ProcessorStats.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\FileReader.h">
@@ -78,6 +87,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\Dirent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ChunkFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ProcessorConfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ProcessorStats.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

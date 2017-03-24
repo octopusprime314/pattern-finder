@@ -14,6 +14,7 @@
 #include <array>
 #include <queue>
 #include "ChunkFactory.h"
+#include "ProcessorConfig.h"
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
 #elif defined(__linux__)
@@ -25,12 +26,6 @@
 #endif
 
 using namespace std;
-#define ARCHIVE_FOLDER LOGGERPATH
-#if defined(_WIN64) || defined(_WIN32)
-	#define READMEPATH "../../ReadMe.txt"
-#elif defined(__linux__)
-	#define READMEPATH "../ReadMe.txt"
-#endif
 
 
 typedef std::vector<map<PatternType, PListType>>::iterator it_type;
@@ -56,25 +51,10 @@ private:
 	vector<future<void>> *threadPool;
 	vector<future<void>> *threadPlantSeedPoolHD;
 	vector<future<void>> *threadPlantSeedPoolRAM;
-	vector<FileReader*> files;
 	std::string::size_type sz;
-	unsigned int numThreads;
-	unsigned int levelToOutput;
-	int history;
-	PListType minimum, maximum;
-	PListType memoryBandwidthMB;
 	PListType memoryPerThread;
 	unsigned int globalLevel;
-	string patternToSearchFor;
-	//If /d is in commands then display number of patterns found at each level
-	bool displayEachLevelSearch;
-	//If /c is in commands then cycle from 1 thread to MAX threads on machine and output best thread scheme
-	bool findBestThreadNumber;
 	mutex *countMutex;
-	bool usingMemoryBandwidth;
-	unsigned int testIterations;
-	bool usingPureRAM;
-	bool usingPureHD;
 	vector<vector<string>> prevFileNameList;
 	vector<vector<string>> newFileNameList;
 	queue<string> filesToBeRemoved;
@@ -91,19 +71,19 @@ private:
 	StopWatch initTime;
 	bool processingFinished;
 	bool processingMSYNCFinished;
-	PListType minOccurrence;
 	bool writingFlag;
 	vector<float> coverage;
 	map<unsigned int, unsigned int> chunkIndexToFileChunk;
 	vector<string> fileChunks;
 	vector<double> statisticsModel;
 	int f;
-	vector<PListType> fileSizes;
 	vector<double> processingTimes;
 	map<PListType, PListType> finalPattern;
 	bool firstLevelProcessedHD;
 
-	void FindFiles(string directory);
+	ConfigurationParams config;
+
+
 	void MemoryQuery();
 	void MonitorMSYNCThreads();
 	void PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex);
@@ -125,10 +105,6 @@ private:
 	void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false, unsigned int thread = 0);
 	bool DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
 	bool DispatchNewThreadsRAM(PListType newPatternCount, bool& morePatternsToFind, vector<PListType> &linearList, vector<PListType> &pListLengths, LevelPackage levelInfo, bool& isThreadDefuncted);
-	void DisplayPatternsFound();
-	void DisplayHelpMessage();
-	void CommandLineParser(int argc, char **argv); 
-
 
 
 public:

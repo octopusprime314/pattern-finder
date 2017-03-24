@@ -1,8 +1,8 @@
 clear
 close all
 
-dramFile = csvread('ThreadsVsThroughput6_54_441381013564.csv');
-%harddiskFile = csvread('');
+dramFile = csvread('ThreadsVsSpeed6_54_441381013564.csv');
+harddiskFile = csvread('ThreadsVsSpeed6_54_441381013564.csv');
 
 figure 
 prevVal = 0;
@@ -21,15 +21,15 @@ for idx = 1:numel(dramFile(1:end, 1))+1
 end
 
 xlabel('Threads');
-ylabel('Speedup');
+ylabel('Speed');
 
 hold on
 
 %trend line quadratic
-my_poly=polyfit(dramFile(1:end, 1),dramFile(1:end, 2),2); % 2 means quad
-x= 1:0.1:max(dramFile(1:end, 1)); % X data range 
-y=polyval(my_poly,x);
-plot(x,y, '*');
+%my_poly=polyfit(dramFile(1:end, 1),dramFile(1:end, 2),2); % 2 means quad
+%x= 1:0.1:max(dramFile(1:end, 1)); % X data range 
+%y=polyval(my_poly,x);
+%plot(x,y, '*');
 
 %trend line linear
 %my_linear=polyfit(dramFile(1:end, 1),dramFile(1:end, 2),1); % 1 mean linear
@@ -51,18 +51,18 @@ for idx = 1:numel(harddiskFile(1:end, 1))+1
 end
 
 xlabel('Threads');
-ylabel('Speedup');
+ylabel('Speed');
 
 hold on
 
 %trend line quadratic
-my_poly=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),2); % 2 means quad
-x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
-y=polyval(my_poly,x);
-plot(x,y);
+% my_poly=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),2); % 2 means quad
+% x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
+% y=polyval(my_poly,x);
+% plot(x,y);
 
 %trend line linear
-my_linear=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),1); % 1 mean linear
-x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
-y=polyval(my_linear,x);
-plot(x,y);
+% my_linear=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),1); % 1 mean linear
+% x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
+% y=polyval(my_linear,x);
+% plot(x,y);

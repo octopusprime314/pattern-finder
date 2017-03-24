@@ -3,10 +3,12 @@ close all
 
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
-fid = fopen('PatternVsFileCoverage9_09_4720242.csv'); %text sub sample
-%fid = fopen('PatternVsFileCoverage8_51_0416575.csv'); %image sub sample
+%fid = fopen('PatternVsFileCoverage9_09_4720242.csv'); %text sub sample
+%fid = fopen('PatternVsFileCoverage8_51_0416575.csv'); %image sub sample overlapping with non overlapping resolution
+%fid = fopen('PatternVsFileCoverage11_00_539242.csv'); %image sub sample non overlapping with non overlapping resolution
 %fid = fopen('PatternVsFileCoverage9_04_2819200.csv'); %show sub sample
-
+%fid = fopen('PatternVsFileCoverage11_23_3913703.csv'); %music sub sample
+fid = fopen('PatternVsFileCoverage1_08_151430.csv'); %film sub sample
 
 patternCoverage = textscan(fid, '%[^\n]');
 patternCoverage = patternCoverage{1};
@@ -20,12 +22,12 @@ numCoverageFiles = numRows / 2;
 figure 
 index = 1;
 for row = 1:numCoverageFiles
-    plot(patternCoverage{index}, patternCoverage{index+1}.*100);
+    plot(log(patternCoverage{index}), patternCoverage{index+1}.*100);
     index = index + 2;
     hold on;
 end
 
-xlabel('Pattern Size');
+xlabel('Pattern Size in bytes (log scale)');
 ylabel('Percentage of file covered');
 title('Non-overlapping pattern coverage of Text Files')
 

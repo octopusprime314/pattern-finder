@@ -1,8 +1,8 @@
 all: PatternFinder
 
 
-PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o
-	g++ -g main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o -o PatternFinder -pthread
+PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o
+	g++ -g main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o -o PatternFinder -pthread
 main.o: main.cpp
 	g++ -g -c -std=c++11 main.cpp -pthread
 Forest.o: Forest.cpp
@@ -19,6 +19,10 @@ FileReader.o: FileReader.cpp
 	g++ -g -c -std=c++11 FileReader.cpp -pthread
 StopWatch.o: StopWatch.cpp
 	g++ -g -c -std=c++11 StopWatch.cpp -pthread
+ChunkFactory.o: ChunkFactory.cpp
+	g++ -g -c -std=c++11 ChunkFactory.cpp -pthread
+ProcessorConfig.o: ProcessorConfig.cpp
+	g++ -g -c -std=c++11 ProcessorConfig.cpp -pthread
 clean:
 	rm *o
 #Clean command: make -f gccmallocmakefile.mak clean

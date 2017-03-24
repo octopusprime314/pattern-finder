@@ -151,7 +151,19 @@ void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PList
 		}
 	}
 	csvFile.close();
+
+	ofstream csvFile2(CSVPATH + "FileNumberVsProcessingTime" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	if(processTimes.size() == fileSizes.size())
+	{
+		for(int i = 0; i < processTimes.size(); i++)
+		{
+			csvFile2 << i << "," << processTimes[i] << endl;
+		}
+	}
+	csvFile2.close();
 }
+
+
 
 void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 {
@@ -178,21 +190,19 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	}
 	
 	csvFile.close();
+
+	ofstream csvFile2(CSVPATH + "ThreadsVsSpeed" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+
+	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
+	{
+		for(map<int, double>::iterator it2 = it->begin(); it2 != it->end(); it2++)
+		{
+			csvFile2 << it2->first << "," << it2->second << endl;
+		}
+	}
+	csvFile2.close();
+
 }
-
-//void Logger::fileCoverageCSV(const vector<float>& coverage)
-//{
-//	ofstream csvFile(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
-//	PListType i = 1;
-//	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
-//	{
-//		csvFile << i << "," << *it << endl;
-//		i++;
-//	}
-//	
-//	csvFile.close();
-//}
-
 void Logger::fileCoverageCSV(const vector<float>& coverage)
 {
 	PListType i = 1;

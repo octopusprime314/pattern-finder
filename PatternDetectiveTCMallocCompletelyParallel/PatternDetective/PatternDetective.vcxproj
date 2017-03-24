@@ -27,6 +27,8 @@
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\main.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\mman.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\PListArchive.cpp" />
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ProcessorConfig.cpp" />
+    <ClCompile Include="..\..\BaseCodeCompletelyParallel\ProcessorStats.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\StopWatch.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeHD.cpp" />
     <ClCompile Include="..\..\BaseCodeCompletelyParallel\TreeRAM.cpp" />
@@ -40,6 +42,8 @@
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\MemoryUtils.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\mman.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\PListArchive.h" />
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ProcessorConfig.h" />
+    <ClInclude Include="..\..\BaseCodeCompletelyParallel\ProcessorStats.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\StopWatch.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeHD.h" />
     <ClInclude Include="..\..\BaseCodeCompletelyParallel\TreeRAM.h" />
