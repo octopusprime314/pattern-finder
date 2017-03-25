@@ -11,9 +11,7 @@ ConfigurationParams ProcessorConfig::config;
 
 ProcessorConfig::ProcessorConfig(void)
 {
-
 }
-
 
 ProcessorConfig::~ProcessorConfig(void)
 {
@@ -31,6 +29,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.minOccurrence = 2;
 	config.nonOverlappingPatternSearch = false;
 	config.history = 0;
+	config.threadLimitation = 0;
 
 	bool minEnter = false;
 	bool maxEnter = false;
@@ -167,6 +166,11 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			coverageTracking = true;
 			i++;
 		}
+		else if(arg.compare("-l") == 0)
+		{
+			config.threadLimitation = atoi(argv[i+1]);
+			i++;
+		}
 		else if(arg.compare("-help") == 0 || arg.compare("/?") == 0)
 		{
 			DisplayHelpMessage();
@@ -224,7 +228,14 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	if (config.findBestThreadNumber)
 	{
 		config.numThreads = 2;
-		config.testIterations = concurentThreadsSupported;
+		if(config.threadLimitation != 0)
+		{
+			config.testIterations = config.threadLimitation;
+		}
+		else
+		{
+			config.testIterations = concurentThreadsSupported;
+		}
 	}
 	return config;
 }
@@ -298,7 +309,7 @@ void ProcessorConfig::FindFiles(string directory)
 			if(isFile)
 			{
 				config.files.push_back(file);
-				config.fileSizes.push_back(files.back()->fileStringSize);
+				config.fileSizes.push_back(config.files.back()->fileStringSize);
 			}
 			else //This is probably a directory then
 			{

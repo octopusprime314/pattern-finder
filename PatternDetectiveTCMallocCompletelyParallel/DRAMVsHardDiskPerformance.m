@@ -1,8 +1,8 @@
 clear
 close all
-
-dramFile = csvread('ThreadsVsSpeed6_54_441381013564.csv');
-harddiskFile = csvread('ThreadsVsSpeed6_54_441381013564.csv');
+addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
+dramFile = csvread('ThreadsVsSpeed10_26_15783263101.csv');
+harddiskFile = csvread('ThreadsVsSpeed10_25_37534107576.csv');
 
 figure 
 prevVal = 0;
@@ -20,23 +20,12 @@ for idx = 1:numel(dramFile(1:end, 1))+1
     count = count + 1;
 end
 
-xlabel('Threads');
-ylabel('Speed');
+%plot(dramFile(idx-(count-1):idx-1, 1), dramFile(idx-(count-1):idx-1, 2));
 
 hold on
 
-%trend line quadratic
-%my_poly=polyfit(dramFile(1:end, 1),dramFile(1:end, 2),2); % 2 means quad
-%x= 1:0.1:max(dramFile(1:end, 1)); % X data range 
-%y=polyval(my_poly,x);
-%plot(x,y, '*');
-
-%trend line linear
-%my_linear=polyfit(dramFile(1:end, 1),dramFile(1:end, 2),1); % 1 mean linear
-%x= 1:0.1:max(dramFile(1:end, 1)); % X data range 
-%y=polyval(my_linear,x);
-%plot(x,y, 'o');
-
+prevVal = 0;
+count = 0;
 
 %hard disk performance 
 for idx = 1:numel(harddiskFile(1:end, 1))+1
@@ -50,19 +39,27 @@ for idx = 1:numel(harddiskFile(1:end, 1))+1
     count = count + 1;
 end
 
-xlabel('Threads');
-ylabel('Speed');
+%plot(harddiskFile(idx-(count-1):idx-1, 1), harddiskFile(idx-(count-1):idx-1, 2));
+slowdown = harddiskFile(idx-(count-1):idx-1, 2)./dramFile(idx-(count-1):idx-1, 2);
+plot(dramFile(idx-(count-1):idx-1, 1), slowdown, '-');
 
-hold on
+title('HD processing slow down of an mp4 file');
+xlabel('threads');
+ylabel('HD/DRAM processing slowdown');
 
 %trend line quadratic
-% my_poly=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),2); % 2 means quad
-% x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
-% y=polyval(my_poly,x);
-% plot(x,y);
+my_poly=polyfit(dramFile(idx-(count-1):idx-1, 1),slowdown, 1); % 2 means quad
+a = my_poly(1)
+b = my_poly(2)
+polyfit_str = ['y = ' num2str(a) ' *x + ' num2str(b)]
+% polyfit_str qill be : y = 4*x + 2
+legend(polyfit_str);
+x= 1:0.1:max(dramFile(idx-(count-1):idx-1, 1)); % X data range 
+y=polyval(my_poly,x);
+plot(x,y);
 
 %trend line linear
-% my_linear=polyfit(harddiskFile(1:end, 1),harddiskFile(1:end, 2),1); % 1 mean linear
-% x= 1:0.1:max(harddiskFile(1:end, 1)); % X data range 
-% y=polyval(my_linear,x);
-% plot(x,y);
+%my_poly=polyfit(dramFile(idx-(count-1):idx-1, 1),slowdown, 2); % 2 means quad
+%x= 1:0.1:max(dramFile(idx-(count-1):idx-1, 1)); % X data range 
+%y=polyval(my_poly,x);
+%plot(x,y);

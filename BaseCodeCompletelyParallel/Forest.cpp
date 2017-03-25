@@ -11,12 +11,6 @@ Forest::Forest(int argc, char **argv)
 {
 
 #if defined(_WIN64) || defined(_WIN32)
-	system("del ..\\..\\Log\\PList*.txt");
-#elif defined(__linux__)
-	system("rm -r ../Log/PList*");
-#endif
-
-#if defined(_WIN64) || defined(_WIN32)
 	//Hard code page size to 2 MB for windows
 	PListArchive::hdSectorSize = 2097152;//4096;
 #elif defined(__linux__)
@@ -35,7 +29,7 @@ Forest::Forest(int argc, char **argv)
 	mostMemoryOverflow = 0;
 	currMemoryOverflow = 0;
 
-
+	totalPatternCoverage = 0;
 	
 	eradicatedPatterns = 0;
 	
@@ -468,6 +462,8 @@ Forest::Forest(int argc, char **argv)
 			mostCommonPatternIndex.clear();
 			currentLevelVector.clear();
 			coverage.clear();
+
+			cout << "File coverage: " << totalPatternCoverage << endl;
 
 			for (int i = 0; i < prevPListArray->size(); i++)
 			{
@@ -2973,11 +2969,19 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 									}
 									else
 									{
+										//if(config.nonOverlappingPatternSearch)
+										//{
+											totalPatternCoverage -= levelInfo.currLevel;
+										//}
 										totalTallyRemovedPatterns++;
 									}
 								}
 								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
 								{
+									//if(config.nonOverlappingPatternSearch)
+									//{
+										totalPatternCoverage -= levelInfo.currLevel;
+									//}
 									totalTallyRemovedPatterns++;
 									linearList.pop_back();
 								}
@@ -2998,6 +3002,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						}
 						else if(insert == 1)
 						{
+							totalPatternCoverage += levelInfo.currLevel;
 							totalTallyRemovedPatterns++;
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;
@@ -3082,11 +3087,19 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 									}
 									else
 									{
+										//if(config.nonOverlappingPatternSearch)
+										//{
+											totalPatternCoverage -= levelInfo.currLevel;
+										//}
 										totalTallyRemovedPatterns++;
 									}
 								}
 								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
 								{
+									//if(config.nonOverlappingPatternSearch)
+									//{
+										totalPatternCoverage -= levelInfo.currLevel;
+									//}
 									totalTallyRemovedPatterns++;
 									linearList.pop_back();
 								}
@@ -3107,6 +3120,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						}
 						else if(insert == 1)
 						{
+							totalPatternCoverage += levelInfo.currLevel;
 							totalTallyRemovedPatterns++;
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;

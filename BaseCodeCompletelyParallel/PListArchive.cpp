@@ -500,7 +500,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 		if((fileIndex + (offset*hdSectorSize) - 1) >= prevFileIndex)
 		{
 			result = lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
-			write(fd, "", 1);
+			size_t writeSize = write(fd, "", 1);
 			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
 		}
 	#endif
@@ -805,7 +805,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 	#if defined(__linux__)
 		result = lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
-		write(mapFD, "", 1);
+		size_t writeSize = write(mapFD, "", 1);
 	#endif
 	
 		

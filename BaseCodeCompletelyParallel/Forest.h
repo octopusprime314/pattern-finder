@@ -83,6 +83,8 @@ private:
 
 	ConfigurationParams config;
 
+	PListType totalPatternCoverage;
+
 
 	void MemoryQuery();
 	void MonitorMSYNCThreads();

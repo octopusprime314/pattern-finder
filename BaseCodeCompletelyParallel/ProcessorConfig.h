@@ -21,6 +21,7 @@ struct ConfigurationParams
 	vector<FileReader*> files;
 	int currentFileIndex;
 	vector<PListType> fileSizes;
+	int threadLimitation;
 };
 class ProcessorConfig
 {

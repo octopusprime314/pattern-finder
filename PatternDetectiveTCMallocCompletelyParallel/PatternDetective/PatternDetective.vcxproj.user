@@ -14,7 +14,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-f Boosh.avi -threads 9 -v 1 -ram -n -c</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-f Boosh.avi -v 0 -ram -threads 9 -n</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerSQLDebugging>true</LocalDebuggerSQLDebugging>
     <LocalDebuggerWorkingDirectory>$(SolutionDir)$(Platform)\$(Configuration)\</LocalDebuggerWorkingDirectory>
