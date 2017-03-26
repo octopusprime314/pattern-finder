@@ -4,7 +4,7 @@ close all
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
 
-overlappingfid = fopen('PatternVsFileCoverage7_16_0917979.csv'); %overlapping coverage
+overlappingfid = fopen('PatternVsFileCoverage11_16_5314083.csv'); %overlapping coverage
 overlappingPatternCoverage = textscan(overlappingfid, '%[^\n]');
 overlappingPatternCoverage = overlappingPatternCoverage{1};
 [numRows, numColums] = size(overlappingPatternCoverage);
@@ -14,7 +14,8 @@ for i = 1:numRows
 end
 
 numCoverageFiles = numRows / 2;
-figure 
+%%figure
+hold on
 index = 1;
 for row = 1:numCoverageFiles
     plot(log(overlappingPatternCoverage{index}), overlappingPatternCoverage{index+1}.*100);
@@ -22,13 +23,11 @@ for row = 1:numCoverageFiles
     hold on;
 end
 
-
-
 xlabel('Pattern Size in bytes (log scale)');
 ylabel('Percentage of file covered');
 title('Overlapping pattern coverage of Text Files')
 
-nonoverlappingfid = fopen('PatternVsFileCoverage10_20_5721420.csv'); %non overlapping coverage
+nonoverlappingfid = fopen('PatternVsFileCoverage11_17_2714194.csv'); %non overlapping coverage
 nonoverlappingPatternCoverage = textscan(nonoverlappingfid, '%[^\n]');
 nonoverlappingPatternCoverage = nonoverlappingPatternCoverage{1};
 [numRows, numColums] = size(nonoverlappingPatternCoverage);
@@ -38,7 +37,8 @@ for i = 1:numRows
 end
 
 numCoverageFiles = numRows / 2;
-figure 
+%figure
+hold on
 index = 1;
 for row = 1:numCoverageFiles
     plot(log(nonoverlappingPatternCoverage{index}), nonoverlappingPatternCoverage{index+1}.*100);
@@ -51,8 +51,8 @@ xlabel('Pattern Size in bytes (log scale)');
 ylabel('Percentage of file covered');
 title('Non-overlapping pattern coverage of Text Files')
 
-
-figure 
+%%figure
+hold on 
 index = 1;
 for row = 1:numCoverageFiles
     [numRows, numColums] = size(overlappingPatternCoverage{index});
@@ -65,4 +65,31 @@ end
 
 xlabel('Pattern Size in bytes (log scale)');
 ylabel('Percentage of file covered');
-title('Missed coverage of Text Files')
+title('Most Common Pattern File Length Vs. Percentage of File Covered')
+
+legend('overlapping pattern data', 'non-overlapping pattern data', 'missing pattern data')
+
+
+% onlyoverlappingfid = fopen('PatternVsFileCoverage10_27_324414.csv'); %only overlapping coverage
+% onlyoverlappingPatternCoverage = textscan(onlyoverlappingfid, '%[^\n]');
+% onlyoverlappingPatternCoverage = onlyoverlappingPatternCoverage{1};
+% [numRows, numColums] = size(onlyoverlappingPatternCoverage);
+% numRows = 2;
+% for i = 1:numRows
+%     onlyoverlappingPatternCoverage{i} = str2double(strsplit(onlyoverlappingPatternCoverage{i},','));
+% end
+% 
+% numCoverageFiles = numRows / 2;
+% figure 
+% index = 1;
+% for row = 1:numCoverageFiles
+%     plot(log(onlyoverlappingPatternCoverage{index}), onlyoverlappingPatternCoverage{index+1}.*100);
+%     index = index + 2;
+%     hold on;
+% end
+% 
+% 
+% xlabel('Pattern Size in bytes (log scale)');
+% ylabel('Percentage of file covered');
+% title('Only overlapping pattern coverage of Text Files')
+

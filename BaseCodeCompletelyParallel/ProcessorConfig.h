@@ -11,7 +11,7 @@ struct ConfigurationParams
 	unsigned int numThreads;
 	bool findBestThreadNumber;
 	int history;
-	bool nonOverlappingPatternSearch;
+	PatternDiscoveryType nonOverlappingPatternSearch;
 	PListType memoryBandwidthMB;
 	bool usingMemoryBandwidth;
 	unsigned int levelToOutput;

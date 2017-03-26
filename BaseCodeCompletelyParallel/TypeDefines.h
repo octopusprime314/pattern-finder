@@ -46,3 +46,10 @@ struct LevelPackage
 	bool useRAM;
 	unsigned int coreIndex;
 };
+
+enum PatternDiscoveryType
+{
+	OVERLAP_PATTERNS,
+	NONOVERLAP_PATTERNS,
+	ANY_PATTERNS
+};

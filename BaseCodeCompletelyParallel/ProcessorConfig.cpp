@@ -27,7 +27,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.usingPureHD = false;
 	//Default pattern occurence size to 2
 	config.minOccurrence = 2;
-	config.nonOverlappingPatternSearch = false;
+	config.nonOverlappingPatternSearch = ANY_PATTERNS;
 	config.history = 0;
 	config.threadLimitation = 0;
 
@@ -130,7 +130,11 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		}
 		else if(arg.compare("-n") == 0)
 		{
-			config.nonOverlappingPatternSearch = true;
+			config.nonOverlappingPatternSearch = NONOVERLAP_PATTERNS;
+		}
+		else if(arg.compare("-o") == 0)
+		{
+			config.nonOverlappingPatternSearch = OVERLAP_PATTERNS;
 		}
 		else if(arg.compare("-lev") == 0 )
 		{
@@ -156,7 +160,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			config.maximum = config.patternToSearchFor.size();
 			i++;
 		}
-		else if(arg.compare("-o") == 0)
+		else if(arg.compare("-i") == 0)
 		{
 			config.minOccurrence = atoi(argv[i+1]);
 			i++;

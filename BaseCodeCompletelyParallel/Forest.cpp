@@ -28,8 +28,6 @@ Forest::Forest(int argc, char **argv)
 	threadsDefuncted = 0;
 	mostMemoryOverflow = 0;
 	currMemoryOverflow = 0;
-
-	totalPatternCoverage = 0;
 	
 	eradicatedPatterns = 0;
 	
@@ -441,7 +439,7 @@ Forest::Forest(int argc, char **argv)
 				{
 					string pattern = config.files[f]->fileString.substr(mostCommonPatternIndex[j], j + 1);
 					stringstream buff;
-					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << pattern << "\" occured " << mostCommonPatternCount[j] <</* " and coverage was " << coverage[j] << "%" <<*/ endl;
+					buff << "Level " << j + 1 << " count is " << levelRecordings[j] << " with most common pattern being: \"" << pattern << "\"" << " occured " << mostCommonPatternCount[j] << " and coverage was " << coverage[j] << "%" << endl;
 					Logger::WriteLog(buff.str());
 				}
 			}
@@ -462,8 +460,6 @@ Forest::Forest(int argc, char **argv)
 			mostCommonPatternIndex.clear();
 			currentLevelVector.clear();
 			coverage.clear();
-
-			cout << "File coverage: " << totalPatternCoverage << endl;
 
 			for (int i = 0; i < prevPListArray->size(); i++)
 			{
@@ -2827,19 +2823,13 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 
 	PListType linearListIndex = 0;
 
-	PListType globalStride = 0;
-
 	//We have nothing to process!
 	if(totalCount == 0)
 		return false;
 
 	while(continueSearching)
 	{
-
-		PListType stride = 0;
-		PListType strideCount = 0;
-		PListType prevStride = 0;
-
+		
 		totalTallyRemovedPatterns = 0;
 		PListType minIndex = -1;
 		PListType maxIndex = 0;
@@ -2855,10 +2845,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 					if (prevLinearList[i] < fileSize)
 					{
 						globalStringConstruct[stringIndexer++] = config.files[f]->fileString[prevLinearList[i]];
-
-						stride += abs((long long)(prevLinearList[i] - prevStride));
-						strideCount++;
-						prevStride = prevLinearList[i];
 					}
 				}
 			}
@@ -2873,24 +2859,10 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 					if (prevLinearList[i] < fileSize)
 					{
 						globalStringConstruct[stringIndexer++] = config.files[f]->fileString[prevLinearList[i]];
-
-						stride += abs((long long)(prevLinearList[i] - prevStride));
-						strideCount++;
-						prevStride = prevLinearList[i];
 					}
 				}
 			}
 		}
-		
-		/*if(globalStride == 0)
-		{
-			globalStride = (stride / strideCount);
-		}
-		else
-		{
-			globalStride += (stride / strideCount);
-			globalStride /= 2.0f;
-		}*/
 
 		if(prevPListLengths.size() == 0)
 		{
@@ -2951,7 +2923,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						int insert = indexes[indexesToPush[k]];
 						if (insert >= config.minOccurrence)
 						{
-							if(config.nonOverlappingPatternSearch)
+							if(config.nonOverlappingPatternSearch == NONOVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
 								PListType prevIndex = *newPList[indexesToPush[k]].begin();
@@ -2969,19 +2941,43 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 									}
 									else
 									{
-										//if(config.nonOverlappingPatternSearch)
-										//{
-											totalPatternCoverage -= levelInfo.currLevel;
-										//}
 										totalTallyRemovedPatterns++;
 									}
 								}
 								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
 								{
-									//if(config.nonOverlappingPatternSearch)
-									//{
-										totalPatternCoverage -= levelInfo.currLevel;
-									//}
+									totalTallyRemovedPatterns++;
+									linearList.pop_back();
+								}
+								else
+								{
+									pListLengths.push_back(totalTally);
+								}
+							}
+							else if(config.nonOverlappingPatternSearch == OVERLAP_PATTERNS)
+							{
+								//Monitor number of patterns that do not overlap ie coverage
+								PListType prevIndex = *newPList[indexesToPush[k]].begin();
+								PListType totalTally = 1;
+
+								linearList.push_back(prevIndex);
+								for(vector<PListType>::iterator it = newPList[indexesToPush[k]].begin() + 1; it != newPList[indexesToPush[k]].end(); it++)
+								{
+									PListType span = *it - prevIndex;
+									if(span < levelInfo.currLevel)
+									{
+										totalTally++;
+										linearList.push_back(*it);
+										prevIndex = *it;
+									}
+									else
+									{
+										prevIndex = *it;
+										totalTallyRemovedPatterns++;
+									}
+								}
+								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
+								{
 									totalTallyRemovedPatterns++;
 									linearList.pop_back();
 								}
@@ -3002,7 +2998,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						}
 						else if(insert == 1)
 						{
-							totalPatternCoverage += levelInfo.currLevel;
 							totalTallyRemovedPatterns++;
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;
@@ -3069,7 +3064,7 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						int insert = indexes[indexesToPush[k]];
 						if (insert >= config.minOccurrence)
 						{
-							if(config.nonOverlappingPatternSearch)
+							if(config.nonOverlappingPatternSearch == NONOVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
 								PListType prevIndex = *newPList[indexesToPush[k]].begin();
@@ -3087,19 +3082,43 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 									}
 									else
 									{
-										//if(config.nonOverlappingPatternSearch)
-										//{
-											totalPatternCoverage -= levelInfo.currLevel;
-										//}
 										totalTallyRemovedPatterns++;
 									}
 								}
 								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
 								{
-									//if(config.nonOverlappingPatternSearch)
-									//{
-										totalPatternCoverage -= levelInfo.currLevel;
-									//}
+									totalTallyRemovedPatterns++;
+									linearList.pop_back();
+								}
+								else
+								{
+									pListLengths.push_back(totalTally);
+								}
+							}
+							else if(config.nonOverlappingPatternSearch == OVERLAP_PATTERNS)
+							{
+								//Monitor number of patterns that do not overlap ie coverage
+								PListType prevIndex = *newPList[indexesToPush[k]].begin();
+								PListType totalTally = 1;
+
+								linearList.push_back(prevIndex);
+								for(vector<PListType>::iterator it = newPList[indexesToPush[k]].begin() + 1; it != newPList[indexesToPush[k]].end(); it++)
+								{
+									PListType span = *it - prevIndex;
+									if(span < levelInfo.currLevel)
+									{
+										totalTally++;
+										linearList.push_back(*it);
+										prevIndex = *it;
+									}
+									else
+									{
+										prevIndex = *it;
+										totalTallyRemovedPatterns++;
+									}
+								}
+								if(newPList[indexesToPush[k]].size() == 2 && totalTally == 1)
+								{
 									totalTallyRemovedPatterns++;
 									linearList.pop_back();
 								}
@@ -3120,7 +3139,6 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						}
 						else if(insert == 1)
 						{
-							totalPatternCoverage += levelInfo.currLevel;
 							totalTallyRemovedPatterns++;
 							indexes[indexesToPush[k]] = 0;
 							firstPatternIndex[indexesToPush[k]] = 0;
@@ -3173,13 +3191,27 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 		PListType countage = 0;
 		PListType indexOfList = 0;
 		bool chosen = false;
+		PListType unalteredCount = 0;
 		for (PListType i = 0; i < pListLengths.size(); i++)
 		{
-			if(pListLengths[i] > 0)
+			if(pListLengths[i] > 1)
 			{
-				if( pListLengths[i] > tempMostCommonPatternCount)
+				PListType prevIndex = linearList[countage];
+				PListType tallyCount = 1;
+
+				for(PListType j = countage + 1; j < pListLengths[i] + countage + 1; j++)
 				{
-					tempMostCommonPatternCount = pListLengths[i];
+					PListType span = linearList[j] - prevIndex;
+					if(span >= levelInfo.currLevel)
+					{
+						prevIndex = linearList[j];
+						tallyCount++;
+					}
+				}
+				if( tallyCount > tempMostCommonPatternCount)
+				{
+					tempMostCommonPatternCount = tallyCount;
+					unalteredCount = pListLengths[i];
 					tempMostCommonPatternIndex = linearList[countage] - levelInfo.currLevel;
 					indexOfList = countage;
 					chosen = true;
@@ -3188,24 +3220,29 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 			countage += pListLengths[i];
 		}
 
-		countMutex->lock();
-		mostCommonPatternIndex[levelInfo.currLevel - 1] = tempMostCommonPatternIndex;
-		mostCommonPatternCount[levelInfo.currLevel - 1] = tempMostCommonPatternCount;
-		countMutex->unlock();
+		
 
-		if(chosen)
+		if(chosen && tempMostCommonPatternCount > mostCommonPatternCount[levelInfo.currLevel - 1])
 		{
+			countMutex->lock();
+			mostCommonPatternIndex[levelInfo.currLevel - 1] = tempMostCommonPatternIndex;
+			mostCommonPatternCount[levelInfo.currLevel - 1] = tempMostCommonPatternCount;
+			countMutex->unlock();
+
 			//Monitor number of patterns that do not overlap ie coverage
 			PListType index = indexOfList;
 			countMutex->lock();
-			PListType count = mostCommonPatternCount[levelInfo.currLevel - 1];
+			PListType count = unalteredCount;
 			countMutex->unlock();
 			PListType totalTally = 0;
+			double percentage = 0;
 			PListType prevIndex = 0;
+			PListType totalCoverage = 0;
 			if(count > 1)
 			{
 				prevIndex = linearList[index];
 				totalTally++;
+				totalCoverage += levelInfo.currLevel;
 		
 				for(PListType i = index + 1; i < count + index; i++)
 				{
@@ -3215,14 +3252,16 @@ bool Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<
 						PListType pIndex = linearList[i];
 						totalTally++;
 						prevIndex = pIndex;
+						totalCoverage += levelInfo.currLevel;
 					}
 				}
+				//Coverage of most common pattern per level
+				percentage = ((double)(totalCoverage)) / ((double)(config.files[f]->fileStringSize));
 			}
-			//Coverage of most common pattern per level
-			if(totalTally * levelInfo.currLevel > coverage[levelInfo.currLevel - 1])
+
+			if(percentage> coverage[levelInfo.currLevel - 1])
 			{
 				countMutex->lock();
-				double percentage = ((double)(totalTally * levelInfo.currLevel)) / ((double)(config.files[f]->fileStringSize));
 				coverage[levelInfo.currLevel - 1] = percentage;
 				countMutex->unlock();
 			}
