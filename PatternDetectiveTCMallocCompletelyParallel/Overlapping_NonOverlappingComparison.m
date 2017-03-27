@@ -4,7 +4,7 @@ close all
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
 addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
 
-overlappingfid = fopen('PatternVsFileCoverage11_16_5314083.csv'); %overlapping coverage
+overlappingfid = fopen('PatternVsFileCoverage11_43_2819292.csv'); %overlapping coverage
 overlappingPatternCoverage = textscan(overlappingfid, '%[^\n]');
 overlappingPatternCoverage = overlappingPatternCoverage{1};
 [numRows, numColums] = size(overlappingPatternCoverage);
@@ -27,7 +27,7 @@ xlabel('Pattern Size in bytes (log scale)');
 ylabel('Percentage of file covered');
 title('Overlapping pattern coverage of Text Files')
 
-nonoverlappingfid = fopen('PatternVsFileCoverage11_17_2714194.csv'); %non overlapping coverage
+nonoverlappingfid = fopen('PatternVsFileCoverage11_46_4519935.csv'); %non overlapping coverage
 nonoverlappingPatternCoverage = textscan(nonoverlappingfid, '%[^\n]');
 nonoverlappingPatternCoverage = nonoverlappingPatternCoverage{1};
 [numRows, numColums] = size(nonoverlappingPatternCoverage);
