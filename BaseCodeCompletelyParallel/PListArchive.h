@@ -28,7 +28,6 @@
 
 using namespace std;
 
-
 class PListArchive
 {
 public:
@@ -44,53 +43,34 @@ public:
 	bool Exists();
 	void CloseArchiveMMAP();
 
-	PListType fileIndex;
 	string fileName;
 	string patternName;
-	int fd;
-	vector<string> stringBuffer;
-	PListType startingIndex;
 	PListType mappingIndex;
-	PListType fileSize;
 	PListType prevMappingIndex;
-	static vector<thread*> threadKillList;
-	vector<thread*> localThreadList;
-	static mutex syncLock;
-	list<PListType*> memLocals;
 	PListType totalWritten;
-	bool created;
-	bool patternsDumped;
-	bool dataWritten;
-
-	static vector<int> prevFileHandleList;
-	static vector<int> newFileHandleList;
-	static mutex fileLock;
-	static unordered_map<string, int> fileNameToHandleMapping;
-	static mutex mapLock;
-	static vector<PListType*> mappedList;
 	static PListType hdSectorSize;
 	static PListType totalLoops;
 	static PListType writeSize;
 
-	static mutex charLock;
-	static vector<char*> charList;
-
 private:
 
-	bool endOfFileReached;
-	ofstream *outputFile;
-	list<char*> charLocals;
-	PListType prevListIndex;
-	PListType prevStartingIndex;
-	PListType *mapper;
-	PListType prevFileIndex;
-	
-	void FlushMapList(list<PListType*> memLocalList, list<char*> charLocalList);
 	void MappingError(int& fileDescriptor, string fileName);
 	void UnMappingError(int& fileDescriptor, string fileName);
 	void SeekingError(int& fileDescriptor, string fileName);
 	void ExtendingFileError(int& fileDescriptor, string fileName);
-	void FlushFileHandles();
+
+	vector<string> stringBuffer;
+	PListType fileIndex;
+	int fd;
+	PListType startingIndex;
+	bool endOfFileReached;
+	ofstream *outputFile;
+	list<char*> charLocals;
+	list<PListType*> memLocals;
+	PListType prevListIndex;
+	PListType prevStartingIndex;
+	PListType *mapper;
+	PListType prevFileIndex;
 };
 
 

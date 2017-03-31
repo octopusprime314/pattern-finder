@@ -39,11 +39,6 @@ int main(int argc, char **argv)
 	cout << crappy.str() << endl;
 	crappy.str("");
 
-	/*do
-	{
-		cout << '\n' <<"Press the Enter key to continue." << endl;
-	} while (cin.get() != '\n');*/
-
 	Logger::CloseLog();
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtDumpMemoryLeaks();

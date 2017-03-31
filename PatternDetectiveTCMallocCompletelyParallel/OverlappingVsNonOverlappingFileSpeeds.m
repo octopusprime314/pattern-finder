@@ -4,28 +4,27 @@ close all
 
 addpath('Runs');
 
-overlap = csvread('FileNumberVsProcessingTime7_17_0418159.csv');
-nonoverlap = csvread('FileNumberVsProcessingTime7_19_3618655.csv');
+overlap = csvread('FileNumberVsProcessingTime6_10_56822158042.csv');
+nonoverlap = csvread('FileNumberVsProcessingTime6_13_09107304526.csv');
+
+overlap2 = csvread('FileNumberVsProcessingTime9_53_59165262795.csv');
+nonoverlap2 = csvread('FileNumberVsProcessingTime6_23_111707642049.csv');
 
 figure 
 
-stem(overlap(1:end, 1), overlap(1:end, 2)/1000.0, 'r');
-xlabel('File Number');
-ylabel('Processing Time (Seconds)');
-hold on
-stem(nonoverlap(1:end, 1), nonoverlap(1:end, 2)/1000.0, 'g');
-legend('overlapping patterns', 'non-overlapping patterns');
+joined = [nonoverlap(2), overlap(2) , nonoverlap2(2), overlap2(2)];
+joined = joined./1000.0
 
+%dram performance with memory limits
+bar(joined);
+Labels = {'nonoverlap','overlap', 'nonoverlap','overlap'};
+set(gca, 'XTick', 1:length(Labels), 'XTickLabel', Labels);
+title('Large Pattern File NonOverlapping Search Speedup');
+xlabel('Overlapping or Non Overlapping Selection')
+ylabel('Processing Time (Seconds)')
 
-overlapCoverage = csvread('FileNumberVsProcessingTime7_17_0418159.csv');
-nonoverlapCoverage = csvread('FileNumberVsProcessingTime7_19_3618655.csv');
-
-figure 
-
-scatter(overlapCoverage(1:end, 1), overlapCoverage(1:end, 2));
-xlabel('File Number');
-ylabel('Processing Time (mS)');
-
-hold on
-
-scatter(nonoverlapCoverage(1:end, 1), nonoverlapCoverage(1:end, 2));
+for i1=1:numel(joined)
+    text(i1,joined(i1),num2str(joined(i1),'%0.2f'),...
+               'HorizontalAlignment','center',...
+               'VerticalAlignment','bottom')
+end

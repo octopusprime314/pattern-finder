@@ -32,11 +32,6 @@ string ChunkFactory::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage
 	while(iterator != leaf.leaves.end()) 
 	{
 		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
-		// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
-		//if(archiveCollective->totalWritten >= PListArchive::writeSize && overMemoryCount) 
-		//{
-		//	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-		//}
 		iterator = leaf.leaves.erase(iterator);
 	}
 	map<string, TreeHD> test;
@@ -74,7 +69,7 @@ string ChunkFactory::CreateChunkFile(string fileName, vector<vector<PListType>*>
 			stringbuilder << ((char)i);
 			archiveCollective->WriteArchiveMapMMAP(*leaves[i], stringbuilder.str(), false);
 			// a full 2MB has to be written to disk before it is worth flushing otherwise there is a major slow down effect from constantly spawning hd flush sync threads
-			if(archiveCollective->totalWritten >= PListArchive::writeSize/* && ProcessorStats::overMemoryCount*/) 
+			if(archiveCollective->totalWritten >= PListArchive::writeSize) 
 			{
 				archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 			}
@@ -109,9 +104,9 @@ void ChunkFactory::DeleteChunk(string fileChunkName, string folderLocation)
 	
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
-		stringstream builder;
+		/*stringstream builder;
 		builder << "Chunk Failed to delete " << fileNameToBeRemoved << ": " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());
+		Logger::WriteLog(builder.str());*/
 	}
 	else
 	{
@@ -126,9 +121,9 @@ void ChunkFactory::DeleteChunk(string fileChunkName, string folderLocation)
 	
 	if( remove( fileNameToBeRemovedPatterns.c_str() ) != 0)
 	{
-		stringstream builder;
+		/*stringstream builder;
 		builder << "Chunk Failed to delete '" << fileNameToBeRemovedPatterns << "': " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());
+		Logger::WriteLog(builder.str());*/
 	}
 	else
 	{
@@ -155,9 +150,9 @@ void ChunkFactory::DeleteArchive(string fileNames, string folderLocation)
 
 	if( remove( fileNameToBeRemoved.c_str() ) != 0)
 	{
-		stringstream builder;
+		/*stringstream builder;
 		builder << "Archive Failed to delete '" << fileNameToBeRemoved << "': " << strerror(errno) << '\n';
-		Logger::WriteLog(builder.str());
+		Logger::WriteLog(builder.str());*/
 	}
 	else
 	{

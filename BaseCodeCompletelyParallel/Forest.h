@@ -43,7 +43,6 @@ private:
 	PListType memoryCeiling;
 	double mostMemoryOverflow;
 	double currMemoryOverflow;
-	vector<mutex*> gatedMutexes;
 	vector<unsigned int> currentLevelVector;
 	vector<bool> activeThreads;
 	int threadsDispatched;
@@ -70,7 +69,6 @@ private:
 	vector<PListType> mostCommonPatternIndex;
 	StopWatch initTime;
 	bool processingFinished;
-	bool processingMSYNCFinished;
 	bool writingFlag;
 	vector<float> coverage;
 	map<unsigned int, unsigned int> chunkIndexToFileChunk;
@@ -85,7 +83,6 @@ private:
 
 
 	void MemoryQuery();
-	void MonitorMSYNCThreads();
 	void PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex);
 	void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
 	bool NextLevelTreeSearch(unsigned int level);
