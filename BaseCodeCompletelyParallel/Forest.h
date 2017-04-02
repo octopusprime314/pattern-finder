@@ -3,7 +3,6 @@
 #include <vector>
 #include <map>
 #include <future>
-#include "TreeRAM.h"
 #include "TreeHD.h"
 #include "FileReader.h"
 #include <sstream>
@@ -15,6 +14,8 @@
 #include <queue>
 #include "ChunkFactory.h"
 #include "ProcessorConfig.h"
+#include "ProcessorStats.h"
+
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
 #elif defined(__linux__)
@@ -27,61 +28,51 @@
 
 using namespace std;
 
-
-typedef std::vector<map<PatternType, PListType>>::iterator it_type;
-typedef std::map<PatternType, vector<PListType>*>::iterator it_map_list_p_type;
-typedef std::map<unsigned int, unsigned int>::iterator it_chunk;
-
-
 class Forest
 {
 
 private:
 
 	ChunkFactory* chunkFactorio;
+	ConfigurationParams config;
+	ProcessorStats stats;
+	StopWatch initTime;
 
+	//Memory management
 	PListType memoryCeiling;
 	double mostMemoryOverflow;
 	double currMemoryOverflow;
-	vector<unsigned int> currentLevelVector;
-	vector<bool> activeThreads;
-	int threadsDispatched;
-	int threadsDefuncted;
-	vector<future<void>> *threadPool;
-	vector<future<void>> *threadPlantSeedPoolHD;
-	vector<future<void>> *threadPlantSeedPoolRAM;
-	std::string::size_type sz;
-	PListType memoryPerThread;
-	unsigned int globalLevel;
-	mutex *countMutex;
-	vector<vector<string>> prevFileNameList;
-	vector<vector<string>> newFileNameList;
-	queue<string> filesToBeRemoved;
-	mutex filesToBeRemovedLock;
-	double MemoryUsedPriorToThread;
 	double MemoryUsageAtInception;
-	vector<bool> usedRAM;
-	vector<vector<PListType>*>* prevPListArray;
-	vector<vector<PListType>*>* globalPListArray;
-	PListType eradicatedPatterns;
-	vector<PListType> levelRecordings;
-	vector<PListType> mostCommonPatternCount;
-	vector<PListType> mostCommonPatternIndex;
-	StopWatch initTime;
-	bool processingFinished;
-	bool writingFlag;
-	vector<float> coverage;
-	map<unsigned int, unsigned int> chunkIndexToFileChunk;
-	vector<string> fileChunks;
-	vector<double> statisticsModel;
+	double MemoryUsedPriorToThread;
+
+	//Thread management
+	mutex *countMutex;
+	int threadsDefuncted;
+	int threadsDispatched;
+	PListType memoryPerThread;
+	vector<future<void>> *threadPool;
+
+	//Random flags
 	int f;
-	vector<double> processingTimes;
-	map<PListType, PListType> finalPattern;
+	bool writingFlag;
+	bool processingFinished;
 	bool firstLevelProcessedHD;
+	
+	//File handling
+	vector<string> fileChunks;
+	vector<vector<string>> newFileNameList;
+	map<PListType, PListType> finalPattern;
+	vector<vector<string>> prevFileNameList;
+	map<unsigned int, unsigned int> chunkIndexToFileChunk;
 
-	ConfigurationParams config;
-
-
+	//Global data collection
+	vector<vector<PListType>*>* prevPListArray;
+	
+	//File statistics
+	vector<bool> usedRAM;
+	vector<bool> activeThreads;
+	vector<double> processingTimes;
+	
 	void MemoryQuery();
 	void PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex);
 	void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
@@ -89,12 +80,11 @@ private:
 	bool NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, vector<string>& fileList, LevelPackage& levelInfo, PListType patternCount, bool processingRAM = true);
 	void ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo);
 	bool PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount, PListType sizeOfString = 0);
-	void FirstLevelHardDiskProcessing(vector<string>& backupFilenames, unsigned int z);
 	PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex, bool firstLevel = false);
 	PListType ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 	PListType ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &isThreadDefuncted);
 	PListType ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool& isThreadDefuncted);
-	void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
+	void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL);
 	void PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL, vector<vector<PListType>*>* globalLocalPListArray = NULL);
 	vector<vector<PListType>> ProcessThreadsWorkLoadRAMFirstLevel(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
 	vector<vector<PListType>> ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
@@ -106,7 +96,6 @@ private:
 
 public:
 
-	static bool outlierScans;
 	static bool overMemoryCount;
 	Forest(int argc, char **argv);
 	~Forest();

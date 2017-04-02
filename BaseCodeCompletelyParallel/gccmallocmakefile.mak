@@ -1,16 +1,12 @@
 all: PatternFinder
 
 
-PatternFinder: main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o
-	g++ main.o Forest.o TreeRAM.o TreeHD.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o -o PatternFinder -pthread -O3 -s -DNDEBUG
+PatternFinder: main.o Forest.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o
+	g++ main.o Forest.o Logger.o PListArchive.o FileReader.o StopWatch.o ChunkFactory.o ProcessorConfig.o -o PatternFinder -pthread -O3 -s -DNDEBUG
 main.o: main.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG main.cpp -pthread
 Forest.o: Forest.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG Forest.cpp -pthread
-TreeRAM.o: TreeRAM.cpp
-	g++ -c -std=c++11 -O3 -s -DNDEBUG TreeRAM.cpp -pthread
-TreeHD.o: TreeHD.cpp
-	g++ -c -std=c++11 -O3 -s -DNDEBUG TreeHD.cpp -pthread
 Logger.o: Logger.cpp
 	g++ -c -std=c++11 -O3 -s -DNDEBUG Logger.cpp -pthread
 PListArchive.o: PListArchive.cpp

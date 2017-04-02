@@ -599,7 +599,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		if(mapFD < 0)
 		{
 			stringstream stringbuilder;
-			stringbuilder << file.c_str() << " file not found!";
+			stringbuilder << file.c_str() << " map pattern file not found!";
 			stringbuilder << " and errno is "<< strerror(errno) << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;

@@ -26,9 +26,8 @@ string ChunkFactory::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage
 
 	PListArchive* archiveCollective = new PListArchive(archiveName.str(), true);
 	fileNameToReOpen = archiveName.str();
-	typedef std::map<string, TreeHD>::iterator it_type;
-
-	it_type iterator = leaf.leaves.begin();
+	
+	auto iterator = leaf.leaves.begin();
 	while(iterator != leaf.leaves.end()) 
 	{
 		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);

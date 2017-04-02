@@ -1,51 +1,50 @@
 #pragma once
+#include "TypeDefines.h"
+#include <vector>
+using namespace std;
+
 class ProcessorStats
 {
 public:
 	ProcessorStats(void);
 	~ProcessorStats(void);
-private:
-	
-	//PListType memoryCeiling;
-	//double mostMemoryOverflow;
-	//double currMemoryOverflow;
-	//vector<mutex*> gatedMutexes;
-	//vector<unsigned int> currentLevelVector;
-	//vector<bool> activeThreads;
-	//int threadsDispatched;
-	//int threadsDefuncted;
-	//vector<future<void>> *threadPool;
-	//vector<future<void>> *threadPlantSeedPoolHD;
-	//vector<future<void>> *threadPlantSeedPoolRAM;
-	//std::string::size_type sz;
-	//PListType memoryPerThread;
-	//unsigned int globalLevel;
-	////If /c is in commands then cycle from 1 thread to MAX threads on machine and output best thread scheme
-	//mutex *countMutex;
-	//vector<vector<string>> prevFileNameList;
-	//vector<vector<string>> newFileNameList;
-	//queue<string> filesToBeRemoved;
-	//mutex filesToBeRemovedLock;
-	//double MemoryUsedPriorToThread;
-	//double MemoryUsageAtInception;
-	//vector<bool> usedRAM;
-	//vector<vector<PListType>*>* prevPListArray;
-	//vector<vector<PListType>*>* globalPListArray;
-	//PListType eradicatedPatterns;
-	//vector<PListType> levelRecordings;
-	//vector<PListType> mostCommonPatternCount;
-	//vector<PListType> mostCommonPatternIndex;
-	//StopWatch initTime;
-	//bool processingFinished;
-	//bool processingMSYNCFinished;
-	//bool writingFlag;
-	//vector<float> coverage;
-	//map<unsigned int, unsigned int> chunkIndexToFileChunk;
-	//vector<string> fileChunks;
-	//vector<double> statisticsModel;
-	//vector<double> processingTimes;
-	//map<PListType, PListType> finalPattern;
-	//bool firstLevelProcessedHD;
 
+	void SetMostCommonPattern(PListType currLevel, PListType count, PListType index);
+	PListType GetMostCommonPatternIndex(PListType currLevel);
+	PListType GetMostCommonPatternCount(PListType currLevel);
+
+	void SetLevelRecording(PListType currLevel, PListType count);
+	PListType GetLevelRecording(PListType currLevel);
+	PListType GetLevelRecordingSize(){return levelRecordings.size();}
+
+	void SetEradicationsPerLevel(PListType currLevel, PListType count);
+	PListType GetEradicationsPerLevel(PListType currLevel);
+
+	void SetEradicatedPatterns(PListType count) { eradicatedPatterns = count; }
+	PListType GetEradicatedPatterns() { return eradicatedPatterns ;}
+
+	void SetCurrentLevel(PListType thread, PListType level);
+	PListType GetCurrentLevel(PListType thread);
+	PListType GetCurrentLevelSize(){return currentLevelVector.size();}
+
+	void SetCoverage(PListType currLevel, float cover);
+	float GetCoverage(PListType currLevel);
+	vector<float> GetCoverageVector(){ return coverage; }
+
+	void ResetData();
+
+private:
+
+	//File statistics
+	vector<bool> usedRAM;
+	vector<float> coverage;
+	vector<bool> activeThreads;
+	vector<double> processingTimes;
+	vector<PListType> levelRecordings;
+	vector<PListType> eradicationsPerLevel;
+	vector<PListType> currentLevelVector;
+	vector<PListType> mostCommonPatternCount;
+	vector<PListType> mostCommonPatternIndex;
+	PListType eradicatedPatterns;
 };
 

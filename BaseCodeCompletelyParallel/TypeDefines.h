@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #define GREATERTHAN4GB 0
-//#define INTEGERS 1
 #define BYTES 1
 using namespace std;
 
@@ -26,25 +25,21 @@ using namespace std;
 
 #if GREATERTHAN4GB
 typedef unsigned long long PListType;
+typedef signed long long PListSignedType;
 #else
-typedef unsigned long PListType ;
+typedef unsigned long PListType;
+typedef signed long PListSignedType;
 #endif
 
-#if INTEGERS
-typedef unsigned long long PatternType;
-#endif
-
-#if BYTES
 typedef string PatternType;
-#endif
 
 struct LevelPackage
 {
 	unsigned int currLevel;
 	unsigned int threadIndex;
 	unsigned int inceptionLevelLOL;
-	bool useRAM;
 	unsigned int coreIndex;
+	bool useRAM;
 };
 
 enum PatternDiscoveryType

@@ -29,12 +29,11 @@ public:
 	ProcessorConfig(void);
 	~ProcessorConfig(void);
 	static ConfigurationParams GetConfig(int argc, char **argv);
-	static void FindFiles(string directory);
-	static void DisplayHelpMessage();
-
+	
 private:
 	static ConfigurationParams config;
-
+	static void FindFiles(string directory);
+	static void DisplayHelpMessage();
 	
 };
 

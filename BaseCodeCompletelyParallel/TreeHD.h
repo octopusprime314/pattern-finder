@@ -10,9 +10,14 @@ class TreeHD
 private:
 	
 public:
-	TreeHD();
-	~TreeHD();
-	TreeHD(PListType pIndex);
+	TreeHD(){};
+	~TreeHD(){};
+
+	TreeHD(PListType pIndex)
+	{
+		pList.push_back(pIndex);
+	}
+
 	inline void addLeaf(PListType pIndex, const string &uniquestring)
 	{
 		if (leaves.find(uniquestring) == leaves.end())
@@ -24,6 +29,7 @@ public:
 			leaves[uniquestring].addPIndex(pIndex);
 		}		
 	}
+
 	inline void addPIndex(PListType pIndex)
 	{
 		pList.push_back(pIndex);
