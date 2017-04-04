@@ -81,6 +81,7 @@ Forest::Forest(int argc, char **argv)
 		const char * c = config.files[f]->fileName.c_str();
 	
 		// Open the file for the shortest time possible.
+
 		config.files[f]->copyBuffer = new ifstream(c, ios::binary);
 
 		if (!config.files[f]->copyBuffer->is_open()) 
@@ -406,7 +407,7 @@ Forest::Forest(int argc, char **argv)
 			{
 				cout << "Houston we are not processing patterns properly!" << endl;
 				Logger::WriteLog("Houston we are not processing patterns properly!");
-				//exit(0);
+				exit(0);
 			}
 
 			if(memoryQueryThread != NULL)
