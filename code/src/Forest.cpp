@@ -2272,7 +2272,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 				{
 					
 					morePatternsToFind = true;
-					//DispatchNewThreadsHD(newPatternCount, morePatternsToFind, fileList, levelInfo, isThreadDefuncted);
+					DispatchNewThreadsHD(newPatternCount, morePatternsToFind, fileList, levelInfo, isThreadDefuncted);
 				}
 			}
 			else

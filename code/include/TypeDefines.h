@@ -10,9 +10,9 @@ using namespace std;
 
 #define ARCHIVE_FOLDER LOGGERPATH
 #if defined(_WIN64) || defined(_WIN32)
-	#define READMEPATH "../../ReadMe.txt"
+	#define HELPFILEPATH "../../HELP.txt"
 #elif defined(__linux__)
-	#define READMEPATH "../ReadMe.txt"
+	#define HELPFILEPATH "../HELP.txt"
 #endif
 
 

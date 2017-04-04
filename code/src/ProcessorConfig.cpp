@@ -333,7 +333,7 @@ void ProcessorConfig::FindFiles(string directory)
 void ProcessorConfig::DisplayHelpMessage()
 {
 	bool isFile;
-	FileReader tempHelpFile(READMEPATH, isFile, true);
+	FileReader tempHelpFile(HELPFILEPATH, isFile, true);
 	tempHelpFile.LoadFile();
 	cout << tempHelpFile.fileString << endl;
 }
