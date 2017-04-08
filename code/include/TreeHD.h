@@ -18,7 +18,12 @@ public:
 		pList.push_back(pIndex);
 	}
 
-	inline void addLeaf(PListType pIndex, const string &uniquestring)
+	inline void setHeadLeaf(string headLeaf)
+	{
+		this->headLeaf = headLeaf;
+	}
+
+	inline void addLeaf(PListType pIndex, char uniquestring)
 	{
 		if (leaves.find(uniquestring) == leaves.end())
 		{
@@ -35,6 +40,8 @@ public:
 		pList.push_back(pIndex);
 	}
 	
-	map<string, TreeHD> leaves;
+	//map<string, TreeHD> leaves;
+	map<char, TreeHD> leaves;
 	vector<PListType> pList;
+	string headLeaf;
 };

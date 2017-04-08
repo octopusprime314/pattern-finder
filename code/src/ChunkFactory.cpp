@@ -14,28 +14,40 @@ ChunkFactory::~ChunkFactory(void)
 {
 }
 
-
-string ChunkFactory::CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo)
+string ChunkFactory::CreateChunkFile(string fileName, vector<TreeHD>& leaf, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;
 
 	stringstream archiveName;
 	string archiveFileType = "PListChunks";
 
-	archiveName << archiveFileType << fileName << "_" << leaf.leaves.size();
+	PListType count = 0;
+	
+	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
+	{
+		count += iterator->leaves.size();
+	}
+
+	archiveName << archiveFileType << fileName << "_" << count;
 
 	PListArchive* archiveCollective = new PListArchive(archiveName.str(), true);
 	fileNameToReOpen = archiveName.str();
 	
-	auto iterator = leaf.leaves.begin();
-	while(iterator != leaf.leaves.end()) 
+	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
-		archiveCollective->WriteArchiveMapMMAP(iterator->second.pList, iterator->first, false);
-		iterator = leaf.leaves.erase(iterator);
+		for(auto iterator2 = iterator->leaves.begin(); iterator2 != iterator->leaves.end(); iterator2++) 
+		{
+			string pattern = iterator->headLeaf + iterator2->first;
+			archiveCollective->WriteArchiveMapMMAP(iterator2->second.pList, pattern, false);
+			iterator2->second.pList.clear();
+		}
+		iterator->leaves.clear();
+		//iterator = leaf.erase(iterator);
 	}
-	map<string, TreeHD> test;
-	test.swap(leaf.leaves);
-	leaf.pList.clear();
+
+	vector<TreeHD> test;
+	test.swap(leaf);
+	leaf.clear();
 
 	archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
 	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);

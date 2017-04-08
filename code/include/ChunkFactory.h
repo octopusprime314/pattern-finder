@@ -20,9 +20,9 @@ public:
 		return &chunker;
 	}
 
-	string CreateChunkFile(string fileName, TreeHD& leaf, LevelPackage levelInfo);
-
 	string CreateChunkFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo);
+
+	string CreateChunkFile(string fileName, vector<TreeHD>& leaf, LevelPackage levelInfo);
 
 	void DeleteChunks(vector<string> fileNames, string folderLocation);
 

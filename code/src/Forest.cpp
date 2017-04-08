@@ -499,7 +499,7 @@ void Forest::MemoryQuery()
 	PListType previousEradicatedPatterns = 0;
 	while(!processingFinished)
 	{
-		this_thread::sleep_for(std::chrono::milliseconds(50));
+		this_thread::sleep_for(std::chrono::milliseconds(1));
 		double memoryOverflow = 0;
 		overMemoryCount = MemoryUtils::IsOverMemoryCount(MemoryUsedPriorToThread, (double)config.memoryBandwidthMB, memoryOverflow);
 		currMemoryOverflow = memoryOverflow;
@@ -1292,9 +1292,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 		fileNamesBackup.push_back(fileNamesToReOpen[a]);
 	}
 
-	PListType globalTotalMemoryInBytes = 0;
-	PListType globalTotalLeafSizeInBytes = 0;
-
 	vector<PListArchive*> patternFiles;
 	PListType internalRemovedCount = 0;
 
@@ -1304,9 +1301,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 
 		vector<PListArchive*> archiveCollection;
 		map<PatternType, vector<PListType>*> finalMetaDataMap;
-
-		globalTotalLeafSizeInBytes = 0;
-		globalTotalMemoryInBytes = 32;
 
 		for(int a = 0; a < fileNamesBackup.size() - prevCurrentFile; a++)
 		{
@@ -1336,15 +1330,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			string fileName ="";
 			bool foundAHit = true;
 
-			if(finalMetaDataMap.size() > 0)
-			{
-
-				globalTotalLeafSizeInBytes = (finalMetaDataMap.size() + 1)*32;
-				globalTotalLeafSizeInBytes += (finalMetaDataMap.size() + 1)*(finalMetaDataMap.begin()->first.capacity() + sizeof(string));
-				globalTotalLeafSizeInBytes += finalMetaDataMap.size() * 32;
-			}
-
-			if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f) > 2.0f*memDivisor/1000000.0f || overMemoryCount) && finalMetaDataMap.size() > 0)
+			if(overMemoryCount && finalMetaDataMap.size() > 0)
 			{
 				memoryOverflow = true;
 			}
@@ -1573,20 +1559,14 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 								delete packedPListArray[partialLists];
 								packedPListArray[partialLists] = NULL;
 								countAdded++;
-								//Only add size because it is a new vector and add in capacity
-								globalTotalMemoryInBytes += sizeof(PListType)*finalMetaDataMap[(*stringBuffer)[partialLists]]->capacity();
 							}
 						}
 						else
 						{
-							//First subract original vector size in capacity
-							globalTotalMemoryInBytes -= sizeof(PListType)*finalMetaDataMap[(*stringBuffer)[partialLists]]->capacity();
 							finalMetaDataMap[(*stringBuffer)[partialLists]]->insert(finalMetaDataMap[(*stringBuffer)[partialLists]]->end(), packedPListArray[partialLists]->begin(), packedPListArray[partialLists]->end());
 							delete packedPListArray[partialLists];
 							packedPListArray[partialLists] = NULL;
 							countAdded++;
-							//then add new size in capacity
-							globalTotalMemoryInBytes += sizeof(PListType)*finalMetaDataMap[(*stringBuffer)[partialLists]]->capacity();
 						}
 
 					}
@@ -2000,8 +1980,6 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			string saveOffPreviousStringData = "";
 			vector<string> newFileNames;
 
-			PListType globalTotalMemoryInBytes = 0;
-			PListType globalTotalLeafSizeInBytes = 0;
 			unsigned int currLevel = levelInfo.currLevel;
 			for(PListType prevChunkCount = 0; prevChunkCount < fileList.size(); prevChunkCount++)
 			{
@@ -2096,12 +2074,10 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 
 							}
 
-							TreeHD leaf;
-							//Start over
-							globalTotalLeafSizeInBytes = 0;
-							globalTotalMemoryInBytes = 32;
-
 							bool justPassedMemorySize = false;
+
+
+							vector<TreeHD> leaflet;//(packedListSize);
 
 							for(PListType i = 0; i < packedListSize; i++)
 							{
@@ -2109,19 +2085,14 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								PListType pListLength = packedPListArray[i]->size();
 								PListType k = prevLeafIndex[i];
 
-								if(leaf.leaves.size() > 0)
-								{
-									//Size needed for each node in the map overhead essentially
-									globalTotalLeafSizeInBytes = (leaf.leaves.size() + 1)*32;
-									globalTotalLeafSizeInBytes += (leaf.leaves.size() + 1)*(leaf.leaves.begin()->first.capacity() + sizeof(string));
-									globalTotalLeafSizeInBytes += leaf.leaves.size() * 32;
-									//Size of TreeHD pointer
-									globalTotalLeafSizeInBytes += leaf.leaves.size() * 8;
+								string headPattern = "";
+								bool grabbedHead = false;
 
-								}
-
-								if(((globalTotalLeafSizeInBytes/1000000.0f) + (globalTotalMemoryInBytes/1000000.0f)) < (memDivisor/1000000.0f)/* && !overMemoryCount*/)
+								
+								if( !overMemoryCount)
 								{
+									leaflet.push_back(TreeHD());
+
 									PListSignedType relativeIndex = 0;
 									PListType indexForString = 0;
 									while( k < pListLength && ((*pList)[k]) < (j+1)*memDivisor )
@@ -2145,14 +2116,15 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 														{
 															pattern = saveOffPreviousStringData.substr(indexForString, relativeIndex);
 															pattern.append(fileChunks[threadChunkToUse].substr(0, currLevel - pattern.size()));
-
-															if(leaf.leaves.find(pattern) != leaf.leaves.end())
+															leaflet.back().addLeaf((*pList)[k]+1, pattern.back());
+															
+															if(!grabbedHead)
 															{
-																globalTotalMemoryInBytes -= leaf.leaves[pattern].pList.capacity()*sizeof(PListType);
+																grabbedHead = true;
+																headPattern = fileChunks[threadChunkToUse].substr(((((*pList)[k]) - memDivisor*j) - (currLevel-1)), currLevel - 1);
+																leaflet.back().setHeadLeaf(headPattern);
 															}
-															leaf.addLeaf((*pList)[k]+1, pattern);
 
-															globalTotalMemoryInBytes += leaf.leaves[pattern].pList.capacity()*sizeof(PListType);
 														}
 													}
 													else
@@ -2160,9 +2132,14 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 														//If pattern is past end of string stream then stop counting this pattern
 														if(((*pList)[k]) < config.files[f]->fileStringSize)
 														{
-															string pattern = fileChunks[threadChunkToUse].substr(((((*pList)[k]) - memDivisor*j) - (currLevel-1)), currLevel);
-															leaf.addLeaf((*pList)[k]+1, pattern);
-															globalTotalMemoryInBytes += sizeof(PListType);
+															leaflet.back().addLeaf((*pList)[k]+1, fileChunks[threadChunkToUse][(((*pList)[k]) - memDivisor*j)]);
+
+															if(!grabbedHead)
+															{
+																grabbedHead = true;
+																headPattern = fileChunks[threadChunkToUse].substr(((((*pList)[k]) - memDivisor*j) - (currLevel-1)), currLevel - 1);
+																leaflet.back().setHeadLeaf(headPattern);
+															}
 														}
 														else if(((((*pList)[k]) - memDivisor*j) - (currLevel-1)) < 0)
 														{
@@ -2191,20 +2168,13 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								}
 								else
 								{
-
-									globalTotalLeafSizeInBytes = 0;
-									globalTotalMemoryInBytes = 32;
 									//if true already do not write again until memory is back in our hands
-									if(!justPassedMemorySize && leaf.leaves.size() > 0)
+									if(/*!justPassedMemorySize*/leaflet.size() > 0 && leaflet[0].leaves.size() > 0)
 									{
-
-										PListType patterns = leaf.leaves.size();
-
 										justPassedMemorySize = true;
 										stringstream stringBuilder;
 										stringBuilder << chunkFactorio->GenerateUniqueID();
-										fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaf, levelInfo));
-
+										fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaflet, levelInfo));
 									}
 									else
 									{
@@ -2216,18 +2186,14 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								}
 							}
 
-							if(packedListSize > 0 && leaf.leaves.size() > 0)
+							if(leaflet.size() > 0 && leaflet[0].leaves.size() > 0)
 							{
-
-								globalTotalLeafSizeInBytes = 0;
-								globalTotalMemoryInBytes = 32;
-
 								stringstream stringBuilder;
 								PListType newID = chunkFactorio->GenerateUniqueID();
 								stringBuilder << newID;
-								fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaf, levelInfo));
-
+								fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaflet, levelInfo));
 							}
+
 						}
 					
 						for(PListType p = 0; p < packedPListArray.size(); p++)
