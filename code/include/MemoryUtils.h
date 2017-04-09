@@ -82,9 +82,9 @@ public:
 
 	}
 
-	static PListType parseLine(char* line)
+	static size_t parseLine(char* line)
 	{
-		PListType i = strlen(line);
+		size_t i = strlen(line);
 		while (*line < '0' || *line > '9') line++;
 		line[i-3] = '\0';
 		i = atoi(line);
@@ -98,7 +98,7 @@ public:
 		
 		PROCESS_MEMORY_COUNTERS pmc;
 		GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-		PListType physMemUsedByMe = pmc.WorkingSetSize;
+		size_t physMemUsedByMe = pmc.WorkingSetSize;
 		return physMemUsedByMe/1000000.0f;
 
 #elif defined(__linux__)
@@ -120,21 +120,50 @@ public:
 
 	}
 
+	
+
+	static size_t getCurrentRSS( )
+	{
+#if defined(_WIN32)
+    /* Windows -------------------------------------------------- */
+    PROCESS_MEMORY_COUNTERS info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), &info, sizeof(info) );
+    return (size_t)info.WorkingSetSize;
+
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+    /* Linux ---------------------------------------------------- */
+    long rss = 0L;
+    FILE* fp = NULL;
+    if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
+        return (size_t)0L;      /* Can't open? */
+    if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
+    {
+        fclose( fp );
+        return (size_t)0L;      /* Can't read? */
+    }
+    fclose( fp );
+    return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
+
+#else
+    /* AIX, BSD, Solaris, and Unknown OS ------------------------ */
+    return (size_t)0L;          /* Unsupported. */
+#endif
+	}
 	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
 	{
-		double currMemory = GetProgramMemoryConsumption();
-		stringstream stringbuilder;
-		
-		double usedMemory = currMemory - initialMemoryInMB;
+		size_t usedMemory = getCurrentRSS()/1000000;
 		if(usedMemory >= memoryBandwidthInMB)
 		{
+			memoryOverflow = usedMemory - memoryBandwidthInMB;
 			return true;
 		}
 		else
 		{
+			memoryOverflow = 0;
 			return false;
 		}
 	}
+
 
 	static double CPULoad()
 	{
@@ -166,9 +195,7 @@ public:
 		GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
 		memcpy(&sys, &fsys, sizeof(FILETIME));
 		memcpy(&user, &fuser, sizeof(FILETIME));
-		percent = (sys.QuadPart - lastSysCPU.QuadPart) +
-			(user.QuadPart - lastUserCPU.QuadPart);
-		percent /= (now.QuadPart - lastCPU.QuadPart);
+		percent = static_cast<double>((sys.QuadPart - lastSysCPU.QuadPart) + (user.QuadPart - lastUserCPU.QuadPart)) / (now.QuadPart - lastCPU.QuadPart);
 		//percent /= numProcessors;
 		lastCPU = now;
 		lastUserCPU = user;
@@ -226,7 +253,7 @@ public:
 
 	static PListType FileSize(string fileName)
 	{
-		PListType fileSize;
+		size_t fileSize;
 
 #if defined(_WIN64) || defined(_WIN32)
 		
@@ -247,7 +274,7 @@ public:
 		}
 #endif
 
-		return fileSize;
+		return static_cast<PListType>(fileSize);
 	}
 
 	#pragma endregion MemoryUtilities

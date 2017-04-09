@@ -38,11 +38,11 @@ string ChunkFactory::CreateChunkFile(string fileName, vector<TreeHD>& leaf, Leve
 		for(auto iterator2 = iterator->leaves.begin(); iterator2 != iterator->leaves.end(); iterator2++) 
 		{
 			string pattern = iterator->headLeaf + iterator2->first;
-			archiveCollective->WriteArchiveMapMMAP(iterator2->second.pList, pattern, false);
-			iterator2->second.pList.clear();
+			archiveCollective->WriteArchiveMapMMAP(iterator2->second, pattern, false);
+			(*iterator2).second.resize(0);
+			(*iterator2).second.shrink_to_fit();
 		}
 		iterator->leaves.clear();
-		//iterator = leaf.erase(iterator);
 	}
 
 	vector<TreeHD> test;

@@ -65,8 +65,6 @@ private:
 	PListType startingIndex;
 	bool endOfFileReached;
 	ofstream *outputFile;
-	list<char*> charLocals;
-	list<PListType*> memLocals;
 	PListType prevListIndex;
 	PListType prevStartingIndex;
 	PListType *mapper;

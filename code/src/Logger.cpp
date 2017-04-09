@@ -1,8 +1,20 @@
 #include "Logger.h"
+#if defined(_WIN64) || defined(_WIN32)
+	#include <Windows.h>
+#elif defined(__linux__)
+	#include <sys/types.h>
+	#include <unistd.h>
+#endif
 
-ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
-ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + Logger::GetFormattedTime() + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
-ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+#if defined(_WIN64) || defined(_WIN32)
+ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + std::to_string(GetCurrentProcessId()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + std::to_string(GetCurrentProcessId()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
+ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + std::to_string(GetCurrentProcessId()) + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+#elif defined(__linux__)
+ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + std::to_string(getpid()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + std::to_string(getpid()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
+ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + std::to_string(getpid()) + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+#endif
 	
 
 string Logger::stringBuffer;
@@ -10,7 +22,6 @@ mutex* Logger::logMutex = new mutex();
 int Logger::index;
 mutex* Logger::scrollLogMutex = new mutex();
 int Logger::verbosity = 0;
-//Write to string buffer, if buffer is larger 
 void Logger::WriteLog(string miniBuff)
 {
 	if(verbosity)
@@ -25,24 +36,15 @@ void Logger::WriteLog(string miniBuff)
 			{
 				cout << miniBuff;
 			}
-//#if defined(_WIN64) || defined(_WIN32) 
-//			OutputDebugString(miniBuff.c_str());
-//#endif		
+
 			stringBuffer.append(miniBuff);
+			(*outputFile) << stringBuffer;
+			stringBuffer.clear();
 
-			//Write to disk only if byte length is greater than 512
-			//this is more efficient when writing to disk to do it in blocks
-			//if(stringBuffer.length() >= 64)
-			//{
-				(*outputFile) << stringBuffer;
-				//If written clear the string out
-				stringBuffer.clear();
-
-				//refresh
-				(*outputFile).flush();
-				(*outputFile).clear();
-			//}
-
+			//refresh
+			(*outputFile).flush();
+			(*outputFile).clear();
+		
 			logMutex->unlock();
 		}
 	}
@@ -86,7 +88,7 @@ string Logger::GetFormattedTime()
     struct tm now;
 	now = *localtime( & t );
 	stringstream timeBuff;
-	//timeBuff << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-' <<  now->tm_mday << " ";
+
 	string amorpm;
 
 	if(now.tm_hour > 0 && now.tm_hour <= 12)
@@ -110,7 +112,7 @@ string Logger::GetFormattedTime()
 	{
 		timeBuff << "0";	
 	}
-	timeBuff << now.tm_sec /*<< " " << amorpm*/;
+	timeBuff << now.tm_sec;
 	srand ((unsigned int)(time(NULL)));
 	timeBuff << rand();
 

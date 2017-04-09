@@ -45,13 +45,10 @@ Forest::Forest(int argc, char **argv)
 
 	
 	//main thread is a hardware thread so dispatch threads requested minus 1
-	int threadsToDispatch = 0;
 	if(config.findBestThreadNumber)
 	{
-		config.numThreads = 2;
+		config.numThreads = 1;
 	}
-	threadsToDispatch = config.numThreads - 1;
-
 
 	memoryCeiling = (PListType)MemoryUtils::GetAvailableRAMMB() - 1000;
 
@@ -104,7 +101,7 @@ Forest::Forest(int argc, char **argv)
 		}
 
 		
-		for(unsigned int threadIteration = 0; threadIteration <= config.testIterations; threadIteration = threadsToDispatch)
+		for(unsigned int threadIteration = 0; threadIteration <= config.testIterations; threadIteration = config.numThreads)
 		{
 
 			stringstream loggingIt;
@@ -122,8 +119,8 @@ Forest::Forest(int argc, char **argv)
 
 			prevFileNameList.clear();
 			newFileNameList.clear();
-			prevFileNameList.resize(config.numThreads - 1);
-			newFileNameList.resize(config.numThreads - 1);
+			prevFileNameList.resize(config.numThreads);
+			newFileNameList.resize(config.numThreads);
 
 			fileChunks.clear();
 			fileChunks.reserve(0);
@@ -134,27 +131,27 @@ Forest::Forest(int argc, char **argv)
 			memoryQueryThread = new thread(&Forest::MemoryQuery, this);
 			
 			//Initialize all possible values for the first list to NULL
-			prevPListArray->resize(256*threadsToDispatch);
-			for(int i = 0; i < 256*threadsToDispatch; i++)
+			prevPListArray->resize(256*config.numThreads);
+			for(int i = 0; i < 256*config.numThreads; i++)
 			{
 				(*prevPListArray)[i] = NULL;
 			}
 
 			//Assume start with RAM
-			usedRAM.resize(threadsToDispatch);
-			for(int i = 0; i < threadsToDispatch; i++)
+			usedRAM.resize(config.numThreads);
+			for(int i = 0; i < config.numThreads; i++)
 			{
 				usedRAM[i] = true;
 			}
 
 			//currentLevelVector.resize(threadsToDispatch);
-			activeThreads.resize(threadsToDispatch);
-			for(int i = 0; i < threadsToDispatch; i++)
+			activeThreads.resize(config.numThreads);
+			for(int i = 0; i < config.numThreads; i++)
 			{
 				activeThreads[i] = false;
 			}
 
-			memoryPerThread = config.memoryBandwidthMB/threadsToDispatch;
+			memoryPerThread = config.memoryBandwidthMB/config.numThreads;
 			cout << "Memory that can be used per thread: " << memoryPerThread << " MB." << endl;
 
 			
@@ -169,7 +166,7 @@ Forest::Forest(int argc, char **argv)
 			levelInfo.coreIndex = 0;
 			bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, 1, config.files[f]->fileStringSize);
 			firstLevelProcessedHD = prediction;
-			for(int i = 0; i < threadsToDispatch; i++)
+			for(int i = 0; i < config.numThreads; i++)
 			{
 				usedRAM[i] = !prediction;
 				stats.SetCurrentLevel(i, 1);
@@ -197,7 +194,7 @@ Forest::Forest(int argc, char **argv)
 			//Only start processing time after file is read in
 			StopWatch time;
 
-			cout << "Number of threads processing file is " << threadsToDispatch << endl;
+			cout << "Number of threads processing file is " << config.numThreads << endl;
 			for(int z = 0; z < fileIterations; z++)
 			{
 				PListType position = 0;
@@ -227,14 +224,14 @@ Forest::Forest(int argc, char **argv)
 
 				
 			
-				PListType cycles = patternCount/threadsToDispatch;
-				PListType lastCycle = patternCount - (cycles*threadsToDispatch);
+				PListType cycles = patternCount/config.numThreads;
+				PListType lastCycle = patternCount - (cycles*config.numThreads);
 				PListType span = cycles;
 
 				
-				for(int i = 0; i < threadsToDispatch; i++)
+				for(int i = 0; i < config.numThreads; i++)
 				{
-					if(!(i < threadsToDispatch - 1))
+					if(!(i < config.numThreads - 1))
 					{
 						span = span + lastCycle;
 					}	
@@ -251,7 +248,7 @@ Forest::Forest(int argc, char **argv)
 
 				PListType removedPatterns = 0;
 				vector<unsigned int> localWorkingThreads;
-				for(unsigned int i = 0; i < threadsToDispatch; i++)
+				for(unsigned int i = 0; i < config.numThreads; i++)
 				{
 					localWorkingThreads.push_back(i);
 				}
@@ -308,7 +305,7 @@ Forest::Forest(int argc, char **argv)
 				
 				if(prediction)
 				{
-					for(int z = 0; z < threadsToDispatch; z++)
+					for(int z = 0; z < config.numThreads; z++)
 					{
 						for(int a = 0; a < newFileNameList[z].size(); a++)
 						{
@@ -346,11 +343,11 @@ Forest::Forest(int argc, char **argv)
 
 			time.Stop();
 			threadMap.push_back(map<int, double>());
-			threadMap[f][threadsToDispatch] = time.GetTime();
-			processingTimes.push_back(threadMap[f][threadsToDispatch]);
+			threadMap[f][config.numThreads] = time.GetTime();
+			processingTimes.push_back(threadMap[f][config.numThreads]);
 			time.Display();
 			stringstream buffery;
-			buffery << threadsToDispatch << " threads were used to process file" << endl;
+			buffery << config.numThreads << " threads were used to process file" << endl;
 			Logger::WriteLog(buffery.str());
 
 			if(config.files[f]->fileStringSize != config.files[f]->fileString.size())
@@ -394,8 +391,7 @@ Forest::Forest(int argc, char **argv)
 
 			if(config.findBestThreadNumber)
 			{
-				config.numThreads = (config.numThreads * 2) - 1;
-				threadsToDispatch = config.numThreads - 1;
+				config.numThreads = (config.numThreads * 2);
 			}
 
 			crappy.str("");
@@ -453,8 +449,7 @@ Forest::Forest(int argc, char **argv)
 
 		if(config.findBestThreadNumber)
 		{
-			config.numThreads = 2;
-			threadsToDispatch = config.numThreads - 1;
+			config.numThreads = 1;
 		}
 
 	}
@@ -466,6 +461,12 @@ Forest::Forest(int argc, char **argv)
 	if(config.findBestThreadNumber)
 	{
 		Logger::generateThreadsVsThroughput(threadMap);
+	}
+
+	for(int i = 0; i < fileChunks.size(); i++)
+	{
+		fileChunks[i].resize(0);
+		fileChunks[i].shrink_to_fit();
 	}
 
 	delete threadPool;
@@ -508,7 +509,7 @@ void Forest::MemoryQuery()
 			mostMemoryOverflow = memoryOverflow;
 		}
 		//Abort mission and do not exit gracefully ie dump cause we will be pageing soon
-		if(currMemoryOverflow + config.memoryBandwidthMB > memoryCeiling)
+		if(currMemoryOverflow + config.memoryBandwidthMB > memoryCeiling && !config.usingPureRAM)
 		{
 			Logger::WriteLog("Have to bail because you are using too much memory for your system!");
 			exit(0);
@@ -557,10 +558,6 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 		return true;
 	}
 	
-	//main thread is a hardware thread so dispatch threads requested minus 1
-	PListType threadsToDispatch = config.numThreads - 1;
-
-	
 	//POTENTIAL PATTERNS equals the previous list times 256 possible byte values but this value can't exceed the file size minus the current level
 	PListType potentialPatterns = sizeOfPrevPatternCount*256;
 
@@ -579,7 +576,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	}
 	else
 	{
-		sizeOfProcessedFile = config.files[f]->fileStringSize/threadsToDispatch;
+		sizeOfProcessedFile = config.files[f]->fileStringSize/config.numThreads;
 	}
 
 	PListType sizeOfGlobalStringConstruct = sizeOfString;
@@ -590,7 +587,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	double prevMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - MemoryUsageAtInception;
 	if(prevMemoryMB > 0.0f)
 	{
-		previousLevelMemoryMB = (PListType)prevMemoryMB/threadsToDispatch;
+		previousLevelMemoryMB = (PListType)prevMemoryMB/config.numThreads;
 	}
 
 	PListType memoryAllowance = 0;
@@ -600,7 +597,7 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	}
 	else
 	{
-		memoryAllowance = config.memoryBandwidthMB/threadsToDispatch;
+		memoryAllowance = config.memoryBandwidthMB/config.numThreads;
 	}
 
 	if(totalStorageNeeded > memoryAllowance)
@@ -634,7 +631,6 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 
 void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray)
 {
-	PListType threadsToDispatch = config.numThreads - 1;
 	vector<vector<string>> tempFileList = fileList;
 	for(int a = 0; a < fileList.size(); a++)
 	{
@@ -658,7 +654,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 
 					//Increment chunk
 					threadNumber++;
-					if(threadNumber >= threadsToDispatch)
+					if(threadNumber >= config.numThreads)
 					{
 						threadNumber = 0;
 					}
@@ -672,7 +668,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 			stringstream threadFilesNames;
 			unsigned int threadNumber = 0;
 
-			for(int a = 0; a < threadsToDispatch; a++)
+			for(int a = 0; a < config.numThreads; a++)
 			{
 				threadFilesNames.str("");
 				threadFilesNames << "PListChunks" << chunkFactorio->GenerateUniqueID();
@@ -684,7 +680,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 			{
 				list<PListType> *sorting = new list<PListType>();
 
-				for(int threadCount = 0; threadCount < threadsToDispatch; threadCount++)
+				for(int threadCount = 0; threadCount < config.numThreads; threadCount++)
 				{
 					if((*prevLocalPListArray)[prevIndex] != NULL)
 					{
@@ -706,7 +702,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 
 				//Increment chunk
 				threadNumber++;
-				if(threadNumber >= threadsToDispatch)
+				if(threadNumber >= config.numThreads)
 				{
 					threadNumber = 0;
 				}
@@ -714,7 +710,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 			//Clear out the array also after deletion
 			prevLocalPListArray->clear();
 
-			for(int a = 0; a < threadsToDispatch; a++)
+			for(int a = 0; a < config.numThreads; a++)
 			{
 				threadFiles[a]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 				threadFiles[a]->CloseArchiveMMAP();
@@ -746,7 +742,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 				}
 			}
 
-			for(PListType i = 0; i < threadsToDispatch; i++)
+			for(PListType i = 0; i < config.numThreads; i++)
 			{
 				if(!config.history)
 				{
@@ -774,8 +770,6 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 
 void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray)
 {
-	PListType threadsToDispatch = config.numThreads - 1;
-
 	if(prediction)
 	{
 		if(levelInfo.useRAM)
@@ -863,8 +857,6 @@ void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& 
 bool Forest::NextLevelTreeSearch(unsigned int level)
 {
 
-	unsigned int threadsToDispatch = config.numThreads - 1;
-
 	LevelPackage levelInfo;
 	levelInfo.currLevel = level;
 	levelInfo.inceptionLevelLOL = 0;
@@ -881,7 +873,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 	//use that one prediction
 	if(usedRAM[0])
 	{
-		vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAMFirstLevel(threadsToDispatch, prevPListArray);
+		vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAMFirstLevel(config.numThreads, prevPListArray);
 		vector<unsigned int> localWorkingThreads;
 		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
 		{
@@ -917,7 +909,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 				files.push_back(fileList[i][j]);
 			}
 		}
-		vector<vector<string>> balancedTruncList = ProcessThreadsWorkLoadHD(threadsToDispatch, levelInfo, files);
+		vector<vector<string>> balancedTruncList = ProcessThreadsWorkLoadHD(config.numThreads, levelInfo, files);
 		vector<unsigned int> localWorkingThreads;
 		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
 		{
@@ -1284,7 +1276,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 	bool memoryOverflow = false;
 	PListType interimCount = 0;
 	unsigned int threadNumber = 0;
-	unsigned int threadsToDispatch = config.numThreads - 1;
 
 	vector<string> fileNamesBackup;
 	for(int a = 0; a < fileNamesToReOpen.size(); a++)
@@ -1445,7 +1436,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 								currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
 
 								threadNumber++;
-								threadNumber %= threadsToDispatch;
+								threadNumber %= config.numThreads;
 							}
 							else
 							{
@@ -1673,7 +1664,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 					currChunkFile = new PListArchive(fileNameForPrevList.str(), true);
 
 					threadNumber++;
-					threadNumber %= threadsToDispatch;
+					threadNumber %= config.numThreads;
 				}
 				else
 				{
@@ -1746,7 +1737,6 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 	bool memoryOverflow = false;
 	PListType interimCount = 0;
 	unsigned int threadNumber = 0;
-	unsigned int threadsToDispatch = config.numThreads - 1;
 	PListType removedPatterns = 0;
 
 	PListType currPatternCount = 0;
@@ -1776,7 +1766,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 		currChunkFiles[pattern.str()] = new PListArchive(fileNameForPrevList.str(), true);
 
 		threadNumber++;
-		threadNumber %= threadsToDispatch;
+		threadNumber %= config.numThreads;
 	}
 
 	vector<string> fileNamesBackup;
@@ -2229,7 +2219,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			{
 				levelInfo.currLevel++;
 				//Have to add prediction here 
-				bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, newPatternCount, (config.files[f]->fileStringSize - stats.GetEradicatedPatterns())/(config.numThreads - 1));
+				bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, newPatternCount, (config.files[f]->fileStringSize - stats.GetEradicatedPatterns())/(config.numThreads));
 				if(!prediction)
 				{
 					morePatternsToFind = false;
@@ -2264,8 +2254,7 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, PListType& morePat
 	bool alreadyUnlocked = false;
 	countMutex->lock();
 
-	int threadsToDispatch = config.numThreads - 1;
-	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
+	int unusedCores = (config.numThreads - (threadsDispatched - threadsDefuncted)) + 1;
 	
 	if(pListLengths.size() < unusedCores && unusedCores > 1)
 	{
@@ -2306,7 +2295,7 @@ bool Forest::DispatchNewThreadsRAM(PListType newPatternCount, PListType& morePat
 			if(localWorkingThreads.size() > 1)
 			{
 				int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
-				if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
+				if(threadsToTest + localWorkingThreads.size() <= config.numThreads)
 				{
 
 					for(int z = 0; z < balancedTruncList.size(); z++)
@@ -2381,9 +2370,8 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 	bool dispatchedNewThreads = false;
 	bool alreadyUnlocked = false;
 	countMutex->lock();
-
-	int threadsToDispatch = config.numThreads - 1;
-	int unusedCores = (threadsToDispatch - (threadsDispatched - threadsDefuncted)) + 1;
+;
+	int unusedCores = (config.numThreads - (threadsDispatched - threadsDefuncted)) + 1;
 	if(newPatternCount < unusedCores && unusedCores > 1)
 	{
 		unusedCores = (int)newPatternCount;
@@ -2406,7 +2394,7 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 			if(localWorkingThreads.size() > 1)
 			{
 				int threadsToTest = (threadsDispatched - threadsDefuncted) - 1;
-				if(threadsToTest + localWorkingThreads.size() <= threadsToDispatch)
+				if(threadsToTest + localWorkingThreads.size() <= config.numThreads)
 				{
 
 					dispatchedNewThreads = true;
@@ -2465,7 +2453,6 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 	vector<PListType> prevPListLengths;
 
 	PListType continueSearching = 1;
-	int threadsToDispatch = config.numThreads - 1;
 	PListType totalTallyRemovedPatterns = 0;
 	PListType newPatterns = 0;
 	string globalStringConstruct;
@@ -2502,7 +2489,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 
 			if(!firstLevelProcessedHD)
 			{
-				if(i % threadsToDispatch == (threadsToDispatch - 1) && threadCountage > 1)
+				if(i % config.numThreads == (config.numThreads - 1) && threadCountage > 1)
 				{
 					prevPListLengths.push_back(threadCountage);
 					threadCountage = 0;
@@ -3054,9 +3041,8 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 	//cout << "Threads dispatched: " << threadsDispatched << " Threads deported: " << threadsDefuncted << " Threads running: " << threadsDispatched - threadsDefuncted << endl;
 
 	int tempCurrentLevel = levelInfo.currLevel;
-	int threadsToDispatch = config.numThreads - 1;
 
-	if(threadsDispatched - threadsDefuncted > threadsToDispatch)
+	if(threadsDispatched - threadsDefuncted > config.numThreads)
 	{
 		cout << "WENT OVER THREADS ALLOCATION SIZE!" << endl;
 	}
@@ -3132,8 +3118,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 	levelInfo.coreIndex = threadNum;
 	levelInfo.threadIndex = threadNum;
 
-	int threadsToDispatch = config.numThreads - 1;
-	PListType earlyApproximation = config.files[f]->fileString.size()/(256*(config.numThreads - 1));
+	PListType earlyApproximation = config.files[f]->fileString.size()/(256*(config.numThreads));
 	vector<vector<PListType>*> leaves(256);
 	for(int i = 0; i < 256; i++)
 	{
@@ -3177,8 +3162,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 
 void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex)
 {
-	int threadsToDispatch = config.numThreads - 1;
-	PListType earlyApproximation = config.files[f]->fileString.size()/(256*(config.numThreads - 1));
+	PListType earlyApproximation = config.files[f]->fileString.size()/(256*(config.numThreads));
 	vector<PListType>* leaves[256];
 	for(int i = 0; i < 256; i++)
 	{
@@ -3199,7 +3183,7 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 
 	for(int i = 0; i < 256; i++)
 	{
-		(*prevPListArray)[threadIndex + i*threadsToDispatch] = leaves[i];
+		(*prevPListArray)[threadIndex + i*config.numThreads] = leaves[i];
 	}
 	stats.SetCurrentLevel(threadIndex, 2);
 }

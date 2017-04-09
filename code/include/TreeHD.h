@@ -13,10 +13,6 @@ public:
 	TreeHD(){};
 	~TreeHD(){};
 
-	TreeHD(PListType pIndex)
-	{
-		pList.push_back(pIndex);
-	}
 
 	inline void setHeadLeaf(string headLeaf)
 	{
@@ -27,21 +23,14 @@ public:
 	{
 		if (leaves.find(uniquestring) == leaves.end())
 		{
-			leaves[uniquestring] = TreeHD(pIndex);
+			leaves[uniquestring] = vector<PListType>();
+			leaves[uniquestring].push_back(pIndex);
 		}
 		else
 		{
-			leaves[uniquestring].addPIndex(pIndex);
+			leaves[uniquestring].push_back(pIndex);
 		}		
 	}
-
-	inline void addPIndex(PListType pIndex)
-	{
-		pList.push_back(pIndex);
-	}
-	
-	//map<string, TreeHD> leaves;
-	map<char, TreeHD> leaves;
-	vector<PListType> pList;
+	map<char, vector<PListType>> leaves;
 	string headLeaf;
 };

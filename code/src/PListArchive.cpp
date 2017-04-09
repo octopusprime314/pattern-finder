@@ -312,6 +312,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad 
 			if(mapper != NULL)
 			{
+				msync(mapper, hdSectorSize, MS_ASYNC);
 				//Deallocate only when it has been completely used
 				if (munmap(mapper, hdSectorSize) == -1) 
 				{
@@ -321,16 +322,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 				mapper = NULL;
 			}
 			
-			for(PListType* temp : memLocals)
-			{
-				msync(temp, hdSectorSize, MS_ASYNC);
-			}
-			for(char* tempChar : charLocals)
-			{
-				msync(tempChar, hdSectorSize, MS_ASYNC);
-			}
-			
-			memLocals.clear();
 			totalWritten = 0;
 			
 			return;
@@ -387,6 +378,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			{
 				if(mapper != NULL)
 				{
+					msync(mapper, hdSectorSize, MS_ASYNC);
 					//Deallocate only when it has been completely used
 					if (munmap(mapper, hdSectorSize) == -1) 
 					{
@@ -397,8 +389,6 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 				}
 
 				mapper = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
-
-				memLocals.push_back(mapper);
 				
 				if (mapper == MAP_FAILED) 
 				{
@@ -642,8 +632,6 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		{
 			mapForChars = (char *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, mapFD, fileIndex);
 
-			charLocals.push_back(mapForChars);
-		
 			if (mapForChars == MAP_FAILED) 
 			{
 				stringstream uhoh;
@@ -689,6 +677,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		
 			/* Don't forget to free the mmapped memory
 				*/
+			msync(mapForChars, hdSectorSize, MS_ASYNC);
 
 			if (munmap(mapForChars, hdSectorSize) == -1) 
 			{

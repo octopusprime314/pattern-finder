@@ -82,9 +82,9 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			else if(fileTest.find('.') == string::npos && fileTest[0] != '-')
 			{
 			#if defined(_WIN64) || defined(_WIN32)
-				header = "../../../Database/";
-			#elif defined(__linux__)
 				header = "../../Database/";
+			#elif defined(__linux__)
+				header = "../Database/";
 			#endif
 				header.append(fileTest);
 				header.append("/");
@@ -223,7 +223,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	//If numCores is not specified then we use number of threads supported cores plus the main thread
 	if (!threadsEnter /*|| numThreads > concurentThreadsSupported*/)
 	{
-		config.numThreads = concurentThreadsSupported + 1;
+		config.numThreads = concurentThreadsSupported;
 	}
 
 	int bestThreadCount = 0;
@@ -231,7 +231,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.testIterations = 0;
 	if (config.findBestThreadNumber)
 	{
-		config.numThreads = 2;
+		config.numThreads = 1;
 		if(config.threadLimitation != 0)
 		{
 			config.testIterations = config.threadLimitation;
