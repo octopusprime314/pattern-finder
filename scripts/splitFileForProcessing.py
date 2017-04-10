@@ -1,10 +1,20 @@
 import os
-import textwrap
 import sys
 import subprocess
+import shlex
 
-BIN_DIR = "../bin/Release"
-os.chdir(BIN_DIR);
+prevdir = os.getcwd()
+if os.name == 'nt':
+        BIN_DIR = "../bin/Release"
+	os.chdir("../..")
+else:
+        BIN_DIR = "../bin"
+	os.chdir("..")
+
+rootdir = os.getcwd()
+os.chdir(prevdir)
+
+os.chdir(BIN_DIR)
 
 fileName = sys.argv[1]
 jobs = int(sys.argv[2])
@@ -26,7 +36,8 @@ folderName = fileName.rsplit('/', 1)[-1]
 extension = folderName.rsplit('.', 1)[-1]
 folderName = folderName.rsplit('.', 1)[0]
 
-folderPath = "../../Database/Split" + folderName
+folderPath = rootdir + "/Database/Split" + folderName	
+
 if not(os.path.exists(folderPath)):
 	os.makedirs(folderPath)
 
@@ -37,12 +48,8 @@ for fileChunk in fileChunks:
 	file = open(fileTag, "wb+")
 	file.write(fileChunks[counter]);
 	file.close()
-	cmdargs = ["PatternFinder", " -f " + fileTag + " -threads 2 -v 1 -ram"]
-	proc = subprocess.Popen([cmdargs], shell=True,stdin=None, stdout=None, stderr=None, close_fds=True)
-	counter = counter + 1
-
-
-
-	
-
-	
+	print fileTag
+	cmdargs = ['./PatternFinder', '-f', fileTag, '-threads', '1', '-v', '1', '-ram']
+	#subprocess.call(cmdargs)
+	proc = subprocess.Popen(cmdargs)
+	counter = counter + 1	

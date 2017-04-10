@@ -71,7 +71,8 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 
 			if(fileTest.find('.') != string::npos && fileTest[0] != '-') 
 			{
-				if(fileTest.find(':') != string::npos)
+				
+				if(fileTest.find(':') != string::npos || fileTest[0] == '/')
 				{
 					tempFileName = argv[i + 1];
 				}
@@ -90,12 +91,11 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 				header.append("/");
 
 				//Access files with full path
-				if(fileTest.find(":") != std::string::npos)
+				if(fileTest.find(":") != std::string::npos || fileTest[0] == '/')
 				{
 					header = fileTest;
 					header.append("/");
 				}
-
 				FindFiles(header);
 				i++;
 			}
