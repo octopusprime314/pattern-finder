@@ -20,6 +20,16 @@ ProcessorStats::~ProcessorStats(void)
 {
 }
 
+void ProcessorStats::SetThreadStatistics(unsigned int threadCount)
+{
+	//Assume start with RAM
+	usedRAM.resize(threadCount);
+	for(unsigned int i = 0; i < threadCount; i++)
+	{
+		usedRAM[i] = true;
+	}
+}
+
 void ProcessorStats::SetMostCommonPattern(PListType currLevel, PListType count, PListType index)
 {
 	if(mostCommonPatternCount.size() < currLevel)

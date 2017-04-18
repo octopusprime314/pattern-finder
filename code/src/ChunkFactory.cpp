@@ -25,7 +25,7 @@ string ChunkFactory::CreateChunkFile(string fileName, vector<TreeHD>& leaf, Leve
 	
 	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
-		count += iterator->leaves.size();
+		count += static_cast<PListType>(iterator->leaves.size());
 	}
 
 	archiveName << archiveFileType << fileName << "_" << count;

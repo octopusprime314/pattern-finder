@@ -157,7 +157,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		else if(arg.compare("-p") == 0)
 		{
 			config.patternToSearchFor = argv[i+1];
-			config.maximum = config.patternToSearchFor.size();
+			config.maximum = static_cast<PListType>(config.patternToSearchFor.size());
 			i++;
 		}
 		else if(arg.compare("-i") == 0)

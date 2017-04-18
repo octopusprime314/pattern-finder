@@ -1,7 +1,14 @@
 import os
 import sys
 import subprocess
-import shlex
+
+
+
+fileName = sys.argv[1]
+jobs = int(sys.argv[2])
+file = open(fileName, "rb")
+fileData = file.read()
+file.close()
 
 prevdir = os.getcwd()
 if os.name == 'nt':
@@ -16,11 +23,6 @@ os.chdir(prevdir)
 
 os.chdir(BIN_DIR)
 
-fileName = sys.argv[1]
-jobs = int(sys.argv[2])
-file = open(fileName, "rb")
-fileData = file.read()
-file.close()
 fileSize = len(fileData)
 divider = fileSize/jobs;
 remainder = fileSize % jobs;

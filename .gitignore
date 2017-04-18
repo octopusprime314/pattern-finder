@@ -45,7 +45,9 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 build
+Log*
 .apdisk
+*.asv
 *.csv
 *.opensdf
 *.tlog

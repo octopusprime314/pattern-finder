@@ -7,13 +7,13 @@
 #endif
 
 #if defined(_WIN64) || defined(_WIN32)
-ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + std::to_string(GetCurrentProcessId()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
-ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + std::to_string(GetCurrentProcessId()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
-ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + std::to_string(GetCurrentProcessId()) + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + GetPID() + ".csv", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 #elif defined(__linux__)
-ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + std::to_string(getpid()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
-ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + std::to_string(getpid()) + ".txt", ios_base::in | ios_base::out | ios_base::trunc | ios_base::binary);
-ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + std::to_string(getpid()) + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 #endif
 	
 
@@ -48,6 +48,14 @@ void Logger::WriteLog(string miniBuff)
 			logMutex->unlock();
 		}
 	}
+}
+string Logger::GetPID()
+{
+#if defined(_WIN64) || defined(_WIN32)
+	return std::to_string(GetCurrentProcessId());
+#elif defined(__linux__)
+	return std::to_string(getpid());
+#endif
 }
 
 //Clear string buffer
@@ -86,7 +94,7 @@ string Logger::GetFormattedTime()
 {
 	time_t t = time(0);   // get time now
     struct tm now;
-	now = *localtime( & t );
+	localtime_s( &now, &t);
 	stringstream timeBuff;
 
 	string amorpm;
@@ -123,7 +131,7 @@ string Logger::GetTime()
 {
 	time_t t = time(0);   // get time now
     struct tm now;
-	now = *localtime( & t );
+	localtime_s( &now, &t);
 	stringstream timeBuff;
 
 	timeBuff << now.tm_hour << ":";
@@ -143,7 +151,7 @@ string Logger::GetTime()
 
 void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes)
 {
-	ofstream csvFile(CSVPATH + "TimeVsFileSize" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	ofstream csvFile(CSVPATH + "TimeVsFileSize" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	if(processTimes.size() == fileSizes.size())
 	{
@@ -154,7 +162,7 @@ void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PList
 	}
 	csvFile.close();
 
-	ofstream csvFile2(CSVPATH + "FileNumberVsProcessingTime" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	ofstream csvFile2(CSVPATH + "FileNumberVsProcessingTime" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 	if(processTimes.size() == fileSizes.size())
 	{
 		for(int i = 0; i < processTimes.size(); i++)
@@ -166,10 +174,9 @@ void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PList
 }
 
 
-
 void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 {
-	ofstream csvFile(CSVPATH + "FinalPatternVsCount" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	ofstream csvFile(CSVPATH + "FinalPatternVsCount" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(map<PListType, PListType>::iterator it = finalPattern.begin(); it != finalPattern.end(); it++)
 	{
@@ -181,7 +188,7 @@ void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 
 void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 {
-	ofstream csvFile(CSVPATH + "ThreadsVsThroughput" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	ofstream csvFile(CSVPATH + "ThreadsVsThroughput" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
 	{
@@ -193,7 +200,7 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	
 	csvFile.close();
 
-	ofstream csvFile2(CSVPATH + "ThreadsVsSpeed" + Logger::GetFormattedTime() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+	ofstream csvFile2(CSVPATH + "ThreadsVsSpeed" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
 	{
@@ -223,14 +230,14 @@ void Logger::fileCoverageCSV(const vector<float>& coverage)
 }
 
 
-void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes)
+void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes, const vector<PListType> &patternCounts)
 {
+	(*patternDataFile) << "Length, Pattern, Count\n";
 	int j = 0;
 	for(vector<PListType>::const_iterator it = patternIndexes.begin(); it != patternIndexes.end(); it++)
 	{
-		(*patternDataFile) << j + 1 << file.substr(*it, j + 1);
+		(*patternDataFile) << j + 1 << ",\"" << file.substr(*it, j + 1) << "\"," << patternCounts[j] << endl;
 		j++;
 	}
-	(*patternDataFile) << "-";
 }
 

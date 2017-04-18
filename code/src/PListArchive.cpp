@@ -40,7 +40,9 @@ PListArchive::PListArchive(string fileName, bool create)
 			{
 				stringstream streaming;
 				streaming << "Why are we truncating the file " << file << endl;
-				streaming << " and errno is "<< strerror(errno) << endl;
+				char message[100];
+				strerror_s(message, 100, errno);
+				streaming << " and errno is "<< message << endl;
 				Logger::WriteLog(streaming.str());
 				cout << streaming.str() << endl;
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
@@ -57,7 +59,9 @@ PListArchive::PListArchive(string fileName, bool create)
 			
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " file not found!";
-			stringbuilder << " and errno is "<< strerror(errno) << endl;
+			char message[100];
+			strerror_s(message, 100, errno);
+			stringbuilder << " and errno is "<< message << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;
 			return;
@@ -120,13 +124,15 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 #endif
 
 	stringstream handle;
-	handle << "Errno is "<< strerror(errno) << endl;
+	char message[100];
+	strerror_s(message, 100, errno);
+	handle << " and errno is "<< message << endl;
 	handle << "error mapping the file " << fileName << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	close(fileDescriptor);
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -135,13 +141,15 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 {
 	stringstream handle;
-	handle << "Errno is "<< strerror(errno) << endl;
+	char message[100];
+	strerror_s(message, 100, errno);
+	handle << " and errno is "<< message << endl;
 	handle << "error un-mapping the file " << fileName << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	close(fileDescriptor);
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -149,7 +157,7 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -159,7 +167,7 @@ void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 
 void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -169,7 +177,6 @@ void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 
 void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, double chunkSizeInMB)
 {
-	long long result;
 	PListType *map;  /* mmapped array of char's */
 	
 	PListType pListGlobalIndex = -1;
@@ -211,7 +218,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 							//size of vector container
 							globalTotalMemoryInBytes += 32;
 							//Size of total vector on the heap
-							globalTotalMemoryInBytes += stuffedPListBuffer[pListGlobalIndex]->capacity()*sizeof(PListType);
+							globalTotalMemoryInBytes += static_cast<PListType>(stuffedPListBuffer[pListGlobalIndex]->capacity()*sizeof(PListType));
 
 							if(((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) >= chunkSizeInMB)
 							{
@@ -326,14 +333,13 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			
 			return;
 		}
-		long long result;
 		if(pListVector.size() > 0)
 		{
 			if(pattern.size() > 0)
 			{
 				stringBuffer.push_back(pattern);
 			}
-			mappingIndex += ((pListVector.size() + 1)*sizeof(PListType));
+			mappingIndex += static_cast<PListType>(((pListVector.size() + 1)*sizeof(PListType)));
 		}
 
 		PListType startPoint = ((prevMappingIndex/sizeof(PListType)) % totalLoops);
@@ -348,7 +354,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 
 		//overshoot how much we are going to write just in case by adding one extra to the offset
 		// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
-		PListType offset = ceil(((double)(pListVector.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1;
+		PListType offset = static_cast<PListType>(ceil(((double)(pListVector.size()*sizeof(PListType)))/((double)hdSectorSize)) + 1);
 
 		//If offset is less than disk write size then write whatever can be done
 		if(offset <= 0)
@@ -356,7 +362,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			offset = 1;
 		}
 
-		PListType pListSize = pListVector.size();
+		PListType pListSize = static_cast<PListType>(pListVector.size());
 
 		PListType offsetStep = 0;
 
@@ -371,7 +377,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 		}
 	#endif
 
-		int i;
+		PListType i;
 		for(i = 0; i < offset && !done && pListSize > 0; i++)
 		{
 			if(startPoint == 0 || mapper == NULL)
@@ -399,14 +405,14 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			/* Now write unsigned longs's to the file as if it were memory (an array of longs).
 				*/
 
-			PListType listVectorSize = pListVector.size();
-			int z;
+			PListType listVectorSize = static_cast<PListType>(pListVector.size());
+			PListType z;
 			for (z = startPoint; z < totalLoops && offsetStep < listVectorSize; ++z) 
 			{
 				if(!grabbedCount)
 				{
 					grabbedCount = true;
-					mapper[z] = pListVector.size();
+					mapper[z] = static_cast<PListType>(pListVector.size());
 				}
 				else
 				{
@@ -461,7 +467,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 
 	//Add plus two to account for patternLength and mapEntries.
 	PListType sizeToReadForPatterns = count*level;
-	PListType totalReadsForPatterns = ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize));
+	PListType totalReadsForPatterns = static_cast<PListType>(ceil(((double)(sizeToReadForPatterns))/((double)hdSectorSize)));
 	if(totalReadsForPatterns == 0)
 	{
 		totalReadsForPatterns++;
@@ -564,7 +570,6 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 {
 	try
 	{
-		long long result;
 		
 		char *mapForChars = NULL;  /* mmapped array of char's */
 
@@ -590,7 +595,9 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		{
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " map pattern file not found!";
-			stringbuilder << " and errno is "<< strerror(errno) << endl;
+			char message[100];
+			strerror_s(message, 100, errno);
+			stringbuilder << " and errno is "<< message << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;
 			return;
@@ -602,7 +609,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 		//overshoot how much we are going to write just in case by adding one extra to the offset
 		// i don't know why but it makes it work because I believe before not everything was being written or something was getting overwritten
-		PListType totalWritesForCharTypes = ceil(((double)(stringBuffer.size()*level))/((double)hdSectorSize)) + 1;
+		PListType totalWritesForCharTypes = static_cast<PListType>(ceil(((double)(stringBuffer.size()*level))/((double)hdSectorSize)) + 1);
 
 		//If offset is less than disk write size then write whatever can be done
 		if(totalWritesForCharTypes == 0 )
@@ -628,7 +635,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 	#endif
 	
 		
-		for(int i = 0; i < totalWritesForCharTypes && !done; i++)
+		for(PListType i = 0; i < totalWritesForCharTypes && !done; i++)
 		{
 			mapForChars = (char *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, mapFD, fileIndex);
 
@@ -647,7 +654,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			
 			while(stringIndex < stringBuffer.size() && z < (hdSectorSize/sizeof(char)) && !done)
 			{
-				int patternIt = prevIndexForChar;
+				unsigned int patternIt = prevIndexForChar;
 				while(patternIt < level && z < (hdSectorSize/sizeof(char)) )
 				{
 					mapForChars[z] = stringBuffer[stringIndex][patternIt];
@@ -686,7 +693,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 		}
 		
-		close(mapFD);
+		_close(mapFD);
 	}
 	catch(exception e)
 	{
@@ -708,7 +715,7 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
-			close(fd);
+			_close(fd);
 		}
 	}
 	catch(exception e)

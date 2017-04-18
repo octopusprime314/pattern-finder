@@ -69,7 +69,6 @@ private:
 	vector<vector<PListType>*>* prevPListArray;
 	
 	//File statistics
-	vector<bool> usedRAM;
 	vector<bool> activeThreads;
 	vector<double> processingTimes;
 	

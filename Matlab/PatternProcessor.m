@@ -2,74 +2,124 @@ clear
 
 close all
 
-addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel\Runs');
-addpath('..\GitHub\PatternDetective\PatternDetectiveTCMallocCompletelyParallel');
+addpath('..\Runs');
+addpath('..');
 
-%put whatever file you want to parse here!
-filetext = fileread('CollectivePatternData8_59_3811017.txt');
 
-%the maximum pattern length
-patternCap = 100;
+fcpdata = fopen('..\Runs\CPData.csv','w+');
 
-%get the map of all the collected patterns
-patternMapping = Parser(filetext, patternCap);
+begIndex = 25;
 
-%pull out the keys and values
-keyVals = keys(patternMapping);
+f = fopen('CollectivePatternData1812.csv','r');
+block = fread(f);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData5552.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData6376.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData6472.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData13004.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData13260.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData14520.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+f = fopen('CollectivePatternData21360.csv','r');
+block = fread(f);
+block = block(begIndex:end);
+fwrite(fcpdata,block);
+fclose(fcpdata);
 
-%find out the actual maximum pattern from processing
-patternCap = max(cellfun('length', keyVals));
 
-%pull out the pattern counts
-patternCounts = values(patternMapping);
+ds = datastore('..\Runs\CPData.csv','TreatAsMissing','NA');
+ds.SelectedVariableNames = {'Count', 'Length', 'Pattern'};
+Data = read(ds);
 
-%convert cells to matrix
-patternCountsMat = cell2mat(patternCounts);
+patterns = (table2array(Data(:,'Pattern')));
+counts = table2array(Data(:, 'Count'));
+mappy = containers.Map();
 
-index = 0;
-patternData = {};
-mostCommonValue = {};
-mostCommonIndex = {};
-mostCommonPattern = {};
-overlappingPatterns = {};
-patternCollectionList = {};
-for j = 1:patternCap
-    maxVal = 0;
-    mostCommonValue{end+1} = 0;
-    mostCommonIndex{end+1} = 0;
-    mostCommonPattern{end+1} = 0;
-    for i = 1:length(keyVals)
-        pattern=keyVals{i};
-        if(length(pattern) == j)
-            
-            if(mostCommonValue{j} < patternCounts{i})
-                patternData{end+1} = pattern;
-                index = index + 1;
-                mostCommonValue{j} = patternCounts{i};
-                mostCommonIndex{j} = i;
-                mostCommonPattern{j} = pattern;
-            end
+for x = 1:length(patterns)
+    val = cell2mat(patterns(x));
+    if isKey(mappy,val)
+        mappy(val) = mappy(val) + counts(x); 
+    else
+        mappy(val) = counts(x); 
+    end
+end
+uniquemap = zeros(length(mappy), 1);
+k = keys(mappy);
+val = values(mappy);
+largest = 0;
+mapIndexes = zeros(length(mappy), 1);
+
+for i = 1:length(mappy)
+    stringVal = length(k{i});
+    if(stringVal > largest)
+        largest = stringVal;
+    end
+    if val{i} > uniquemap(stringVal)
+        uniquemap(stringVal) = val{i}; 
+        mapIndexes(length(k{i})) = i;
+    end
+end
+
+uniquemap = uniquemap(1:largest);
+mapIndexes = mapIndexes(1:largest);
+
+figure
+
+plot(log(1:1:length(uniquemap)), log(uniquemap), '-');
+xlabel('Log[ Pattern Length ]');
+ylabel('Log[ Pattern Frequency ]');
+
+ds = datastore('..\Runs\CollectivePatternData8208.csv','TreatAsMissing','NA');
+ds.SelectedVariableNames = {'Count', 'Length', 'Pattern'};
+Data = read(ds);
+counts = table2array(Data(:, 'Count'));
+patterns = table2array(Data(:, 'Pattern'));
+%hold on 
+figure
+
+plot(log(1:1:length(counts)), log(counts), '-');
+legend('Split processing pattern data', 'Non-split processing');
+title('Split and Non-split processing coverage');
+
+%pattern matching
+figure
+
+matching = zeros(length(patterns), 1);
+matchcount = 0.0;
+for i = 1:length(patterns)
+    if length(k{mapIndexes(i)}) == length(patterns{i})
+        if(char(patterns{i}) == char(k{mapIndexes(i)}))
+            matching(i) = 1;
+            matchcount = matchcount + 1.0;
         end
     end
 end
 
-coverage = {};
+percentage = matchcount / length(patterns)
 
-for j = 1:length(mostCommonIndex)
-    keyVals{mostCommonIndex{j}};
-end
 
-for j = 1:length(mostCommonIndex)
-    coverage{end + 1} = mostCommonValue{j} * j;
-end
+plot(log(1:1:length(counts)), log(counts), '-');
+legend('Split processing pattern data', 'Non-split processing');
+title('Split and Non-split processing coverage');
 
-figure
 
-plot(1:1:patternCap, cell2mat(mostCommonValue), '-');
-xlabel('Pattern Length');
-ylabel('Pattern Frequency');
 
-hold on 
 
-plot(1:1:patternCap, cell2mat(coverage), '-');
 

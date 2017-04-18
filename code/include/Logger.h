@@ -47,7 +47,7 @@ public:
 	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
-	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes);
+	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes, const vector<PListType> &patternCounts);
 	static void fileCoverageCSV(const vector<float>& coverage);
 
 private:
@@ -58,6 +58,8 @@ private:
 	static mutex* logMutex;
 	static mutex* scrollLogMutex;
 	static int index;
+	
+	static string GetPID();
 };
 
 #endif

@@ -2,6 +2,7 @@ Prereqs:
 
 cmake version 2.5 or higher 
 c++11 compatible compiler
+python 2.7 to run parallel serial jobs
 
 Build instructions:
 
@@ -25,7 +26,7 @@ Place your file to be processed in the Database/Data folder
 Command line instructions:
 ./PatternFinder.exe -f TaleOfTwoCities.txt -v 1 -threads 4 -ram
 Runs a PatternFinder program using 4 threads to process TaleOfTwoCities.txt forcing to use only DRAM processing and display the output using -v
-	
+
 
 Python run instructions:
 Use splitFileForProcessing.py Python script to split files into chunks and run multiple instances of PatternFinder on those chunks.
