@@ -22,6 +22,8 @@ struct ConfigurationParams
 	int currentFileIndex;
 	vector<PListType> fileSizes;
 	int threadLimitation;
+	unsigned char lowRange;
+	unsigned char highRange;
 };
 class ProcessorConfig
 {

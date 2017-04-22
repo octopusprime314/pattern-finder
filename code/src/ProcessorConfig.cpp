@@ -30,6 +30,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.nonOverlappingPatternSearch = ANY_PATTERNS;
 	config.history = 0;
 	config.threadLimitation = 0;
+	config.lowRange = config.highRange = 0;
 
 	bool minEnter = false;
 	bool maxEnter = false;
@@ -126,6 +127,16 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		{
 			config.memoryBandwidthMB = atoi(argv[i + 1]);
 			config.usingMemoryBandwidth = true;
+			i++;
+		}
+		else if(arg.compare("-lr") == 0)
+		{
+			config.lowRange = atoi(argv[i + 1]);
+			i++;
+		}
+		else if(arg.compare("-hr") == 0)
+		{
+			config.highRange = atoi(argv[i + 1]);
 			i++;
 		}
 		else if(arg.compare("-n") == 0)

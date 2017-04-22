@@ -12,7 +12,7 @@ file.close()
 
 prevdir = os.getcwd()
 if os.name == 'nt':
-        BIN_DIR = "../bin/Release"
+        BIN_DIR = "../bin/RelWithDebInfo"
 	os.chdir("../..")
 else:
         BIN_DIR = "../bin"
@@ -50,8 +50,7 @@ for fileChunk in fileChunks:
 	file = open(fileTag, "wb+")
 	file.write(fileChunks[counter]);
 	file.close()
-	print fileTag
 	cmdargs = ['./PatternFinder', '-f', fileTag, '-threads', '1', '-v', '1', '-ram']
-	#subprocess.call(cmdargs)
+	print cmdargs
 	proc = subprocess.Popen(cmdargs)
-	counter = counter + 1	
+	counter = counter + 1

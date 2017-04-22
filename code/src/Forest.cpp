@@ -187,6 +187,7 @@ Forest::Forest(int argc, char **argv)
 			StopWatch time;
 
 			cout << "Number of threads processing file is " << config.numThreads << endl;
+
 			for(PListType z = 0; z < fileIterations; z++)
 			{
 				PListType position = 0;
@@ -214,12 +215,9 @@ Forest::Forest(int argc, char **argv)
 					config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
 				}
 
-				
-			
 				PListType cycles = patternCount/config.numThreads;
 				PListType lastCycle = patternCount - (cycles*config.numThreads);
 				PListType span = cycles;
-
 				
 				for(unsigned int i = 0; i < config.numThreads; i++)
 				{
@@ -388,7 +386,7 @@ Forest::Forest(int argc, char **argv)
 			{
 				cout << "Houston we are not processing patterns properly!" << endl;
 				Logger::WriteLog("Houston we are not processing patterns properly!");
-				exit(0);
+				//exit(0);
 			}
 
 			if(memoryQueryThread != NULL)
@@ -2355,7 +2353,7 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 	bool dispatchedNewThreads = false;
 	bool alreadyUnlocked = false;
 	countMutex->lock();
-;
+
 	int unusedCores = (config.numThreads - (threadsDispatched - threadsDefuncted)) + 1;
 	if(static_cast<int>(newPatternCount) < unusedCores && unusedCores > 1)
 	{
@@ -2397,13 +2395,8 @@ bool Forest::DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsT
 					for (PListType i = 0; i < localWorkingThreads.size(); i++)
 					{
 						threadsDispatched++;
+						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, vector<PListType>(), balancedTruncList[i], levelInfoRecursion));
 
-						vector<PListType> temp;
-#if defined(_WIN64) || defined(_WIN32)
-						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
-#else
-						localThreadPool->push_back(std::async(std::launch::async, &Forest::ThreadedLevelTreeSearchRecursionList, this, prevPListArray, temp, balancedTruncList[i], levelInfoRecursion));
-#endif
 					}
 					countMutex->unlock();
 
@@ -3147,12 +3140,10 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 
 void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex)
 {
-	PListType earlyApproximation = static_cast<PListType>(config.files[f]->fileString.size()/(256*(config.numThreads)));
 	vector<PListType>* leaves[256];
 	for(int i = 0; i < 256; i++)
 	{
 		leaves[i] = new vector<PListType>();
-		leaves[i]->reserve(earlyApproximation);
 	}
 	PListType endPatternIndex = numPatternsToSearch + startPatternIndex;
 
@@ -3160,7 +3151,7 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 	{
 		int temp = i + positionInFile + 1;
 		uint8_t tempIndex = (uint8_t)config.files[f]->fileString[i];
-		if(config.patternToSearchFor.size() == 0 || config.files[f]->fileString[i] == config.patternToSearchFor[0])
+		if(config.lowRange == config.highRange || tempIndex >= config.lowRange && tempIndex <= config.highRange)
 		{
 			leaves[tempIndex]->push_back(temp);
 		}
@@ -3172,4 +3163,3 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
 	}
 	stats.SetCurrentLevel(threadIndex, 2);
 }
-

@@ -40,9 +40,7 @@ PListArchive::PListArchive(string fileName, bool create)
 			{
 				stringstream streaming;
 				streaming << "Why are we truncating the file " << file << endl;
-				char message[100];
-				strerror_s(message, 100, errno);
-				streaming << " and errno is "<< message << endl;
+				streaming << " and errno is "<< strerror(errno) << endl;
 				Logger::WriteLog(streaming.str());
 				cout << streaming.str() << endl;
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
@@ -59,9 +57,7 @@ PListArchive::PListArchive(string fileName, bool create)
 			
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " file not found!";
-			char message[100];
-			strerror_s(message, 100, errno);
-			stringbuilder << " and errno is "<< message << endl;
+			stringbuilder << " and errno is "<< strerror(errno) << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;
 			return;
@@ -124,15 +120,13 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 #endif
 
 	stringstream handle;
-	char message[100];
-	strerror_s(message, 100, errno);
-	handle << " and errno is "<< message << endl;
+	handle << " and errno is "<< strerror(errno) << endl;
 	handle << "error mapping the file " << fileName << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	_close(fileDescriptor);
+	close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -141,15 +135,13 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 {
 	stringstream handle;
-	char message[100];
-	strerror_s(message, 100, errno);
-	handle << " and errno is "<< message << endl;
+	handle << " and errno is "<< strerror(errno) << endl;
 	handle << "error un-mapping the file " << fileName << endl;
 	handle << "file descriptor: " << fileDescriptor << endl;
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	_close(fileDescriptor);
+	close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -157,7 +149,7 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
-	_close(fileDescriptor);
+	close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -167,7 +159,7 @@ void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 
 void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
-	_close(fileDescriptor);
+	close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -371,7 +363,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 	#if defined(__linux__)
 		if((fileIndex + (offset*hdSectorSize) - 1) >= prevFileIndex)
 		{
-			result = lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
+			lseek64(fd, fileIndex + (offset*hdSectorSize) - 1, SEEK_SET);
 			size_t writeSize = write(fd, "", 1);
 			prevFileIndex = fileIndex + (offset*hdSectorSize) - 1;
 		}
@@ -595,9 +587,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		{
 			stringstream stringbuilder;
 			stringbuilder << file.c_str() << " map pattern file not found!";
-			char message[100];
-			strerror_s(message, 100, errno);
-			stringbuilder << " and errno is "<< message << endl;
+			stringbuilder << " and errno is "<< strerror(errno) << endl;
 			Logger::WriteLog(stringbuilder.str());
 			endOfFileReached = true;
 			return;
@@ -630,7 +620,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		PListType stringIndex = 0;
 
 	#if defined(__linux__)
-		result = lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
+		lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
 		size_t writeSize = write(mapFD, "", 1);
 	#endif
 	
@@ -693,7 +683,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 		}
 		
-		_close(mapFD);
+		close(mapFD);
 	}
 	catch(exception e)
 	{
@@ -715,7 +705,7 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
-			_close(fd);
+			close(fd);
 		}
 	}
 	catch(exception e)

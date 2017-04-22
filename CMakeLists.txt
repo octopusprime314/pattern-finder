@@ -11,6 +11,7 @@ FILE(GLOB HEADERFILES ${CMAKE_BINARY_DIR}/../code/include/*.h)
 FILE(GLOB SRCFILES ${CMAKE_BINARY_DIR}/../code/src/*.cpp)
 
 IF(WIN32)
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     FILE(GLOB WINFILES ${CMAKE_BINARY_DIR}/../code/src/windows/*.cpp)
 ENDIF()
 

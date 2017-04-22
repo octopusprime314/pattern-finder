@@ -1,3 +1,4 @@
+
 #include "Logger.h"
 #if defined(_WIN64) || defined(_WIN32)
 	#include <Windows.h>
@@ -94,7 +95,7 @@ string Logger::GetFormattedTime()
 {
 	time_t t = time(0);   // get time now
     struct tm now;
-	localtime_s( &now, &t);
+	now = *localtime( &t);
 	stringstream timeBuff;
 
 	string amorpm;
@@ -131,7 +132,7 @@ string Logger::GetTime()
 {
 	time_t t = time(0);   // get time now
     struct tm now;
-	localtime_s( &now, &t);
+	now = *localtime( &t);
 	stringstream timeBuff;
 
 	timeBuff << now.tm_hour << ":";

@@ -10,34 +10,18 @@ fcpdata = fopen('..\Runs\CPData.csv','w+');
 
 begIndex = 25;
 
-f = fopen('CollectivePatternData1812.csv','r');
+f = fopen('CollectivePatternData3368.csv','r');
 block = fread(f);
 fwrite(fcpdata,block);
-f = fopen('CollectivePatternData5552.csv','r');
-block = fread(f);
-block = block(begIndex:end);
-fwrite(fcpdata,block);
-f = fopen('CollectivePatternData6376.csv','r');
+f = fopen('CollectivePatternData12864.csv','r');
 block = fread(f);
 block = block(begIndex:end);
 fwrite(fcpdata,block);
-f = fopen('CollectivePatternData6472.csv','r');
+f = fopen('CollectivePatternData18736.csv','r');
 block = fread(f);
 block = block(begIndex:end);
 fwrite(fcpdata,block);
-f = fopen('CollectivePatternData13004.csv','r');
-block = fread(f);
-block = block(begIndex:end);
-fwrite(fcpdata,block);
-f = fopen('CollectivePatternData13260.csv','r');
-block = fread(f);
-block = block(begIndex:end);
-fwrite(fcpdata,block);
-f = fopen('CollectivePatternData14520.csv','r');
-block = fread(f);
-block = block(begIndex:end);
-fwrite(fcpdata,block);
-f = fopen('CollectivePatternData21360.csv','r');
+f = fopen('CollectivePatternData19836.csv','r');
 block = fread(f);
 block = block(begIndex:end);
 fwrite(fcpdata,block);
@@ -54,11 +38,10 @@ mappy = containers.Map();
 
 for x = 1:length(patterns)
     val = cell2mat(patterns(x));
-    if isKey(mappy,val)
-        mappy(val) = mappy(val) + counts(x); 
-    else
-        mappy(val) = counts(x); 
-    end
+    %if isKey(mappy,val)
+    %    mappy(val) = mappy(val) + counts(x); 
+    %else
+    mappy(val) = counts(x); 
 end
 uniquemap = zeros(length(mappy), 1);
 k = keys(mappy);
@@ -86,13 +69,13 @@ plot(log(1:1:length(uniquemap)), log(uniquemap), '-');
 xlabel('Log[ Pattern Length ]');
 ylabel('Log[ Pattern Frequency ]');
 
-ds = datastore('..\Runs\CollectivePatternData8208.csv','TreatAsMissing','NA');
+ds = datastore('..\Runs\CollectivePatternData15220.csv','TreatAsMissing','NA');
 ds.SelectedVariableNames = {'Count', 'Length', 'Pattern'};
 Data = read(ds);
 counts = table2array(Data(:, 'Count'));
 patterns = table2array(Data(:, 'Pattern'));
-%hold on 
-figure
+hold on 
+%figure
 
 plot(log(1:1:length(counts)), log(counts), '-');
 legend('Split processing pattern data', 'Non-split processing');
