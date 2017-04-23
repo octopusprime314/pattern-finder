@@ -1,10 +1,12 @@
-Prereqs:
+PREREQS:
 
 cmake version 2.5 or higher 
 c++11 compatible compiler
 python 2.7 to run parallel serial jobs
 
-Build instructions:
+BUILD INSTRUCTIONS:
+
+!!!!!!!!!!!ALWAYS BUILD IN RELEASE UNLESS DEBUGGING CODE!!!!!!!!!!
 
 Linux:
     create a build folder at root directory
@@ -19,17 +21,32 @@ Windows:
     cmake --build . --config Release
 	
 	
-Location of files to be processed:
+LOCATION OF FILES TO BE PROCESSED:
 Place your file to be processed in the Database/Data folder
 
 
-Command line instructions:
-./PatternFinder.exe -f TaleOfTwoCities.txt -v 1 -threads 4 -ram
-Runs a PatternFinder program using 4 threads to process TaleOfTwoCities.txt forcing to use only DRAM processing and display the output using -v
+EXAMPLE USES OF PATTERNFINDER:
+1) ./PatternFinder –f Database –v 1 –threads 4 –ram
+Pattern searches all files recursively in directory using DRAM with 4 threads
+
+2) ./PatternFinder –f TaleOfTwoCities.txt –v 1 –c -ram
+Finds the most optimal thread usage for processing a file
+
+3) ./PatternFinder –f TaleOfTwoCities.txt –v 1
+Processes file using memory prediction per level for HD or DRAM processing
+
+4) ./PatternFinder –f TaleOfTwoCities.txt –v 1 –mem 1000
+Processes file using memory prediction per level for HD or DRAM processing with a memory constraint of 1 GB
 
 
-Python run instructions:
-Use splitFileForProcessing.py Python script to split files into chunks and run multiple instances of PatternFinder on those chunks.
-Run command: python splitFileForProcessing.py [direct file path] [number of chunks]
-For example python splitFileForProcessing.py ~/Github/PatternDetective/Database/Data/TaleOfTwoCities.txt 4
+PYTHON RUN EXAMPLES:
+1) python splitFileForProcessing.py [file path] [number of chunks]
+Use splitFileForProcessing.py Python script to split files into chunks and run multiple instances of PatternFinder on those chunks
+Ex. python splitFileForProcessing.py ~/Github/PatternDetective/Database/Data/TaleOfTwoCities.txt 4
 equally splits up TaleOfTwoCities.txt into 4 files and 4 instances of PatternFinder get dispatched each processing one of the split up files.
+
+2) python segmentRootProcessing.py [file path] [number of jobs] [threads per job]
+Use segmentRootProcessing.py Python script splits up PatternFinder jobs to search for patterns starting with a certain value
+Ex. python segmentedRootProcessing.py ../Database/Data/Boosh.avi 4 4
+Dispatches 4 processes equipped with 4 threads each.  Each PatternFinder will only look for patterns starting with the byte
+representation of 0-63, 64-127, 128-191, 192-256.
