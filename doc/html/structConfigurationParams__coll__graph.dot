@@ -1,0 +1,23 @@
+digraph "ConfigurationParams"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="ConfigurationParams",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" minOccurrence\nmemoryBandwidthMB\nminimum\nmaximum" ,fontname="Helvetica"];
+  Node2 [label="unsigned long",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" patternToSearchFor" ,fontname="Helvetica"];
+  Node3 [label="string",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" highRange\nlowRange" ,fontname="Helvetica"];
+  Node4 [label="unsigned char",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" threadLimitation\nnumThreads\ncurrentFileIndex\nlevelToOutput\nhistory\ntestIterations" ,fontname="Helvetica"];
+  Node5 [label="int",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node6 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" findBestThreadNumber\nusingMemoryBandwidth\nusingPureHD\nusingPureRAM" ,fontname="Helvetica"];
+  Node6 [label="bool",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node7 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" nonOverlappingPatternSearch" ,fontname="Helvetica"];
+  Node7 [label="PatternDiscoveryType",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node8 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" fileSizes" ,fontname="Helvetica"];
+  Node8 [label="vector\< PListType \>",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node9 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" files" ,fontname="Helvetica"];
+  Node9 [label="vector\< FileReader * \>",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+}

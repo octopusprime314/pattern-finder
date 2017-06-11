@@ -1,0 +1,13 @@
+digraph "__map_mmap_prot_page"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node14 [label="__map_mmap_prot_page",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node14 -> Node15 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node15 [label="mmap64",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a4e52783c663042b2641ecdee813ca148"];
+  Node14 -> Node16 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node16 [label="mmap",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a40df37f50690f71a321ceec8fb8f0e46"];
+  Node14 -> Node17 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node17 [label="_mprotect",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#aa2bc2d42da6d412a75df6f08e431d8bf"];
+}

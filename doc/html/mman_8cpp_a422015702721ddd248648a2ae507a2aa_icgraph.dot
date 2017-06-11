@@ -1,0 +1,21 @@
+digraph "__map_mman_error"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="__map_mman_error",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node1 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node2 [label="mmap64",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a4e52783c663042b2641ecdee813ca148"];
+  Node1 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node3 [label="mmap",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a40df37f50690f71a321ceec8fb8f0e46"];
+  Node1 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node4 [label="munmap",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#ad86d136102414e49601bdf4ac9c5e805"];
+  Node1 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node5 [label="_mprotect",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#aa2bc2d42da6d412a75df6f08e431d8bf"];
+  Node1 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node6 [label="msync",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a19346f8786bde6c03bfaccea0f330df9"];
+  Node1 -> Node7 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node7 [label="mlock",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a2bea9afbae7b30234f05fa0a5a57df72"];
+  Node1 -> Node8 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node8 [label="munlock",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mman_8cpp.html#a0db8c623bf50e5b897a345cd6f0d0645"];
+}
