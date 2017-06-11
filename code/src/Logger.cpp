@@ -20,8 +20,6 @@ ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" 
 
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
-int Logger::index;
-mutex* Logger::scrollLogMutex = new mutex();
 int Logger::verbosity = 0;
 void Logger::WriteLog(string miniBuff)
 {
@@ -67,11 +65,6 @@ void Logger::ClearLog()
 	stringBuffer.clear();
 }
 
-//Forces flush all data in string buffer to disk
-void Logger::FlushLog()
-{
-
-}
 
 //Close log and save time
 void Logger::CloseLog()
@@ -84,7 +77,6 @@ void Logger::CloseLog()
 	logMutex->unlock();
 
 	delete outputFile;
-	delete scrollLogMutex;
 	delete logMutex;
 	delete patternDataFile;
 	delete coverageFile;

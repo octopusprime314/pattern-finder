@@ -1,6 +1,11 @@
-#ifndef LOGGER_H_
-#define LOGGER_H_
-
+/** @file Logger.h
+ *  @brief Generates program logging information and csv pattern data
+ *
+ *  Used for general program logging and generating pattern data output
+ *
+ *  @author Peter J. Morley (pmorley)
+ */
+#pragma once
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -10,56 +15,145 @@
 #include <map>
 using namespace std;
 
-#define SCROLLCOUNT 25
+/** Paths to logger and csv files are different based on OS */
 #if defined(_WIN64) || defined(_WIN32)
-	const string LOGGERPATH = "../../Log/";
+const string LOGGERPATH = "../../Log/";
+const string CSVPATH = "../../Runs/";
 #elif defined(__linux__)
-	const string LOGGERPATH = "../Log/";
-#endif
-
-#if defined(_WIN64) || defined(_WIN32)
-	const string CSVPATH = "../../Runs/";
-#elif defined(__linux__)
-	const string CSVPATH = "../Runs/";
+const string LOGGERPATH = "../Log/";
+const string CSVPATH = "../Runs/";
 #endif
 
 const bool cmdEnabled = false;
-const bool scrollEnabled = false;
 const bool disableLogging = false;
 
 class Logger
 {
 public:
-	//Write to string buffer, if buffer is larger 
+	/** @brief Writes a string of data to the logger file
+	 *  
+	 *  Appends a new string to the logging buffer and writes
+	 *  it out to the file
+	 *
+	 *  @param miniBuff string that contains logging information
+	 *  @return void
+	 */
 	static void WriteLog(string miniBuff);
-	//Clear string buffer
+
+	/** @brief Flushes any logging data to file and clears the logging buffer
+	 *  
+	 *  Resets log buffer
+	 *
+	 *  @return void
+	 */
 	static void ClearLog();
-	//Forces flush all data in string buffer to disk
-	static void FlushLog();
-	//Close log
+	
+	/** @brief Closes log file by closing handle
+	 *  
+	 *  Closes file
+	 *
+	 *  @return void
+	 */
 	static void CloseLog();
 
+	/** @brief Gets the formatted time in am/pm format
+	 *  
+	 *  Generate am/pm time in string format
+	 *
+	 *  @return string am/pm time
+	 */
 	static string GetFormattedTime();
+
+	/** @brief Gets the time in military format
+	 *  
+	 *  Generate military time in string format
+	 *
+	 *  @return string military time
+	 */
 	static string GetTime();
 
+	/** sets logging on or off */
 	static int verbosity;
 
+	/** @brief Generates a csv file with the time taken to process a set of files
+	 *  
+	 *  Processes a large data set and records the time taken and size of a processed file
+	 *  and is written to a csv formatted file to eventually be used by a matlab script
+	 *  to find large patterns in a file set.  If a file is small and it takes a long
+	 *  time to process then it is typically an indicator of a large pattern in a file.
+	 *  The matlab script to process this file is called ProcessTimeVsFileSize.m in
+	 *  the Matlab folder.
+	 *
+	 *  @param processTimes vector containing processing times for each file
+	 *  @param fileSizes vector containing the size in bytes of each file
+	 *  @return void
+	 */
 	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
+
+	/** @brief Generates a csv file with the most common patterns in a large data set
+	 *  
+	 *  Processes a large data set and records the most common patterns found for 
+	 *  all processed files and is written to a csv formatted file.
+	 *
+	 *  @param finalPattern map containing counts and the most common pattern 
+	 *  found in a large data set
+	 *  
+	 *  @return void
+	 */
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
+
+	/** @brief Generates a csv file with throughput improvements associated with threading
+	 *  
+	 *  Processes a single file and records the times taken to process the file with
+	 *  a designated amount of threads.  Typically the -c argument tells the program to
+	 *  process the file first with one thread and then double the thread count each run until
+	 *  the thread count reaches the number of core's on the resident computer.  The matlab 
+	 *  script used to process and graph this data is called DRAMVsHardDiskPerformance.m
+	 *
+	 *  @param threadMap map containing times taken to process a file with a number of threads
+	 *  used to process
+	 *  @return void
+	 */
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
+
+	/** @brief Generates a csv file with partial pattern data used when doing split processing
+	 *  
+	 *  Processes a portion of the file and generates pattern data to be compiled together with
+	 *  other Pattern Finder processes that generate other portion data.  This csv generated data
+	 *  is used in the PatternProcessor.m matlab file when using the python splitFileForProcessing.py
+	 *  script.
+	 *
+	 *  @param file contents of file being processed
+	 *  @param patternIndexes vector of indexes where the most common patterns are located in the file
+	 *  @param patternCounts vector of how many instances the pattern is found in the file
+	 *  @return void
+	 */
 	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes, const vector<PListType> &patternCounts);
+
+	/** @brief Generates coverage information when comparing overlapping versus non overlapping searches
+	 *  
+	 *  Processes a file in either overlapping or non overlapping mode and then compares the csv files
+	 *  patterns using the matlab script called Overlapping_NonOverlappingComparison.m script.
+	 *  The overlapping csv file contains 100% accurate pattern information and the non-overlapping csv
+	 *  may or may not contain all the correct pattern information.  The matlab script makes sure the file
+	 *  is acceptable to run using the non overlapping search which is much faster if the file contains
+	 *  very large patterns
+	 *
+	 *  @param coverage records the coverage of the most common patterns
+	 *  @return void
+	 */
 	static void fileCoverageCSV(const vector<float>& coverage);
 
 private:
+	/** Streams used to write and read to files */
 	static string stringBuffer;
-	static ofstream *outputFile;
+	static ofstream* outputFile;
 	static ofstream* patternDataFile;
 	static ofstream* coverageFile;
+
+	/** Mutexes used for logging */
 	static mutex* logMutex;
-	static mutex* scrollLogMutex;
-	static int index;
-	
+
+	/** Get the Process ID of the current process */
 	static string GetPID();
 };
-
-#endif

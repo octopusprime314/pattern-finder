@@ -1,11 +1,15 @@
+/** @file MemoryUtils.h
+ *  @brief Memory Utility to query OS ram, cpu and hard disk usage
+ *
+ *  Queries for OS ram, cpu and hard disk usage
+ *
+ *  @author Peter J. Morley (pmorley)
+ */
 #pragma once
-
 #if defined(_WIN64) || defined(_WIN32)
-	/* Microsoft Windows (32-bit). or 64 bit ------------------------------ */
 	#include "windows.h"
     #include "psapi.h"
 #elif defined(__linux__)
-	/* Linux. --------------------------------------------------- */
 	#include "sys/types.h"
     #include "sys/sysinfo.h"
 	#include <sys/wait.h>
@@ -38,50 +42,32 @@ class MemoryUtils
 public:
 	#pragma region MemoryUtilities
 
-	static void print_trace()
-	{
-		
-#if defined(_WIN64) || defined(_WIN32)
-		//Dunno
-#elif defined(__linux__)
-		char pid_buf[30];
-		sprintf(pid_buf, "%d", getpid());
-		char name_buf[512];
-		name_buf[readlink("/proc/self/exe", name_buf, 511)]=0;
-		int child_pid = fork();
-		if (!child_pid) 
-		{           
-			dup2(2,1); // redirect output to stderr
-			fprintf(stdout,"stack trace for %s pid=%s\n",name_buf,pid_buf);
-			execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
-			abort(); /* If gdb failed to start */
-		} else
-		{
-			waitpid(child_pid,NULL,0);
-		}
-#endif
-	}
-
+	/** @brief Queries OS for available ram
+	 *  
+	 *  Used to find out if the program is using too much memory
+	 *
+	 *  @return double size of available ram in MB
+	 */
 	static double GetAvailableRAMMB()
 	{
-
 #if defined(_WIN64) || defined(_WIN32)
-
 		MEMORYSTATUSEX statex;
 		statex.dwLength = sizeof (statex);
 		GlobalMemoryStatusEx (&statex);
 		return (double)(statex.ullAvailPhys/(1024.0f*1024.0f));
-		
 #elif defined(__linux__)
-
 		struct sysinfo info;
 		sysinfo(&info);
 		return info.freeram/(1024.0f*1024.0f);
-
 #endif
-
 	}
 
+	/** @brief Parses memory consumption
+	 *  
+	 *  Used to parse memory consumption
+	 *
+	 *  @return size_t size of ram in MB
+	 */
 	static size_t parseLine(char* line)
 	{
 		size_t i = strlen(line);
@@ -91,16 +77,20 @@ public:
 		return i;
 	}
 	
+
+	/** @brief Queries OS for the program's current memory consumption
+	 *  
+	 *  Queries OS for the program's current memory consumption
+	 *
+	 *  @return double size of program's memory consumption in MB
+	 */
 	static double GetProgramMemoryConsumption(PListType level = 0)
 	{
-
 #if defined(_WIN64) || defined(_WIN32)
-		
 		PROCESS_MEMORY_COUNTERS pmc;
 		GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
 		size_t physMemUsedByMe = pmc.WorkingSetSize;
 		return physMemUsedByMe/1000000.0f;
-
 #elif defined(__linux__)
 		
 		FILE* file = fopen("/proc/self/status", "r");
@@ -115,40 +105,45 @@ public:
 		}
 		fclose(file);
 		return result/1000.0f;
-
 #endif
-
 	}
 
-	
-
+	/** @brief Queries OS for the program's Resident Set Size (RSS)
+	 *  
+	 *  Queries OS for the program's Resident Set Size (RSS)
+	 *
+	 *  @return size_t size of program's memory consumption in MB
+	 */
 	static size_t getCurrentRSS( )
 	{
 #if defined(_WIN32)
-    /* Windows -------------------------------------------------- */
-    PROCESS_MEMORY_COUNTERS info;
-    GetProcessMemoryInfo( GetCurrentProcess( ), &info, sizeof(info) );
-    return (size_t)info.WorkingSetSize;
-
+		PROCESS_MEMORY_COUNTERS info;
+		GetProcessMemoryInfo( GetCurrentProcess( ), &info, sizeof(info) );
+		return (size_t)info.WorkingSetSize;
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-    /* Linux ---------------------------------------------------- */
-    long rss = 0L;
-    FILE* fp = NULL;
-    if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
-        return (size_t)0L;      /* Can't open? */
-    if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
-    {
-        fclose( fp );
-        return (size_t)0L;      /* Can't read? */
-    }
-    fclose( fp );
-    return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
-
-#else
-    /* AIX, BSD, Solaris, and Unknown OS ------------------------ */
-    return (size_t)0L;          /* Unsupported. */
+		long rss = 0L;
+		FILE* fp = NULL;
+		if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
+			return (size_t)0L;      /* Can't open? */
+		if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
+		{
+			fclose( fp );
+			return (size_t)0L;      /* Can't read? */
+		}
+		fclose( fp );
+		return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
 #endif
 	}
+
+	/** @brief Computes whether the program is over memory limit
+	 *  
+	 *  Computes whether the program is over memory limit
+	 *
+	 *  @param initialMemoryInMB inital memory used which includes stack and program size in MB
+	 *  @param memoryBandwidthInMB memory allowance in MB
+	 *  @param memoryOverflow refence of the amount of memory in MB that is over the limit
+	 *  @return bool true if the program is using too much memory
+	 */
 	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
 	{
 		size_t usedMemory = getCurrentRSS()/1000000;
@@ -164,11 +159,17 @@ public:
 		}
 	}
 
-
+	/** @brief Computes the CPU load consumption
+	 *  
+	 *  Finds the overall cpu consumption of the program to ensure all cores 
+	 *  are being utilized.  For example if a program is using 8 cores/threads
+	 *  for processing then the cpu utilization should return 800%.
+	 *
+	 *  @return double total cpu utilization percentage
+	 */
 	static double CPULoad()
 	{
 #if defined(_WIN64) || defined(_WIN32)
-		
 		if(!init)
 		{
 			GetSystemInfo(&sysInfo);
@@ -200,10 +201,8 @@ public:
 		lastCPU = now;
 		lastUserCPU = user;
 		lastSysCPU = sys;
-
 		return percent * 100;
 #elif defined(__linux__)
-
 	if(!init)
 	{
 		FILE* file;
@@ -246,23 +245,25 @@ public:
     lastCPU = now;
     lastSysCPU = timeSample.tms_stime;
     lastUserCPU = timeSample.tms_utime;
-
     return percent;
 #endif
 	}
 
+	/** @brief Queries the size of the file in bytes that resides on the hard disk
+	 *  
+	 *  Queries the size of the file in bytes that resides on the hard disk
+	 *
+	 *  @return PListType size of the files in bytes
+	 */
 	static PListType FileSize(string fileName)
 	{
 		size_t fileSize;
 
 #if defined(_WIN64) || defined(_WIN32)
-		
 		struct _stat64 st;
 		_stat64((char*)fileName.c_str(), &st );
 		fileSize = st.st_size;
-		
 #elif defined(__linux__)
-		
 		struct stat64 st;
 		if(stat64(fileName.c_str(), &st) != 0)
 		{
@@ -273,7 +274,6 @@ public:
 			fileSize = st.st_size; 
 		}
 #endif
-
 		return static_cast<PListType>(fileSize);
 	}
 

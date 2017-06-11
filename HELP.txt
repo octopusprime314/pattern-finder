@@ -1,33 +1,40 @@
 USAGE:
-	PatternDetective.exe [-help                            
+	PatternDetective.exe [
+		   -help                            
 		   /?                                              
 		   -f       [filename]                             
 		   -min     [minimum pattern length]                
-		   -max     [maximum pattern length]		  
-		   -d                                              
+		   -max     [maximum pattern length]	               
 		   -c                                              
 		   -threads [number of threads]                    
 		   -mem     [memory limit in MB]                   
 		   -ram                                            
-		   -hd                                             
-		   -start   [level to begin searching] 
-		   -o       [minimum times a pattern has to occur in order to keep track of it]
+		   -hd                                    
+		   -i       [minimum times a pattern has to occur in order to keep track of it]
 		   -v       [verbosity level]
+		   -n     
+		   -o
+		   -his     [hd files]
+		   -lr      [low range pattern search]
+		   -hr		[high range pattern search]
 Options:
 	-help                   Displays this help page 
 	/?                      Displays this help page    
 	-f [string]             Sets file name to be processed  
 	-min [unsigned long]    Sets the minimum pattern length to be searched
 	-max [unsigned long]    Sets the maximum pattern length to be searched
-	-d                      Outputs pattern count per level
 	-c                      Finds the best threading scheme for computer 
 	-threads [unsigned int] Sets thread count to be used                 
 	-mem [unsigned long]    Sets the maximum RAM memory that can be used in MB
 	-ram                    Forces program to use only RAM 
 	-hd                     Forces program to use Hard Disk based on -mem
-	-start [unsigned long]  Level to begin searching (not used currently)
-	-o [unsigned long]      Mimimum occurrences to consider a pattern (Default occurences will be 2)
-	-v [unsigned long] 		Verbosity level, turn logging on or off with 1 or 0
+	-i [unsigned long]      Mimimum occurrences to consider a pattern (Default occurences will be 2)
+	-v [unsigned long] 		Verbosity level, turn logging and pattern generation on or off with 1 or 0
+	-n   					Non overlapping pattern search  
+    -o						Overlapping pattern search, this is set by default
+	-his					HD processing file history keeps all files or removes them level by level with a 1 or a 0
+	-lr  				    Search for patterns that begin with the value lr to 255 if hr isn't set, otherwise lr to hr range
+	-hr  				    Search for patterns that begin with the value hr to 0 if lr isn't set, otherwise lr to hr range 
 	
 Examples:
 

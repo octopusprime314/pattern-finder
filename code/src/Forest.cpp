@@ -729,7 +729,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 			{
 				if(!config.history)
 				{
-					chunkFactorio->DeleteArchives(tempFileList[i], ARCHIVE_FOLDER);
+					chunkFactorio->DeletePatternFiles(tempFileList[i], ARCHIVE_FOLDER);
 				}
 			}
 			//Transition to using entire file when first level was hard disk processing and next level is pure ram
@@ -751,7 +751,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 	}
 }
 
-void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray)
+void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray)
 {
 	if(prediction)
 	{
@@ -817,7 +817,7 @@ void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& 
 			}
 			if(!config.history)
 			{
-				chunkFactorio->DeleteArchives(fileList, ARCHIVE_FOLDER);
+				chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
 			}
 			fileList.clear();
 		}
@@ -922,13 +922,6 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 	(*threadPool).clear();
 
 	return false;
-}
-
-bool Forest::NextLevelTreeSearchRecursion(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, vector<string>& fileList, LevelPackage& levelInfo, PListType patternCount, bool processingRAM)
-{
-	bool prediction = processingRAM ? true : false;
-	PrepData(prediction, levelInfo, fileList, prevLocalPListArray, globalLocalPListArray);
-	return prediction;
 }
 
 void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive, unsigned int level)
@@ -1064,7 +1057,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 			}
 			archive.CloseArchiveMMAP();
 			//Now delete it
-			chunkFactorio->DeleteArchive(prevFileNames[prevChunkCount], ARCHIVE_FOLDER);
+			chunkFactorio->DeletePatternFile(prevFileNames[prevChunkCount], ARCHIVE_FOLDER);
 
 		}
 
@@ -1460,7 +1453,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 						{
 							currChunkFile->CloseArchiveMMAP();
 							delete currChunkFile;
-							chunkFactorio->DeleteChunk(newFileNames[newFileNames.size() - 1], ARCHIVE_FOLDER);
+							chunkFactorio->DeletePartialPatternFile(newFileNames[newFileNames.size() - 1], ARCHIVE_FOLDER);
 							newFileNames.pop_back();
 						}
 					}
@@ -1557,7 +1550,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				archiveCollection[a]->CloseArchiveMMAP();
 				stringBufferFile->CloseArchiveMMAP();
 
-				chunkFactorio->DeleteChunk(fileNameForLater, ARCHIVE_FOLDER);
+				chunkFactorio->DeletePartialPatternFile(fileNameForLater, ARCHIVE_FOLDER);
 
 				delete archiveCollection[a];
 				delete stringBufferFile;
@@ -1687,14 +1680,14 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			{
 				currChunkFile->CloseArchiveMMAP();
 				delete currChunkFile;
-				chunkFactorio->DeleteChunk(newFileNames[newFileNames.size() - 1], ARCHIVE_FOLDER);
+				chunkFactorio->DeletePartialPatternFile(newFileNames[newFileNames.size() - 1], ARCHIVE_FOLDER);
 				newFileNames.pop_back();
 			}
 		}
 
 		for(int a = prevCurrentFile; a < currentFile; a++)
 		{
-			chunkFactorio->DeleteChunk(fileNamesBackup[a], ARCHIVE_FOLDER);
+			chunkFactorio->DeletePartialPatternFile(fileNamesBackup[a], ARCHIVE_FOLDER);
 		}
 		prevCurrentFile = currentFile;
 	}
@@ -1861,7 +1854,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			archiveCollection[a]->CloseArchiveMMAP();
 			stringBufferFile->CloseArchiveMMAP();
 
-			chunkFactorio->DeleteChunk(fileNameForLater, ARCHIVE_FOLDER);
+			chunkFactorio->DeletePartialPatternFile(fileNameForLater, ARCHIVE_FOLDER);
 
 			delete archiveCollection[a];
 
@@ -1906,7 +1899,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 
 			if(fileNamesBackup.size() == currentFile && empty)
 			{
-				chunkFactorio->DeleteChunk(fileToDelete, ARCHIVE_FOLDER);
+				chunkFactorio->DeletePartialPatternFile(fileToDelete, ARCHIVE_FOLDER);
 			}
 		}
 	}
@@ -2147,7 +2140,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 										justPassedMemorySize = true;
 										stringstream stringBuilder;
 										stringBuilder << chunkFactorio->GenerateUniqueID();
-										fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaflet, levelInfo));
+										fileNamesToReOpen.push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaflet, levelInfo));
 									}
 									else
 									{
@@ -2164,7 +2157,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								stringstream stringBuilder;
 								PListType newID = chunkFactorio->GenerateUniqueID();
 								stringBuilder << newID;
-								fileNamesToReOpen.push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaflet, levelInfo));
+								fileNamesToReOpen.push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaflet, levelInfo));
 							}
 
 						}
@@ -2182,7 +2175,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			
 			if(!config.history)
 			{
-				chunkFactorio->DeleteArchives(fileList, ARCHIVE_FOLDER);
+				chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
 			}
 
 			fileList.clear();
@@ -2217,7 +2210,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			}
 			else
 			{
-				chunkFactorio->DeleteArchives(fileList, ARCHIVE_FOLDER);
+				chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
 				morePatternsToFind = false;
 			}
 		}
@@ -2225,7 +2218,6 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 	catch(exception e)
 	{
 		cout << e.what() << endl;
-		MemoryUtils::print_trace();
 	}
 
 	return newPatternCount;
@@ -3049,7 +3041,9 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 		{
 			if(!config.usingPureHD && !config.usingPureRAM)
 			{
-				useRAMBRO = !NextLevelTreeSearchRecursion(prevLocalPListArray, globalLocalPListArray, fileList, levelInfo, continueSearching, processingRAM);
+				bool prediction = processingRAM ? true : false;
+				PrepData(prediction, levelInfo, fileList, prevLocalPListArray);
+				useRAMBRO = !prediction;
 			}
 		}
 		else
@@ -3121,7 +3115,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 			stringstream stringBuilder;
 			PListType newID = chunkFactorio->GenerateUniqueID();
 			stringBuilder << newID;
-			newFileNameList[threadNum].push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaves, levelInfo));
+			newFileNameList[threadNum].push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaves, levelInfo));
 			for(int i = 0; i < 256; i++)
 			{
 				leaves[i] = new vector<PListType>();
@@ -3133,7 +3127,7 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 	stringstream stringBuilder;
 	PListType newID = chunkFactorio->GenerateUniqueID();
 	stringBuilder << newID;
-	newFileNameList[threadNum].push_back(chunkFactorio->CreateChunkFile(stringBuilder.str(), leaves, levelInfo));
+	newFileNameList[threadNum].push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaves, levelInfo));
 	
 	return;
 }

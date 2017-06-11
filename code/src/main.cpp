@@ -1,7 +1,9 @@
 
 #include "Forest.h"
 #include "MemoryUtils.h"
+#include "FileReader.h"
 using namespace std;
+
 
 #if defined(_WIN64) || defined(_WIN32)
 	/* Microsoft Windows (32-bit). or 64 bit ------------------------------ */

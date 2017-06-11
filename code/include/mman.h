@@ -1,25 +1,15 @@
-/*
- * sys/mman.h
- * mman-win32
+/** @file mman.h
+ *  @brief Declaration of POSIX memory mapping functions and types for Win32.
+ *
+ *  Memory mapping capabilites for windows
+ *
+ *  @author Unknown
  */
 
-#ifndef _SYS_MMAN_H_
-#define _SYS_MMAN_H_
-
-//#ifndef _WIN32_WINNT		// Allow use of features specific to Windows XP or later.                   
-//#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
-//#endif						
-
-/* All the headers include this file. */
-//#ifndef _MSC_VER
-//#include <_mingw.h>
-//#endif
-
+#pragma once
+					
 #include <sys/types.h>
 #include "TypeDefines.h"
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
 
 #define PROT_NONE       0
 #define PROT_READ       1
@@ -42,7 +32,6 @@
 #define MS_INVALIDATE   4
 
 void*   mmap(void *addr, PListType len, int prot, int flags, int fildes, off_t off);
-//DWORD   getgranularity (void);
 void*   mmap64 (void *addr, PListType len, int prot, int flags, int fd, unsigned long long offset);
 int     munmap(void *addr, PListType len);
 int     _mprotect(void *addr, PListType len, int prot);
@@ -50,8 +39,3 @@ int     msync(void *addr, PListType len, int flags);
 int     mlock(const void *addr, PListType len);
 int     munlock(const void *addr, PListType len);
 
-//#ifdef __cplusplus
-//};
-//#endif
-
-#endif /*  _SYS_MMAN_H_ */

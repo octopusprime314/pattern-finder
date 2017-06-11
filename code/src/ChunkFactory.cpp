@@ -14,7 +14,7 @@ ChunkFactory::~ChunkFactory(void)
 {
 }
 
-string ChunkFactory::CreateChunkFile(string fileName, vector<TreeHD>& leaf, LevelPackage levelInfo)
+string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& leaf, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;
 
@@ -59,7 +59,7 @@ string ChunkFactory::CreateChunkFile(string fileName, vector<TreeHD>& leaf, Leve
 }
 
 
-string ChunkFactory::CreateChunkFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo)
+string ChunkFactory::CreatePartialPatternFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo)
 {
 	string fileNameToReOpen;
 
@@ -99,15 +99,15 @@ string ChunkFactory::CreateChunkFile(string fileName, vector<vector<PListType>*>
 	return fileNameToReOpen;
 }
 
-void ChunkFactory::DeleteChunks(vector<string> fileNames, string folderLocation)
+void ChunkFactory::DeletePartialPatternFiles(vector<string> fileNames, string folderLocation)
 {
 	for(int i = 0; i < fileNames.size(); i++)
 	{
-		DeleteChunk(fileNames[i], folderLocation);
+		DeletePartialPatternFile(fileNames[i], folderLocation);
 	}
 }
 
-void ChunkFactory::DeleteChunk(string fileChunkName, string folderLocation)
+void ChunkFactory::DeletePartialPatternFile(string fileChunkName, string folderLocation)
 {
 	string fileNameToBeRemoved = folderLocation;
 	fileNameToBeRemoved.append(fileChunkName.c_str());
@@ -145,15 +145,15 @@ void ChunkFactory::DeleteChunk(string fileChunkName, string folderLocation)
 
 }
 
-void ChunkFactory::DeleteArchives(vector<string> fileNames, string folderLocation)
+void ChunkFactory::DeletePatternFiles(vector<string> fileNames, string folderLocation)
 {
 	for(int i = 0; i < fileNames.size(); i++)
 	{
-		DeleteArchive(fileNames[i], folderLocation);
+		DeletePatternFile(fileNames[i], folderLocation);
 	}
 }
 
-void ChunkFactory::DeleteArchive(string fileNames, string folderLocation)
+void ChunkFactory::DeletePatternFile(string fileNames, string folderLocation)
 {
 	string fileNameToBeRemoved = folderLocation;
 	fileNameToBeRemoved.append(fileNames.c_str());

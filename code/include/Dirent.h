@@ -1,6 +1,12 @@
-#ifndef DIRENT_INCLUDED
-#define DIRENT_INCLUDED
+#pragma once
 
+/** @file Dirent.h
+ *  @brief Declaration of POSIX directory browsing functions and types for Win32.
+ *
+ *  Used for access folders and files
+ *
+ *  @author Kevlin Henney (kevlin@acm.org, kevlin@curbralan.com)
+ */
 /*
 
     Declaration of POSIX directory browsing functions and types for Win32.
@@ -45,6 +51,4 @@ void          rewinddir(DIR *);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

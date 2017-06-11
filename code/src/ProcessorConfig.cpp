@@ -108,7 +108,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		}
 		else if (arg.compare("-v") == 0)
 		{
-			// We know the next argument *should* be the filename
 			Logger::verbosity = atoi(argv[i + 1]);
 			i++;
 		}
