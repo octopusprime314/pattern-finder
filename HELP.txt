@@ -21,7 +21,7 @@ Options:
 	-help                   Displays this help page 
 	/?                      Displays this help page    
 	-f [string]             Sets file name to be processed  
-	-min [unsigned long]    Sets the minimum pattern length to be searched
+	-min [unsigned long]    Sets the minimum pattern lengtqh to be searched
 	-max [unsigned long]    Sets the maximum pattern length to be searched
 	-c                      Finds the best threading scheme for computer 
 	-threads [unsigned int] Sets thread count to be used                 

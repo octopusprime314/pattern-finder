@@ -50,4 +50,4 @@ equally splits up TaleOfTwoCities.txt into 4 files and 4 instances of PatternFin
 Use segmentRootProcessing.py Python script splits up PatternFinder jobs to search for patterns starting with a certain value
 Ex. python segmentedRootProcessing.py ../Database/Data/Boosh.avi 4 4
 Dispatches 4 processes equipped with 4 threads each.  Each PatternFinder will only look for patterns starting with the byte
-representation of 0-63, 64-127, 128-191, 192-256.
+representation of 0-63, 64-127, 128-191, 192-255.
