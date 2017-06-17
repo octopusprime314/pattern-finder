@@ -40,6 +40,7 @@ FileReader::FileReader(string fileName, bool &isFile, bool openStream)
 
 void FileReader::LoadFile()
 {
+	//Load the file in memory
 	fileString.clear();
 	fileString.resize(fileStringSize);
 	copyBuffer->read( &fileString[0], fileStringSize);
@@ -47,6 +48,7 @@ void FileReader::LoadFile()
 
 void FileReader::DeleteBuffer()
 {
+	//Clear out all file memory
 	copyBuffer->clear();
 	copyBuffer->close();
 	delete copyBuffer;

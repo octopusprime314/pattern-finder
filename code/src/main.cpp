@@ -22,6 +22,7 @@ int main(int argc, char **argv)
 	_setmaxstdio(2048);
 #endif
 
+	//Used for memory leak detection if in debug, use the intel profiler for this now
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetBreakAlloc(991);
@@ -29,11 +30,15 @@ int main(int argc, char **argv)
 	//_CrtSetBreakAlloc(1242);
 #endif
 
+	//Grab program memory at inception of program
 	double MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
+
+	//Kick of the pattern searching program
 	Forest *Ent = new Forest(argc, argv);
 
 	delete Ent;
 
+	//Get back the total memory used to see if there is left over memory in the program
 	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
 	stringstream crappy;
 	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
@@ -42,6 +47,8 @@ int main(int argc, char **argv)
 	crappy.str("");
 
 	Logger::CloseLog();
+
+	//Dump memory leaks if in debug
 #if defined(_WIN64) || defined(_WIN32) && defined(_DEBUG)
 	_CrtDumpMemoryLeaks();
 #endif

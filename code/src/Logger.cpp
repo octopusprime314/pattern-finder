@@ -7,6 +7,7 @@
 	#include <unistd.h>
 #endif
 
+//Global files used primarily for matlab processing and logging data
 #if defined(_WIN64) || defined(_WIN32)
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + GetPID() + ".csv", ios_base::in | ios_base::out | ios_base::trunc);
@@ -50,6 +51,7 @@ void Logger::WriteLog(string miniBuff)
 }
 string Logger::GetPID()
 {
+	//Return the program PID to generate unique log files
 #if defined(_WIN64) || defined(_WIN32)
 	return std::to_string(GetCurrentProcessId());
 #elif defined(__linux__)
@@ -144,6 +146,7 @@ string Logger::GetTime()
 
 void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes)
 {
+	//Generates two csv files for large file data set time processing information
 	ofstream csvFile(CSVPATH + "TimeVsFileSize" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	if(processTimes.size() == fileSizes.size())
@@ -169,6 +172,7 @@ void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PList
 
 void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 {
+	//Generate large dataset patterns for all files, tries to find patterns that are common between many files
 	ofstream csvFile(CSVPATH + "FinalPatternVsCount" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(map<PListType, PListType>::iterator it = finalPattern.begin(); it != finalPattern.end(); it++)
@@ -181,6 +185,7 @@ void Logger::generateFinalPatternVsCount(map<PListType, PListType> finalPattern)
 
 void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 {
+	//Amdahl's law threading comparison
 	ofstream csvFile(CSVPATH + "ThreadsVsThroughput" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
@@ -193,6 +198,7 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 	
 	csvFile.close();
 
+	//Generate pure time information associated with number of threads
 	ofstream csvFile2(CSVPATH + "ThreadsVsSpeed" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
 
 	for(vector<map<int, double>>::iterator it = threadMap.begin(); it != threadMap.end(); it++)
@@ -207,6 +213,7 @@ void Logger::generateThreadsVsThroughput(vector<map<int, double>> threadMap)
 }
 void Logger::fileCoverageCSV(const vector<float>& coverage)
 {
+	//Record the percentage that a pattern covers in a file
 	PListType i = 1;
 	for(vector<float>::const_iterator it = coverage.begin(); it != coverage.end(); it++)
 	{
@@ -225,6 +232,7 @@ void Logger::fileCoverageCSV(const vector<float>& coverage)
 
 void Logger::fillPatternData(const string &file, const vector<PListType> &patternIndexes, const vector<PListType> &patternCounts)
 {
+	//Records generic pattern data for each level including length, pattern string and occurences
 	(*patternDataFile) << "Length, Pattern, Count\n";
 	int j = 0;
 	for(vector<PListType>::const_iterator it = patternIndexes.begin(); it != patternIndexes.end(); it++)

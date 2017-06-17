@@ -23,6 +23,7 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 
 	PListType count = 0;
 	
+	//Find out the number of patterns
 	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
 		count += static_cast<PListType>(iterator->leaves.size());
@@ -30,9 +31,11 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 
 	archiveName << archiveFileType << fileName << "_" << count;
 
+	//Create a new plist archive file to store pattern index information
 	PListArchive* archiveCollective = new PListArchive(archiveName.str(), true);
 	fileNameToReOpen = archiveName.str();
 	
+	//Iterate through TreeHD vector and store all pattern vectors into a pattern file
 	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
 		for(auto iterator2 = iterator->leaves.begin(); iterator2 != iterator->leaves.end(); iterator2++) 
@@ -45,10 +48,12 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 		iterator->leaves.clear();
 	}
 
+	//Clear out data in vector by shoving it into a temp variable 
 	vector<TreeHD> test;
 	test.swap(leaf);
 	leaf.clear();
 
+	//Write the remaining patterns to file and create the pattern file for pattern association
 	archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
 	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 	archiveCollective->CloseArchiveMMAP();
@@ -61,6 +66,7 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 
 string ChunkFactory::CreatePartialPatternFile(string fileName, vector<vector<PListType>*> leaves, LevelPackage levelInfo)
 {
+	//This function is used for hd first level processing to improve speed
 	string fileNameToReOpen;
 
 	stringstream archiveName;
@@ -68,11 +74,13 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<vector<PLi
 
 	archiveName << archiveFileType << fileName << "_256";
 
+	//Create pattern file
 	PListArchive* archiveCollective = new PListArchive(archiveName.str(), true);
 	fileNameToReOpen = archiveName.str();
 
 	stringstream stringbuilder;
 
+	//Iterate through pattern vector and store all pattern vectors into a pattern file
 	for(int i = 0; i < 256; i++)
 	{
 		if(leaves[i]->size() > 0)
@@ -89,7 +97,8 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<vector<PLi
 			delete leaves[i];
 		}
 	}
-	
+
+	//Write the remaining patterns to file and create the pattern file for pattern association
 	archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
 	archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 	archiveCollective->CloseArchiveMMAP();
@@ -101,6 +110,7 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<vector<PLi
 
 void ChunkFactory::DeletePartialPatternFiles(vector<string> fileNames, string folderLocation)
 {
+	//Delete all files in vector
 	for(int i = 0; i < fileNames.size(); i++)
 	{
 		DeletePartialPatternFile(fileNames[i], folderLocation);
@@ -109,6 +119,7 @@ void ChunkFactory::DeletePartialPatternFiles(vector<string> fileNames, string fo
 
 void ChunkFactory::DeletePartialPatternFile(string fileChunkName, string folderLocation)
 {
+	//Delete a single parital pattern file
 	string fileNameToBeRemoved = folderLocation;
 	fileNameToBeRemoved.append(fileChunkName.c_str());
 	fileNameToBeRemoved.append(".txt");
@@ -147,6 +158,7 @@ void ChunkFactory::DeletePartialPatternFile(string fileChunkName, string folderL
 
 void ChunkFactory::DeletePatternFiles(vector<string> fileNames, string folderLocation)
 {
+	//Delete all complete pattern files
 	for(int i = 0; i < fileNames.size(); i++)
 	{
 		DeletePatternFile(fileNames[i], folderLocation);
@@ -155,6 +167,7 @@ void ChunkFactory::DeletePatternFiles(vector<string> fileNames, string folderLoc
 
 void ChunkFactory::DeletePatternFile(string fileNames, string folderLocation)
 {
+	//Delete a single complete pattern file
 	string fileNameToBeRemoved = folderLocation;
 	fileNameToBeRemoved.append(fileNames.c_str());
 	fileNameToBeRemoved.append(".txt");

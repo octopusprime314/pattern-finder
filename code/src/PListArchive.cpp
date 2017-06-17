@@ -28,7 +28,7 @@ PListArchive::PListArchive(string fileName, bool create)
 		file.append(fileName);
 		file.append(".txt");
 		fd = -1;
-
+		//Create a new file
 		if(create)
 		{
 #if defined(_WIN64) || defined(_WIN32)
@@ -46,12 +46,14 @@ PListArchive::PListArchive(string fileName, bool create)
 				fd = open(file.c_str(), O_RDWR | O_TRUNC);
 			}
 		}
+		//Open existing file
 		else
 		{
 			fd = open(file.c_str(), O_RDONLY);
 		}
 
 		this->fileName = file;
+		//If file does not exist or could not be created then we return unhappy
 		if(fd < 0)
 		{
 			
@@ -79,46 +81,9 @@ PListArchive::PListArchive(string fileName, bool create)
 PListArchive::~PListArchive(void)
 {
 }
-
+//Writing to hd error handling methods
 void PListArchive::MappingError(int& fileDescriptor, string fileName)
 {
-
-#if defined(__linux__)
-	DIR *dp;
-   	struct dirent *ep;
-	
-	int pid = getpid();
-	stringstream folder;
-	folder << "/proc/" << pid << "/fd/";
-   	dp = opendir (folder.str().c_str());
-   	if (dp != NULL)
-     	{
-       		while (ep = readdir (dp))
-         		cout << ep->d_name << endl;
-       		(void) closedir (dp);
-     	}
-   	else
-     		perror ("Couldn't open the directory");
-
-	folder.str("");
-	folder << "/proc/" << pid << "/map_files/";
-	cout << folder.str() << endl;
-	dp = opendir (folder.str().c_str());
-	int counter = 0;
-   	if (dp != NULL)
-     	{
-       		while (ep = readdir (dp))
-			{
-         		//cout << ep->d_name << endl;
-				counter++;
-			}
-       		(void) closedir (dp);
-     	}
-   	else
-     		perror ("Couldn't open the directory");
-	cout << "Number of mapped files is: " << counter << endl;
-#endif
-
 	stringstream handle;
 	handle << " and errno is "<< strerror(errno) << endl;
 	handle << "error mapping the file " << fileName << endl;
@@ -169,6 +134,7 @@ void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 
 void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, double chunkSizeInMB)
 {
+	//Read in a block of pattern vectors from file to use in RAM
 	PListType *map;  /* mmapped array of char's */
 	
 	PListType pListGlobalIndex = -1;
@@ -184,7 +150,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 
 		while(!finishedFlag)
 		{
-			
+			//Create a memory map block of memory to access directly into the file, ie allocating a virtual page of memory for direct read/write
 			map = (PListType *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 
 			if (map == MAP_FAILED) 
@@ -203,6 +169,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				{
 					if(pListGlobalIndex != -1)
 					{
+						//Shrink down vector to actual size 
 						stuffedPListBuffer[pListGlobalIndex]->shrink_to_fit();
 
 						if(chunkSizeInMB != 0)
@@ -212,6 +179,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 							//Size of total vector on the heap
 							globalTotalMemoryInBytes += static_cast<PListType>(stuffedPListBuffer[pListGlobalIndex]->capacity()*sizeof(PListType));
 
+							//Check if requested memory block of the pattern file has been met
 							if(((globalTotalMemoryInBytes + (stuffedPListBuffer.capacity()*24))/1000000.0f) >= chunkSizeInMB)
 							{
 								finishedFlag = true;
@@ -234,6 +202,7 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 					prevStartingIndex = i;
 					prevListIndex = fileIndex;
 
+					//Grab the vector size of pattern indexes and prepare new vector
 					listCount = (PListType) map[i];
 
 					//If listCount equals zero then we are at the end of the pList data stream bam bitches
@@ -252,11 +221,13 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 				}
 				else
 				{
+					//Read each index into the vector for each pattern based on the listcount
 					stuffedPListBuffer[pListGlobalIndex]->push_back(map[i]);
 					listCount--;
 				}
 			}
 
+			//Trim vector if memory has been exceeded
 			if(!trimPList)
 			{
 				if(i == PListBuffSize)
@@ -287,11 +258,13 @@ void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListB
 
 bool PListArchive::IsEndOfFile()
 {
+	//See if the read/write pointer in file has hit EOF
 	return endOfFileReached;
 }
 
 bool PListArchive::Exists()
 {
+	//If file descriptor is greater than 0 it is a legit file handle
 	if(fd > 0)
 	{
 		return true;
@@ -306,11 +279,13 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 {
 	try
 	{
+		//Force all patterns to be written to the file
 		if(flush)
 		{
 			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad 
 			if(mapper != NULL)
 			{
+				//Do not wait for all data to be written to file before executing next line of code
 				msync(mapper, hdSectorSize, MS_ASYNC);
 				//Deallocate only when it has been completely used
 				if (munmap(mapper, hdSectorSize) == -1) 
@@ -325,6 +300,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			
 			return;
 		}
+		//Add pattern string to stringbuffer for later creation of the pattern string file
 		if(pListVector.size() > 0)
 		{
 			if(pattern.size() > 0)
@@ -334,6 +310,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			mappingIndex += static_cast<PListType>(((pListVector.size() + 1)*sizeof(PListType)));
 		}
 
+		//Compute index of current memory mapping 
 		PListType startPoint = ((prevMappingIndex/sizeof(PListType)) % totalLoops);
 		PListType tempMapIndex = mappingIndex;
 		mappingIndex = prevMappingIndex;
@@ -360,6 +337,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 
 		bool grabbedCount = false;
 
+		//In linux the file needs to be seeked in order to create more memory for file
 	#if defined(__linux__)
 		if((fileIndex + (offset*hdSectorSize) - 1) >= prevFileIndex)
 		{
@@ -376,6 +354,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 			{
 				if(mapper != NULL)
 				{
+					//Write back data to file asynchronously ie do not wait
 					msync(mapper, hdSectorSize, MS_ASYNC);
 					//Deallocate only when it has been completely used
 					if (munmap(mapper, hdSectorSize) == -1) 
@@ -386,6 +365,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 					mapper = NULL;
 				}
 
+				//Allocate a virtual page block of memory to write pattern data to
 				mapper = (PListType *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, fd, fileIndex);
 				
 				if (mapper == MAP_FAILED) 
@@ -447,6 +427,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 
 vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 {
+	//Gets only the pattern string information from file
 	if(fd == -1)
 	{
 		return NULL;
@@ -491,6 +472,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	#elif defined(__linux__)
 			result = lseek64(fd, fileIndex, SEEK_SET);
 	#endif
+			//Allocate a virtual page of memory in the form of a char* array because we are reading in pattern string data
 			mapChar = (char *)mmap64 (0, hdSectorSize, PROT_READ, MAP_SHARED, fd, fileIndex);
 
 			if (mapChar == MAP_FAILED) 
@@ -498,10 +480,10 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 				MappingError(fd, this->fileName);
 				return NULL;
 			}
-		
+			
 			PListType PListBuffSize = hdSectorSize/sizeof(char);
-			/* Now do something with the information. */
 
+			/* Now do something with the information. */
 			if(piss < totalReadsForPatterns)
 			{
 				PListBuffSize = hdSectorSize/sizeof(char);
@@ -510,6 +492,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 				PListType i = 0;
 				while (i < PListBuffSize && offstep < count) 
 				{
+					//Read in chars until full pattern string is created
 					for(PListType charIt = prevIndexForChar; charIt < level; charIt++)
 					{
 						if(i >= PListBuffSize)
@@ -531,6 +514,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 					}
 					if(!endWhistle)
 					{ 
+						//Add new pattern string to string buffer
 						(*newStringBuffer)[newStringBufferIndex++] = completePattern;
 						offstep++;
 					}
@@ -543,6 +527,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 				}
 			}
 		
+			//Increment next virtual page block to write to
 			fileIndex += hdSectorSize;
 		}
 		fileIndex = preservedFileIndex;
@@ -562,7 +547,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 {
 	try
 	{
-		
+		//Takes pattern buffer data and creates a pattern string file
 		char *mapForChars = NULL;  /* mmapped array of char's */
 
 		string file;
@@ -577,12 +562,14 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		temp << ".txt";
 		file = temp.str();
 
+		//Create file handle for memory map writing
 	#if defined(_WIN64) || defined(_WIN32)
 		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 	#elif defined(__linux__)
 		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
 	#endif
 
+		//Make sure the file is created
 		if(mapFD < 0)
 		{
 			stringstream stringbuilder;
@@ -627,6 +614,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		
 		for(PListType i = 0; i < totalWritesForCharTypes && !done; i++)
 		{
+			//Allocate a virtual page of memory in the form of a char* array because we are writing pattern string data
 			mapForChars = (char *)mmap64(0, hdSectorSize, PROT_WRITE, MAP_SHARED, mapFD, fileIndex);
 
 			if (mapForChars == MAP_FAILED) 
@@ -642,6 +630,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 			unsigned int z = 0;
 			
+			//Write all string data to a char array
 			while(stringIndex < stringBuffer.size() && z < (hdSectorSize/sizeof(char)) && !done)
 			{
 				unsigned int patternIt = prevIndexForChar;

@@ -231,7 +231,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		config.minimum = 0;
 	}
 	//If numCores is not specified then we use number of threads supported cores plus the main thread
-	if (!threadsEnter /*|| numThreads > concurentThreadsSupported*/)
+	if (!threadsEnter)
 	{
 		config.numThreads = concurentThreadsSupported;
 	}
@@ -342,6 +342,7 @@ void ProcessorConfig::FindFiles(string directory)
 
 void ProcessorConfig::DisplayHelpMessage()
 {
+	//Displays the help file if command line arguments are stinky
 	bool isFile;
 	FileReader tempHelpFile(HELPFILEPATH, isFile, true);
 	tempHelpFile.LoadFile();
