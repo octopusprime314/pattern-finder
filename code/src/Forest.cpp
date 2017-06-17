@@ -56,7 +56,7 @@ Forest::Forest(int argc, char **argv)
 	if(!config.usingMemoryBandwidth)
 	{
 
-		//Leave 1 GB to spare for operating system in case our calculations suck
+		//Leave 1 GB to spare for operating system 
 		config.memoryBandwidthMB = memoryCeiling - 1000;
 	}
 
@@ -70,7 +70,8 @@ Forest::Forest(int argc, char **argv)
 	vector<map<int, double>> threadMap;
 	
 	threadPool = new vector<future<void>>();
-	
+
+	//Search through a list of files or an individual file
 	for(f = 0; f < config.files.size(); f++)
 	{
 		const char * c = config.files[f]->fileName.c_str();
@@ -79,6 +80,7 @@ Forest::Forest(int argc, char **argv)
 
 		config.files[f]->copyBuffer = new ifstream(c, ios::binary);
 
+		//If file is not opened then delete copy buffer and discard this file and continue processing with the next file
 		if (!config.files[f]->copyBuffer->is_open()) 
 		{
 			//Close file handle once and for all
@@ -90,15 +92,15 @@ Forest::Forest(int argc, char **argv)
 			continue;
 		}
 
+		//If the file has not been read in and we are processing only with ram then read in the entire file
 		if(config.files[f]->fileString.size() == 0 && config.usingPureRAM)
 		{
-			//new way to read in file
 			config.files[f]->fileString.clear();
 			config.files[f]->fileString.resize(config.files[f]->fileStringSize);
 			config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
 		}
 
-		
+		//Thread runs based on if the user wants to do throughput testing otherwise test iterations is set to 1
 		for(unsigned int threadIteration = 0; threadIteration <= config.testIterations; threadIteration = config.numThreads)
 		{
 
@@ -113,6 +115,7 @@ Forest::Forest(int argc, char **argv)
 			Logger::WriteLog(loggingIt.str());
 			cout << loggingIt.str();
 
+			//Start the processing timer to keep track of how long processing takes
 			initTime.Start();
 
 			prevFileNameList.clear();
@@ -164,7 +167,7 @@ Forest::Forest(int argc, char **argv)
 				stats.SetCurrentLevel(i, 1);
 			}
 
-
+			//If processing with the hard drive then compute the number of passes needed to process
 			PListType fileReadSize = (PListType)((memoryPerThread*1000000)/3.0f);
 			PListType fileIterations = config.files[f]->fileStringSize/fileReadSize;
 			if(config.files[f]->fileStringSize%fileReadSize != 0)
@@ -188,6 +191,7 @@ Forest::Forest(int argc, char **argv)
 
 			cout << "Number of threads processing file is " << config.numThreads << endl;
 
+			//Number of iterations increase the lower the memory allowance is when using hard disk processing
 			for(PListType z = 0; z < fileIterations; z++)
 			{
 				PListType position = 0;
@@ -214,7 +218,8 @@ Forest::Forest(int argc, char **argv)
 					config.files[f]->fileString.resize(patternCount);
 					config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
 				}
-
+				
+				//Calculate the number of indexes each thread will process
 				PListType cycles = patternCount/config.numThreads;
 				PListType lastCycle = patternCount - (cycles*config.numThreads);
 				PListType span = cycles;
@@ -225,6 +230,7 @@ Forest::Forest(int argc, char **argv)
 					{
 						span = span + lastCycle;
 					}	
+					//Dispatch either ram or hd processing based on earlier memory prediction
 					if(prediction)
 					{
 						threadPool->push_back(std::async(std::launch::async, &Forest::PlantTreeSeedThreadHD, this, overallFilePosition, position, span, i));
@@ -242,8 +248,10 @@ Forest::Forest(int argc, char **argv)
 				{
 					localWorkingThreads.push_back(i);
 				}
+				//Wait until level 1 threads have completed processing their portions of the file
 				WaitForThreads(localWorkingThreads, threadPool); 
 
+				//If processing ram then all of the threads pattern vector must be pulled together
 				if(!prediction)
 				{
 					PListType indexOfList = 0;
@@ -293,6 +301,7 @@ Forest::Forest(int argc, char **argv)
 				threadPool->erase(threadPool->begin(), threadPool->end());
 				(*threadPool).clear();
 				
+				//If processing hd then all the files saved to the hard disk needed to be pulled together
 				if(prediction)
 				{
 					for(unsigned int z = 0; z < config.numThreads; z++)
@@ -311,7 +320,7 @@ Forest::Forest(int argc, char **argv)
 
 			}
 
-			//Divide between file load and previous level pLists and leave some for new lists haha 
+			//Divide between file load and previous level pLists and leave some for new pattern creation
 			PListType memDivisor = (PListType)((memoryPerThread*1000000)/3.0f);
 
 			int currentFile = 0;
@@ -321,16 +330,18 @@ Forest::Forest(int argc, char **argv)
 			{
 				if(config.levelToOutput == 0 || config.levelToOutput != 0)
 				{
+					//All the partial pattern files generated need to be pulled together into one coherent pattern file
 					ProcessChunksAndGenerateLargeFile(backupFilenames, temp, memDivisor, 0, 1, true);
 				}
 			}
 
-			//Start searching
+			//Start searching for level 2 and beyond!
 			if(2 <= config.maximum)
 			{
 				NextLevelTreeSearch(2);
 			}
 
+			//Processing is over and stop the time to display the processing time
 			time.Stop();
 			threadMap.push_back(map<int, double>());
 			threadMap[f][config.numThreads] = time.GetTime();
@@ -340,6 +351,7 @@ Forest::Forest(int argc, char **argv)
 			buffery << config.numThreads << " threads were used to process file" << endl;
 			Logger::WriteLog(buffery.str());
 
+			//Load in the rest of the file if it has not been completely loaded
 			if(config.files[f]->fileStringSize != config.files[f]->fileString.size())
 			{
 				config.files[f]->fileString.clear();
@@ -348,6 +360,7 @@ Forest::Forest(int argc, char **argv)
 				config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
 			}
 
+			//If verbosity level is set to 1 then write all pattern information to the log file
 			if(Logger::verbosity)
 			{
 				for(PListType j = 0; j < stats.GetLevelRecordingSize() && stats.GetLevelRecording(j + 1) != 0; j++)
@@ -358,11 +371,14 @@ Forest::Forest(int argc, char **argv)
 					Logger::WriteLog(buff.str());
 				}
 			}
+
+			//Save pattern to csv format for matlab post processing scripts
 			Logger::fillPatternData(config.files[f]->fileString, stats.GetMostCommonPatternIndexVector(), stats.GetMostCommonPatternCountVector());
 			Logger::fileCoverageCSV(stats.GetCoverageVector());
 
 			finalPattern[stats.GetLevelRecordingSize()]++;
 
+			//Clear out all memory from ram processing
 			for (int i = 0; i < prevPListArray->size(); i++)
 			{
 				if((*prevPListArray)[i] != NULL)
@@ -372,15 +388,18 @@ Forest::Forest(int argc, char **argv)
 			}
 			prevPListArray->clear();
 
+			//If doing throughput calculations then double the thread count and compute the same file
 			if(config.findBestThreadNumber)
 			{
 				config.numThreads = (config.numThreads * 2);
 			}
 
+			
 			crappy.str("");
 			crappy << "File Size " << config.files[f]->fileStringSize << " and eliminated patterns " << stats.GetEradicatedPatterns() << "\n\n\n";
 			Logger::WriteLog(crappy.str());
 
+			//File processing validation to make sure every index is processed and eliminated 
 			//If we aren't doing a deep search in levels then there isn't a need to check that pattern finder is properly functioning..it's impossible
 			if(config.files[f]->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
 			{
@@ -389,6 +408,7 @@ Forest::Forest(int argc, char **argv)
 				//exit(0);
 			}
 
+			//Clean up memory watch dog thread
 			if(memoryQueryThread != NULL)
 			{
 				processingFinished = true;
@@ -397,9 +417,11 @@ Forest::Forest(int argc, char **argv)
 				memoryQueryThread = NULL;
 				processingFinished = false;
 			}
+			//Clear statistics for next file processing
 			stats.ResetData();
 		}
 		
+		//Log throughput data
 		stringstream loggingIt;
 		loggingIt.str("");
 		std::string::size_type i = config.files[f]->fileName.find(DATA_FOLDER);
@@ -418,7 +440,7 @@ Forest::Forest(int argc, char **argv)
 			Logger::WriteLog(loggingIt.str());
 			cout << loggingIt.str();
 		}
-
+		//Log the percentage of files in folder that have been processed so far
 		stringstream fileProgressStream;
 		fileProgressStream << "File collection percentage completed: " << f*100/config.files.size() << "%\n";
 		Logger::WriteLog(fileProgressStream.str());
@@ -437,10 +459,11 @@ Forest::Forest(int argc, char **argv)
 
 	}
 
+	//Generate data for file collection processing
 	Logger::generateTimeVsFileSizeCSV(processingTimes, config.fileSizes);
-
+	//Generate most patterns found in a large data set
 	Logger::generateFinalPatternVsCount(finalPattern);
-
+	//Generate thread throughput data
 	if(config.findBestThreadNumber)
 	{
 		Logger::generateThreadsVsThroughput(threadMap);
@@ -477,6 +500,7 @@ Forest::~Forest()
 
 void Forest::MemoryQuery()
 {
+	//Query OS with how much memory the program is using and exit if it has reached the memory limit
 	StopWatch swTimer;
 	stringstream loggingIt;
 	swTimer.Start();
@@ -498,6 +522,7 @@ void Forest::MemoryQuery()
 			exit(0);
 		}
 
+		//Every 10 seconds dispaly the percentage of the file processed, cpu utilization of the program and the approximate time left to finish processing
 		if(swTimer.GetTime() > 10000.0f)
 		{
 			PListType timeStamp = static_cast<PListType>(swTimer.GetTime());
@@ -596,7 +621,6 @@ bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType si
 	{
 		if(config.files[f]->fileString.size() == 0)
 		{
-			//new way to read in file
 			countMutex->lock();
 			config.files[f]->fileString.resize(config.files[f]->fileStringSize);
 			config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
@@ -620,8 +644,10 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 		fileList[a].clear();
 	}
 
+	//If we need to use the hard disk for processing the upcoming level
 	if(prediction)
 	{
+		//If the previous level was processed using the hard disk then just distribute the pattern files across the threads
 		if(!stats.GetUsingRAM(0))
 		{
 			//chunk files
@@ -644,6 +670,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 				}
 			}
 		}
+		//If previous level was processing using only ram then write pattern vector data to the file system
 		else if(stats.GetUsingRAM(0))
 		{
 			//chunk files
@@ -701,8 +728,10 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 			}
 		}
 	}
+	//If the upcoming level is going to be processed using ram
 	else if(!prediction)
 	{
+		//If the previous level using hard disk to process then read in pattern file data and convert to pattern vectors
 		if(!stats.GetUsingRAM(0))
 		{
 			prevLocalPListArray->clear();
@@ -745,6 +774,7 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 		}
 	}
 
+	//Set all the threads upcoming level processing mode
 	for(unsigned int a = 0; a < config.numThreads; a++)
 	{
 		stats.SetUsingRAM(0, !prediction);
@@ -753,8 +783,10 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
 
 void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray)
 {
+	//If the upcoming level is going to be processed using the hard disk
 	if(prediction)
 	{
+		//If the previous level was processed using the hard disk then just distribute the pattern files across the threads
 		if(levelInfo.useRAM)
 		{
 			//chunk file
@@ -797,8 +829,10 @@ void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& 
 			delete threadFile;
 		}
 	}
+	//If the upcoming level is going to be processed with ram
 	else if(!prediction)
 	{
+		//If the previous level using hard disk to process then read in pattern file data and convert to pattern vectors
 		if(!levelInfo.useRAM)
 		{
 			for(PListType prevChunkCount = 0; prevChunkCount < fileList.size(); prevChunkCount++)
@@ -826,6 +860,7 @@ void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& 
 	levelInfo.useRAM = !prediction;
 	stats.SetUsingRAM(levelInfo.threadIndex, !prediction);
 
+	//Read in all file data back in if the level is using only ram
 	if(levelInfo.useRAM && config.files[f]->fileString.size() != config.files[f]->fileStringSize)
 	{
 		//new way to read in file
@@ -856,6 +891,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 	//use that one prediction
 	if(stats.GetUsingRAM(0))
 	{
+		//Balance patterns across threads
 		vector<vector<PListType>> balancedTruncList = ProcessThreadsWorkLoadRAMFirstLevel(config.numThreads, prevPListArray);
 		vector<unsigned int> localWorkingThreads;
 		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
@@ -867,6 +903,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		countMutex->lock();
 		for (unsigned int i = 0; i < localWorkingThreads.size(); i++)
 		{
+			//Spawn each ram processing thread with level state information
 			LevelPackage levelInfo;
 			levelInfo.currLevel = level;
 			levelInfo.threadIndex = i;
@@ -881,6 +918,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		countMutex->unlock();
 		WaitForThreads(localWorkingThreads, threadPool);
 	}
+	//HD processing
 	else
 	{
 		//get ready for distribution
@@ -892,6 +930,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 				files.push_back(fileList[i][j]);
 			}
 		}
+		//Balance pattern files across threads
 		vector<vector<string>> balancedTruncList = ProcessThreadsWorkLoadHD(config.numThreads, levelInfo, files);
 		vector<unsigned int> localWorkingThreads;
 		for(unsigned int i = 0; i < balancedTruncList.size(); i++)
@@ -902,6 +941,7 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 		countMutex->lock();
 		for (unsigned int i = 0; i < localWorkingThreads.size(); i++)
 		{
+			//Spawn each hd processing thread with level state information
 			LevelPackage levelInfo;
 			levelInfo.currLevel = level;
 			levelInfo.threadIndex = i;
@@ -926,66 +966,58 @@ bool Forest::NextLevelTreeSearch(unsigned int level)
 
 void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive, unsigned int level)
 {
-	//try
-	//{
-		PListType threadsFinished = 0;
-		StopWatch oneSecondTimer;
-		while (threadsFinished != localThreadPool->size())
+	PListType threadsFinished = 0;
+	StopWatch oneSecondTimer;
+	//Poll each processing thread to see if it is done processing and then release thread power to the other threads when a thread is released from proessing
+	while (threadsFinished != localThreadPool->size())
+	{
+		vector<unsigned int> currentThreads;
+		for (PListType k = 0; k < localWorkingThreads.size(); k++)
 		{
-			vector<unsigned int> currentThreads;
-			for (PListType k = 0; k < localWorkingThreads.size(); k++)
+
+			if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
 			{
-
-				if (localThreadPool != NULL && (*localThreadPool)[localWorkingThreads[k]].valid())
+				if(recursive)
 				{
-					if(recursive)
-					{
-						(*localThreadPool)[localWorkingThreads[k]].get();
+					(*localThreadPool)[localWorkingThreads[k]].get();
 
-						threadsFinished++;
-					}
-					else
-					{
-						(*localThreadPool)[localWorkingThreads[k]].get();
-						threadsFinished++;
-
-						countMutex->lock();
-						activeThreads[k] = false;
-						countMutex->unlock();
-
-						if(level != 0)
-						{
-							stringstream buff;
-							buff << "Thread " << localWorkingThreads[k] << " finished all processing" << endl;
-							Logger::WriteLog(buff.str());
-						}
-					}
+					threadsFinished++;
 				}
 				else
 				{
-					//std::this_thread::sleep_for(std::chrono::milliseconds(1));
-					currentThreads.push_back(localWorkingThreads[k]);
+					(*localThreadPool)[localWorkingThreads[k]].get();
+					threadsFinished++;
+
+					countMutex->lock();
+					activeThreads[k] = false;
+					countMutex->unlock();
+
+					if(level != 0)
+					{
+						stringstream buff;
+						buff << "Thread " << localWorkingThreads[k] << " finished all processing" << endl;
+						Logger::WriteLog(buff.str());
+					}
 				}
 			}
-			localWorkingThreads.clear();
-			for(unsigned int i = 0; i < currentThreads.size(); i++)
+			else
 			{
-				localWorkingThreads.push_back(currentThreads[i]);
+				//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				currentThreads.push_back(localWorkingThreads[k]);
 			}
 		}
-	//}
-	//catch(std::exception& e)
-	//{
-	//	cout << "Wait for threads exception: " << e.what() << endl;
-	//	//raise (SIGABRT);
-	//}
+		localWorkingThreads.clear();
+		for(unsigned int i = 0; i < currentThreads.size(); i++)
+		{
+			localWorkingThreads.push_back(currentThreads[i]);
+		}
+	}
 }
 
 vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDispatch, LevelPackage levelInfo, vector<string> prevFileNames)
 {
 
 	vector<vector<string>> newFileList;
-	//chunk files
 	vector<PListArchive*> threadFiles;
 	stringstream threadFilesNames;
 	unsigned int threadNumber = 0;
@@ -993,15 +1025,10 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 	if(prevFileNames.size() >= threadsToDispatch)
 	{
 
-		//Logger::WriteLog("Not distributing files!");
+		//Not distributing the pattern filess
 		for(int a = 0; a < prevFileNames.size(); a++)
 		{
-
 			newFileList[threadNumber].push_back(prevFileNames[a]);
-
-			/*stringstream stringbuilder;
-			stringbuilder << "Original file being non distributed : " << newFileList[threadNumber][newFileList[threadNumber].size() - 1] << endl;
-			Logger::WriteLog(stringbuilder.str());*/
 
 			//Increment chunk
 			threadNumber++;
@@ -1014,8 +1041,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 	else
 	{
 
-		//Logger::WriteLog("Distributing files!\n");
-
+		//Distributing files
 		for(unsigned int a = 0; a < threadsToDispatch; a++)
 		{
 			threadFilesNames.str("");
@@ -1024,12 +1050,9 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 			threadFiles.push_back(new PListArchive(threadFilesNames.str(), true));
 			newFileList[a].push_back(threadFilesNames.str());
 
-			/*stringstream stringbuilder;
-			stringbuilder << "New file being distributed : " << threadFilesNames.str() << " at level " << levelInfo.currLevel << " at inception " << levelInfo.inceptionLevelLOL << endl;
-			Logger::WriteLog(stringbuilder.str());*/
-
 		}
 
+		//Read in all pattern data from file and create new pattern files to evenly distribute pattern data to the threads
 		for(PListType prevChunkCount = 0; prevChunkCount < prevFileNames.size(); prevChunkCount++)
 		{
 			PListArchive archive(prevFileNames[prevChunkCount]);
@@ -1061,6 +1084,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 
 		}
 
+		//Flush to disk and close file handles
 		for(unsigned int a = 0; a < threadsToDispatch; a++)
 		{
 			threadFiles[a]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
@@ -1075,6 +1099,7 @@ vector<vector<string>> Forest::ProcessThreadsWorkLoadHD(unsigned int threadsToDi
 
 vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns)
 {
+	//Evenly distribute pattern data by breaking down the pattern vector and adding them to the thread processing pattern vectors
 	vector<vector<PListType>> balancedList(threadsToDispatch);
 	vector<PListType> balancedSizeList;
 	for(PListType i = 0; i < threadsToDispatch; i++)
@@ -1136,6 +1161,7 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAM(unsigned int threads
 
 vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAMFirstLevel(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns)
 {
+	//Evenly distribute pattern data by breaking down the pattern vector and adding them to the thread processing pattern vectors for the first level
 	vector<vector<PListType>> balancedList(threadsToDispatch);
 	vector<PListType> balancedSizeList;
 	for(PListType i = 0; i < threadsToDispatch; i++)
@@ -1245,14 +1271,13 @@ vector<vector<PListType>> Forest::ProcessThreadsWorkLoadRAMFirstLevel(unsigned i
 PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex, bool firstLevel)
 {
 
-	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-
 	int currentFile = 0;
 	int prevCurrentFile = currentFile;
 	bool memoryOverflow = false;
 	PListType interimCount = 0;
 	unsigned int threadNumber = 0;
 
+	//Grab all the partial pattern files to bring together into one coherent pattern file structure
 	vector<string> fileNamesBackup;
 	for(int a = 0; a < fileNamesToReOpen.size(); a++)
 	{
@@ -1286,8 +1311,8 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				continue;
 			}
 
-			//Our job is to trust whoever made the previous chunk made it within the acceptable margin of error so we compensate by saying take up to double the size if the previous
-			//chunk went a little over the allocation constraint
+			//Our job is to trust whoever made the previous partial file made it within the acceptable margin of error so we compensate by saying take up to double the size if the previous
+			//parital file went a little over the allocation constraint
 
 			vector<vector<PListType>*> packedPListArray;
 			vector<string> *stringBuffer = NULL;
@@ -1302,8 +1327,10 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				memoryOverflow = true;
 			}
 
+			//If memory has not been exceeded then continue compiling pattern map data
 			if(!memoryOverflow)
 			{
+				//Loads in the index vectors where patterns live and also pulls in the actual pattern strings from the Patterns files
 				archiveCollection[a]->GetPListArchiveMMAP(packedPListArray);
 				packedPListSize = static_cast<PListType>(packedPListArray.size());
 
@@ -1329,6 +1356,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			}
 			else
 			{
+				//If memory has been overused in the final pattern map then we see which patterns can be stored in file and which need to be kept around
 				list<string> patternsThatCantBeDumped;
 				PListType totalPatterns = 0;
 
@@ -1374,13 +1402,9 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				stringstream sizeDifference;
 				patternsThatCantBeDumped.unique();
 
-				//CODE FOR NO MATCHES SO WE DUMP EVERYTHING
+				//NO MATCHES SO WE DUMP ALL PATTERNS TO FILE
 				if(patternsThatCantBeDumped.size() == 0)
 				{ 
-					//ADDED CODE
-
-					//Logger::WriteLog("Purging the entire map mwuahahah!\n");
-
 					//thread files
 					PListArchive* currChunkFile = NULL;
 					bool notBegun = true;
@@ -1458,8 +1482,6 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 						}
 					}
 					finalMetaDataMap.clear();
-
-					//END OF ADDED CODE
 				}
 				foundAHit = false;
 
@@ -1484,6 +1506,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				stringBuffer = stringBufferFile->GetPatterns(currLevel, sizeOfPackedPList);
 				packedPListSize = sizeOfPackedPList;
 
+				//If the remaining files have patterns that are contained in them that are contained in the final map then we need to hold onto those patterns for later
 				if(finalMetaDataMap.size() > 0)
 				{
 					if(sizeOfPackedPList > 0)
@@ -1511,6 +1534,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			}
 
 			PListType countAdded = 0;
+			//Write all patterns to file except the ones that have a presence in the remaining partial files
 			if(foundAHit)
 			{
 				for(PListType partialLists = 0; partialLists < packedPListArray.size(); partialLists++)
@@ -1611,7 +1635,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			}
 		}
 
-		//thread files
+		//Start writing the patterns in pattern map to disk for complete pattern pictures
 		PListArchive* currChunkFile = NULL;
 		bool notBegun = true;
 
@@ -1685,6 +1709,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 			}
 		}
 
+		//Delete the partial pattern files because they are no longer needed
 		for(int a = prevCurrentFile; a < currentFile; a++)
 		{
 			chunkFactorio->DeletePartialPatternFile(fileNamesBackup[a], ARCHIVE_FOLDER);
@@ -1692,6 +1717,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 		prevCurrentFile = currentFile;
 	}
 
+	//Record level statistics
 	countMutex->lock();
 
 	stats.SetEradicationsPerLevel(currLevel, stats.GetEradicationsPerLevel(currLevel) + internalRemovedCount);
@@ -1708,6 +1734,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 
 PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel)
 {
+	//This is the same function as ProcessChunksAndGenerate but is specialized to process level 1 data faster
 	int currentFile = 0;
 	int prevCurrentFile = currentFile;
 	bool memoryOverflow = false;
@@ -1774,7 +1801,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			string fileName ="";
 			bool foundAHit = true;
 
-
+			//Check for memory over usage
 			if(overMemoryCount && !memoryOverflow)
 			{
 				stringstream crap;
@@ -1813,6 +1840,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 
 
 			PListType countAdded = 0;
+			//Write all patterns contained in the pattern map to complete pattern files
 			if(foundAHit)
 			{
 				for(PListType partialLists = 0; partialLists < packedPListArray.size(); partialLists++)
@@ -1854,6 +1882,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			archiveCollection[a]->CloseArchiveMMAP();
 			stringBufferFile->CloseArchiveMMAP();
 
+			//Delete partial files after processed
 			chunkFactorio->DeletePartialPatternFile(fileNameForLater, ARCHIVE_FOLDER);
 
 			delete archiveCollection[a];
@@ -1873,7 +1902,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			}
 		}
 
-
+		//Record level 1 statistics
 		for(PListType a = 0; a < currPatternCount; a++)
 		{
 			stringstream buff;
@@ -1924,7 +1953,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 	int threadNum = levelInfo.threadIndex;
 	
 	PListType newPatternCount = 0;
-	//Divide between file load and previous level pLists and leave some for new lists 
+	//Divide between file load and previous level pLists and leave some memory for new lists 
 	PListType memDivisor = (PListType)(((memoryPerThread*1000000)/3.0f));
 
 	bool morePatternsToFind = true;
@@ -1947,12 +1976,13 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			vector<string> newFileNames;
 
 			unsigned int currLevel = levelInfo.currLevel;
+			//Use previous pattern files to process new files
 			for(PListType prevChunkCount = 0; prevChunkCount < fileList.size(); prevChunkCount++)
 			{
 				PListArchive archive(fileList[prevChunkCount]);
 				while(!archive.IsEndOfFile())
 				{
-
+					//Pull in 1/3 of the memory bandwidth given for this thread
 					vector<vector<PListType>*> packedPListArray;
 					archive.GetPListArchiveMMAP(packedPListArray, memDivisor/1000000.0f); 
 
@@ -1979,6 +2009,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 						unsigned int lastIndex = fileIters;
 
 						int threadChunkToUse = threadNum;
+						//Pull in 1/3 of the memory bandwidth for the actual file data
 						for(unsigned int j = firstIndex; j < lastIndex && minimum != -1; j++)
 						{
 							if(packedListSize > 0)
@@ -2043,7 +2074,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 							bool justPassedMemorySize = false;
 
 
-							vector<TreeHD> leaflet;//(packedListSize);
+							vector<TreeHD> leaflet;
 
 							for(PListType i = 0; i < packedListSize; i++)
 							{
@@ -2135,7 +2166,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								else
 								{
 									//if true already do not write again until memory is back in our hands
-									if(/*!justPassedMemorySize*/leaflet.size() > 0 && leaflet[0].leaves.size() > 0)
+									if(leaflet.size() > 0 && leaflet[0].leaves.size() > 0)
 									{
 										justPassedMemorySize = true;
 										stringstream stringBuilder;
@@ -2152,6 +2183,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 								}
 							}
 
+							//Write remaining patterns to file
 							if(leaflet.size() > 0 && leaflet[0].leaves.size() > 0)
 							{
 								stringstream stringBuilder;
@@ -2162,6 +2194,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 
 						}
 					
+						//Deallocate the previous level data
 						for(PListType p = 0; p < packedPListArray.size(); p++)
 						{
 							delete packedPListArray[p];
@@ -2171,8 +2204,10 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 				archive.CloseArchiveMMAP();
 			}
 
+			//Take all of the partial pattern files that were generated above and pull together all patterns to compile full pattern data
 			newPatternCount += ProcessChunksAndGenerate(fileNamesToReOpen, newFileNames, memDivisor, threadNum, currLevel, levelInfo.coreIndex);
 			
+			//Delete processing files
 			if(!config.history)
 			{
 				chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
@@ -2186,6 +2221,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			fileNamesToReOpen.clear();
 			newFileNames.clear();
 
+			//Record hd processing statistics
 			countMutex->lock();
 			stats.SetEradicationsPerLevel(currLevel, stats.GetEradicationsPerLevel(currLevel) + removedPatterns);
 			stats.SetEradicatedPatterns(stats.GetEradicatedPatterns() + removedPatterns);
@@ -2194,7 +2230,7 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 			if(newPatternCount > 0 && levelInfo.currLevel < config.maximum)
 			{
 				levelInfo.currLevel++;
-				//Have to add prediction here 
+				//Have to add prediction here to see if processing needs to be done in ram or not
 				bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, newPatternCount, (config.files[f]->fileStringSize - stats.GetEradicatedPatterns())/(config.numThreads));
 				if(!prediction)
 				{
@@ -2205,11 +2241,13 @@ PListType Forest::ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, b
 				{
 					
 					morePatternsToFind = true;
+					//If more threads are available then dispatch multiple threads to process the next level pattern data
 					DispatchNewThreadsHD(newPatternCount, morePatternsToFind, fileList, levelInfo, isThreadDefuncted);
 				}
 			}
 			else
 			{
+				//Delete remaining partial files if not patterns are left to process
 				chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
 				morePatternsToFind = false;
 			}
@@ -2424,15 +2462,14 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 
 	PListType continueSearching = 1;
 	PListType totalTallyRemovedPatterns = 0;
-	PListType newPatterns = 0;
 	string globalStringConstruct;
-	vector<PListType> pListTracker;
 	PListType fileSize = config.files[f]->fileStringSize;
 	PListType totalCount = 0;
+	//Process second level slightly differently than the other levels
 	if(levelInfo.currLevel == 2)
 	{
+		//Take a tally of all the patterns from the previous level
 		int threadCountage = 0;
-
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = static_cast<PListType>((*prevLocalPListArray)[i]->size());
@@ -2441,13 +2478,16 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				totalCount += pListLength;
 			}
 		}
+		//Preallocate
 		prevLinearList.reserve(totalCount);
 
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = static_cast<PListType>((*prevLocalPListArray)[i]->size());
+			//Greater than zero because we look at every thread's contribution to a pattern
 			if(pListLength > 0)
 			{
+				//Flatten out vector of pattern vectors into a flat vector of patterns 
 				threadCountage += pListLength;
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
 				delete  (*prevLocalPListArray)[i];
@@ -2457,6 +2497,8 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				delete (*prevLocalPListArray)[i];
 			}
 
+			//If Hard Disk was processed for the first level then modulo length of pattern
+			//based on the number of threads
 			if(!firstLevelProcessedHD)
 			{
 				if(i % config.numThreads == (config.numThreads - 1) && threadCountage > 1)
@@ -2472,9 +2514,10 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			}
 		}
 	}
+	//Process if levels are 3 or greater which doesn't involve combining first level data
 	else
 	{
-
+		//Get pattern total count
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = static_cast<PListType>((*prevLocalPListArray)[i]->size());
@@ -2484,11 +2527,14 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			}
 		}
 
+		//Preallocate
 		prevLinearList.reserve(totalCount);
 
+		//Convert vector of pattern vectors into a flat vector with an associated vector of pattern lengths
 		for (PListType i = 0; i < prevLocalPListArray->size(); i++)
 		{
 			PListType pListLength = static_cast<PListType>((*prevLocalPListArray)[i]->size());
+			//This is the only pattern information to look at so it must be greater than one instance to be a pattern
 			if(pListLength > 1)
 			{
 				prevLinearList.insert(prevLinearList.end(), (*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end());
@@ -2501,6 +2547,8 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			}
 		}
 	}
+	//Now allocate memory to eventually load pattern information into a contiguous memory vector instead of hopping around the file by indexing into it
+	//based on the patterns
 	globalStringConstruct.resize(totalCount);
 	globalStringConstruct.shrink_to_fit();
 	linearList.reserve(totalCount);
@@ -2519,6 +2567,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		PListType maxIndex = 0;
 		PListType stringIndexer = 0;
 
+		//Prep all pattern information for next level processing
 		if(levelInfo.currLevel == 2)
 		{
 			PListType linearListSize = static_cast<PListType>(prevLinearList.size());
@@ -2554,22 +2603,21 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			break;
 		}
 
+		//Shrink vector to be correct size
 		globalStringConstruct.resize(stringIndexer);
 		globalStringConstruct.shrink_to_fit();
 		stringIndexer = 0;
 		vector<PListType> newPList[256];
 
+		//Begin pattern processing with the global string data used for quicker processing
 		if(levelInfo.currLevel == 2)
 		{
+			//Use 256 stack vectors because one previous level pattern can only grow into 256 new pattern possibilites 
 			PListType prevPListSize = static_cast<PListType>(prevLinearList.size());
 			PListType indexes[256] = {0};
 			PListType indexesToPush[256] = {0};
-			//Banking off very random patterns
 			PListType firstPatternIndex[256] = {0};
-			PListType prevSize = 0;
 			int listLength = 0;
-
-
 			int currList = 0;
 			int currPosition = 0;
 			int limit = prevPListLengths[currList];
@@ -2579,7 +2627,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				PListType index = prevLinearList[i];
 				if (index < fileSize)
 				{
-					uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
+					uint8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
 					if(firstPatternIndex[indexIntoFile])
 					{
 						if(newPList[indexIntoFile].empty())
@@ -2608,6 +2656,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 						PListType insert = static_cast<PListType>(indexes[indexesToPush[k]]);
 						if (insert >= config.minOccurrence)
 						{
+							//Process and eliminate patterns if they overlap each other
 							if(config.nonOverlappingPatternSearch == NONOVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
@@ -2639,6 +2688,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 									pListLengths.push_back(totalTally);
 								}
 							}
+							//Process all patterns because patterns CAN overlap each other
 							else if(config.nonOverlappingPatternSearch == OVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
@@ -2681,6 +2731,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 							firstPatternIndex[indexesToPush[k]] = 0;
 							newPList[indexesToPush[k]].clear();
 						}
+						//If only one instance of a sequence of data then discard the previous pattern data
 						else if(insert == 1)
 						{
 							totalTallyRemovedPatterns++;
@@ -2700,16 +2751,14 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				}
 			}
 		}
+		//Process for levels 3 and greater
 		else
 		{
 			PListType prevPListSize = static_cast<PListType>(prevLinearList.size());
 			PListType indexes[256] = {0};
 			PListType indexesToPush[256] = {0};
-			//Banking off very random patterns
 			PListType firstPatternIndex[256] = {0};
-			PListType prevSize = 0;
 			int listLength = 0;
-
 
 			int currList = 0;
 			int currPosition = 0;
@@ -2720,7 +2769,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				PListType index = prevLinearList[i];
 				if (index < fileSize)
 				{
-					uint_fast8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
+					uint8_t indexIntoFile = (uint8_t)globalStringConstruct[stringIndexer++];
 					if(firstPatternIndex[indexIntoFile])
 					{
 						if(newPList[indexIntoFile].empty())
@@ -2749,6 +2798,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 						PListType insert = static_cast<PListType>(indexes[indexesToPush[k]]);
 						if (insert >= config.minOccurrence)
 						{
+							//Process and eliminate patterns if they overlap each other
 							if(config.nonOverlappingPatternSearch == NONOVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
@@ -2780,6 +2830,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 									pListLengths.push_back(totalTally);
 								}
 							}
+							//Process all patterns because patterns CAN overlap each other
 							else if(config.nonOverlappingPatternSearch == OVERLAP_PATTERNS)
 							{
 								//Monitor number of patterns that do not overlap ie coverage
@@ -2842,6 +2893,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			}
 		}
 
+		//Populate level statistics including most common pattern and instance of that pattern and how many patterns were found
 		countMutex->lock();
 
 		stats.SetEradicationsPerLevel(levelInfo.currLevel, stats.GetEradicationsPerLevel(levelInfo.currLevel) + totalTallyRemovedPatterns);
@@ -2887,9 +2939,8 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			countage += pListLengths[i];
 		}
 
-		
-
-		if(chosen/* && tempMostCommonPatternCount > stats.GetMostCommonPatternCount(levelInfo.currLevel)*/)
+		//If this level contains the most common pattern that add it
+		if(chosen)
 		{
 			countMutex->lock();
 			stats.SetMostCommonPattern(levelInfo.currLevel, tempMostCommonPatternCount, tempMostCommonPatternIndex);
@@ -2925,19 +2976,16 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				percentage = ((float)(totalCoverage)) / ((float)(config.files[f]->fileStringSize));
 			}
 
+			//Set coverage of pattern at this level
 			countMutex->lock();
 			stats.SetCoverage(levelInfo.currLevel, percentage);
 			countMutex->unlock();
 
-			if(totalTally != count)
-			{
-				//cout << "Number of overlapping patterns: " << count - totalTally << endl;
-			}
 		}
 
 		levelInfo.currLevel++;
 
-
+		//Swap previous and next level data for the proceeding level to process
 		if(linearList.size() == 0 || levelInfo.currLevel - 1 >= config.maximum)
 		{
 			prevLinearList.clear();
@@ -2953,17 +3001,19 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		}
 		else
 		{
-			//Have to add prediction here 
+			//Have to add prediction here to see if RAM or HD could be used 
 			bool prediction = PredictHardDiskOrRAMProcessing(levelInfo, static_cast<PListType>(pListLengths.size()), static_cast<PListType>(linearList.size()));
+			
+			//If we need to switch gears and process using the hard disk for this proceeding level
 			if(prediction)
 			{
 
 				PListType indexing = 0;
 				prevLocalPListArray->clear();
-				for(int piss = 0; piss < pListLengths.size(); piss++)
+				for(int i = 0; i < pListLengths.size(); i++)
 				{
-					prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing, linearList.begin() + indexing + pListLengths[piss]));
-					indexing += pListLengths[piss];
+					prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing, linearList.begin() + indexing + pListLengths[i]));
+					indexing += pListLengths[i];
 				}
 
 				continueSearching = static_cast<PListType>(pListLengths.size());
@@ -2974,6 +3024,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				pListLengths.reserve(0);
 				break;
 			}
+			//If still using RAM we can attempt to dispatch more processing threads for this proceeding level
 			else
 			{
 				continueSearching = static_cast<PListType>(pListLengths.size());
@@ -3001,25 +3052,27 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			}
 		}
 	}
+	//Return the number of patterns found at this level
 	return continueSearching;
 }
 
 void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo)
 {
+	//Grab the number of patterns to search with
 	PListType numPatternsToSearch = static_cast<PListType>(patternIndexList.size());
 	bool isThreadDefuncted = false;
-	//cout << "Threads dispatched: " << threadsDispatched << " Threads deported: " << threadsDefuncted << " Threads running: " << threadsDispatched - threadsDefuncted << endl;
 
-	int tempCurrentLevel = levelInfo.currLevel;
-
+	//Make sure to not use too many threads
 	if(threadsDispatched - threadsDefuncted > static_cast<int>(config.numThreads))
 	{
 		cout << "WENT OVER THREADS ALLOCATION SIZE!" << endl;
 	}
 
+	//Vectors used for previous and next level storage
 	vector<vector<PListType>*>* prevLocalPListArray = new vector<vector<PListType>*>();
 	vector<vector<PListType>*>*	globalLocalPListArray = new vector<vector<PListType>*>();
 
+	//If the previous level was processed using RAM then push data into the previous vector
 	if(levelInfo.useRAM)
 	{
 		for(PListType i = 0; i < numPatternsToSearch; i++)
@@ -3036,11 +3089,13 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 	bool useRAMBRO = levelInfo.useRAM;
 	while(continueSearching > 0)
 	{
-		
+		//If not the second level of processing then do a prediction
+		//because for level 2 the prediction is already done using levelInfo
 		if(levelInfo.currLevel != 2)
 		{
 			if(!config.usingPureHD && !config.usingPureRAM)
 			{
+				//Compute processing prediction 
 				bool prediction = processingRAM ? true : false;
 				PrepData(prediction, levelInfo, fileList, prevLocalPListArray);
 				useRAMBRO = !prediction;
@@ -3051,11 +3106,13 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 			useRAMBRO = levelInfo.useRAM;
 		}
 
+		//If RAM is predicted to be used then dispatch processing the previous level using RAM
 		if(useRAMBRO)
 		{
 			continueSearching = ProcessRAM(prevLocalPListArray, globalLocalPListArray, levelInfo, isThreadDefuncted);
 			processingRAM = true;
 		}
+		//If Hard Disk is predicted to be used then dispatch processing the previous level using Hard Disk
 		else
 		{
 			continueSearching = ProcessHD(levelInfo, fileList, isThreadDefuncted);
@@ -3063,24 +3120,24 @@ void Forest::ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* pa
 		}
 	}
 
+	//When processing is finished clean up vectors
 	if(prevLocalPListArray != NULL)
 	{
 		delete prevLocalPListArray;
 	}
-
 	if(globalLocalPListArray != NULL)
 	{
 		delete globalLocalPListArray;
 	}
 
+	//Defunct the thread so other threads can use more processing power
+	//this essentially lets other threads know there is an available thread for them
 	countMutex->lock();
 	if(!isThreadDefuncted)
 	{
 		threadsDefuncted++;
 	}
 	countMutex->unlock();
-
-	return;
 }
 
 void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum)
@@ -3090,6 +3147,8 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 	levelInfo.coreIndex = threadNum;
 	levelInfo.threadIndex = threadNum;
 
+	//Populate vector with 256 entries for the first level processing which can only have up to 256 patterns
+	//and make an early approximation for vector sizes to prevent as much reallocations as possible
 	PListType earlyApproximation = static_cast<PListType>(config.files[f]->fileString.size()/(256*(config.numThreads)));
 	vector<vector<PListType>*> leaves(256);
 	for(int i = 0; i < 256; i++)
@@ -3099,10 +3158,10 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 	}
 
 	PListType counting = 0;
-	PListType memDivisorInMB = (PListType)(memoryPerThread/3.0f);
-	//used primarily for just storage containment
+
 	for (PListType i = startPatternIndex; i < numPatternsToSearch + startPatternIndex; i++)
 	{
+		//Index into the file plus an offset if processing file in partitions
 		int temp = i + positionInFile + 1;
 		uint8_t tempIndex = (uint8_t)config.files[f]->fileString[i];
 		if(config.patternToSearchFor.size() == 0 || config.files[f]->fileString[i] == config.patternToSearchFor[0])
@@ -3110,12 +3169,14 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 			leaves[tempIndex]->push_back(temp);
 			counting++;
 		}
+		//If RAM memory is allocated over the limit then dump the patterns to file
 		if(overMemoryCount && counting >= PListArchive::hdSectorSize)
 		{
 			stringstream stringBuilder;
 			PListType newID = chunkFactorio->GenerateUniqueID();
 			stringBuilder << newID;
 			newFileNameList[threadNum].push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaves, levelInfo));
+			//Reallocate vectors for storage
 			for(int i = 0; i < 256; i++)
 			{
 				leaves[i] = new vector<PListType>();
@@ -3124,36 +3185,44 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 		}
 	}
 
+	//Push patterns to file from whatever is left of processing
 	stringstream stringBuilder;
 	PListType newID = chunkFactorio->GenerateUniqueID();
 	stringBuilder << newID;
 	newFileNameList[threadNum].push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaves, levelInfo));
-	
-	return;
 }
 
 void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, PListType threadIndex)
 {
+	//Populate vector with 256 entries for the first level processing which can only have up to 256 patterns
 	vector<PListType>* leaves[256];
 	for(int i = 0; i < 256; i++)
 	{
 		leaves[i] = new vector<PListType>();
 	}
+
+	//Last index in the file that will be processed, creating a range to search in
 	PListType endPatternIndex = numPatternsToSearch + startPatternIndex;
 
 	for (PListType i = startPatternIndex; i < endPatternIndex; i++)
 	{
+		//Index into the file plus an offset if processing file in partitions
 		int temp = i + positionInFile + 1;
 		uint8_t tempIndex = (uint8_t)config.files[f]->fileString[i];
+
+		//If ranges are set only search for patterns in the specified range
 		if(config.lowRange == config.highRange || tempIndex >= config.lowRange && tempIndex <= config.highRange)
 		{
 			leaves[tempIndex]->push_back(temp);
 		}
 	}
 
+	//Push new patterns into the shared vector that will be pulled together with the other processing threads
 	for(int i = 0; i < 256; i++)
 	{
 		(*prevPListArray)[threadIndex + i*config.numThreads] = leaves[i];
 	}
+
+	//Set level to 2 because level 1 processing is finished
 	stats.SetCurrentLevel(threadIndex, 2);
 }

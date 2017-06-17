@@ -3,6 +3,7 @@ PREREQS:
 cmake version 2.5 or higher 
 c++11 compatible compiler
 python 2.7 to run parallel serial jobs
+Visual Studio 2012 or 2015 if building in Windows
 
 BUILD INSTRUCTIONS:
 
