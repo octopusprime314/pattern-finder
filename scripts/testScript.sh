@@ -1,3 +1,5 @@
-../bin/./PatternFinder -f VOCdevkit -v 0 -c -hd
-../bin/./PatternFinder -f VOCdevkit -v 0 -c -ram
-../bin/./PatternFinder -f VOCdevkit -v 0 -c -mem 100
+cd ../bin
+./PatternFinder -f Data/ -v 1 -c -hd
+./PatternFinder -f Data/ -v 1 -c -ram
+./PatternFinder -f Data/ -v 1 -c -mem 200
+cd -
