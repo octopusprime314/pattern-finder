@@ -25,12 +25,16 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.levelToOutput = 0;
 	config.usingPureRAM = false;
 	config.usingPureHD = false;
+	config.levelToOutput = -1;
+	config.suppressStringOutput = false;
 	//Default pattern occurence size to 2
 	config.minOccurrence = 2;
 	config.nonOverlappingPatternSearch = ANY_PATTERNS;
 	config.history = 0;
 	config.threadLimitation = 0;
 	config.lowRange = config.highRange = 0;
+	//-1 is the largest unsigned int value
+	config.minimumFrequency = -1;
 
 	bool minEnter = false;
 	bool maxEnter = false;
@@ -146,11 +150,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		{
 			config.nonOverlappingPatternSearch = OVERLAP_PATTERNS;
 		}
-		else if(arg.compare("-lev") == 0 )
-		{
-			config.levelToOutput = atoi(argv[i + 1]);
-			i++;
-		}
 		else if(arg.compare("-his") == 0)
 		{
 			config.history = atoi(argv[i + 1]);
@@ -164,10 +163,22 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		{
 			config.usingPureHD = true;
 		}
-		else if(arg.compare("-p") == 0)
+		else if(arg.compare("-plevel") == 0)
 		{
-			config.patternToSearchFor = argv[i+1];
-			config.maximum = static_cast<PListType>(config.patternToSearchFor.size());
+			//if levelToOutput is set to 0 then display all levels
+			//otherwise print out information for just one level0)
+			config.levelToOutput = atoi(argv[i+1]);
+			i++;
+		}
+		else if(arg.compare("-pnoname") == 0)
+		{
+			//If pnoname is selected then string is not to be displayed
+			config.suppressStringOutput = true;
+		}
+		else if(arg.compare("-ptop") == 0)
+		{
+			//Minimum frequency a pattern has to show up to be printed
+			config.minimumFrequency = atoi(argv[i+1]);
 			i++;
 		}
 		else if(arg.compare("-i") == 0)

@@ -6,6 +6,7 @@
 #pragma once
 #include "TypeDefines.h"
 #include <vector>
+#include <iostream>
 using namespace std;
 
 class ProcessorStats
@@ -144,6 +145,27 @@ public:
 	 *  @return PListType returns coverage vector
 	 */
 	vector<float> GetCoverageVector(){ return coverage; }
+
+	/** @brief Sets average distance that the most common pattern has over the entire file 
+	 *
+	 *  @param currLevel current level that has this coverage
+	 *  @param cover coverage the pattern has throughout the file
+	 *  @return void
+	 */
+	void SetDistance(PListType currLevel, float distance);
+
+	/** @brief Gets distance of the most common pattern at a certain level
+	 *
+	 *  @param currLevel level coverage
+	 *  @return float returns most common patterns coverage at a level
+	 */
+	float GetDistance(PListType currLevel);
+
+	/** @brief Gets distance vector
+	 *
+	 *  @return PListType returns coverage vector
+	 */
+	vector<float> GetDistanceVector(){ return averageDistanceVector; }
 	
 	/** @brief Resets statistic data used for large dataset processing
 	 *
@@ -173,6 +195,23 @@ public:
 	 */
 	void SetUsingRAM(unsigned int thread, bool val){ usedRAM[thread] = val; }
 
+	//Struct used to store detailed pattern information when user indicates -plevel N
+	struct DisplayStruct
+	{
+		//String data
+		string pattern;
+		//Number of times this pattern is in the file
+		PListType patternInstances;
+		//What portion of the pattern is contained within the file
+		float patternCoveragePercentage;
+		//The separation length in memory that pattern instances occur
+		float averagePatternDistance;
+		//Location in file that the first instance of the pattern occurs
+		PListType firstIndexToPattern;
+	};
+	
+	vector<DisplayStruct> detailedLevelInfo;
+
 private:
 
 	//File statistics
@@ -183,6 +222,7 @@ private:
 	vector<PListType> levelRecordings;
 	vector<PListType> eradicationsPerLevel;
 	vector<PListType> currentLevelVector;
+	vector<float> averageDistanceVector;
 	vector<PListType> mostCommonPatternCount;
 	vector<PListType> mostCommonPatternIndex;
 	PListType eradicatedPatterns;

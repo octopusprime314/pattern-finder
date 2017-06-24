@@ -144,6 +144,8 @@ public:
 	 */
 	static void fileCoverageCSV(const vector<float>& coverage);
 
+	static ofstream* patternOutputFile;
+
 private:
 	/** Streams used to write and read to files */
 	static string stringBuffer;

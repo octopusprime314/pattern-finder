@@ -12,6 +12,7 @@ ProcessorStats::ProcessorStats(void)
 	levelRecordings.resize(1);
 	eradicationsPerLevel.resize(1);
 	currentLevelVector.resize(1);
+	averageDistanceVector.resize(1);
 	eradicatedPatterns = 0;
 }
 
@@ -146,7 +147,26 @@ float ProcessorStats::GetCoverage(PListType currLevel)
 	return coverage[currLevel - 1];
 }
 
+void ProcessorStats::SetDistance(PListType currLevel, float distance)
+{
+	if(averageDistanceVector.size() < currLevel)
+	{
+		averageDistanceVector.resize(currLevel);
+	}
+	if(distance > averageDistanceVector[currLevel - 1])
+	{
+		averageDistanceVector[currLevel - 1] = distance;
+	}
+}
 
+float ProcessorStats::GetDistance(PListType currLevel)
+{
+	if(averageDistanceVector.size() < currLevel)
+	{
+		averageDistanceVector.resize(currLevel);
+	}
+	return averageDistanceVector[currLevel - 1];
+}
 
 void ProcessorStats::ResetData()
 {
@@ -159,5 +179,6 @@ void ProcessorStats::ResetData()
 	levelRecordings.clear();
 	eradicationsPerLevel.clear();
 	currentLevelVector.clear();
+	averageDistanceVector.clear();
 	eradicatedPatterns = 0;
 }

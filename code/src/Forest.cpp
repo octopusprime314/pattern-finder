@@ -4,8 +4,24 @@
 #include <list>
 #include <algorithm>
 #include <signal.h>
+#include <numeric>
 
 bool Forest::overMemoryCount = false;
+
+
+vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v) {
+
+  // initialize original index locations
+  vector<size_t> idx(v.size());
+  iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v
+  sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1].patternInstances > v[i2].patternInstances;});
+
+  return idx;
+}
+
 Forest::Forest(int argc, char **argv)
 {
 
@@ -257,6 +273,11 @@ Forest::Forest(int argc, char **argv)
 					PListType indexOfList = 0;
 					std::map<string, PListType> countMap;
 					std::map<string, vector<PListType>> indexMap;
+
+					vector<PListType> pListLengths;
+					vector<PListType> linearList;
+					vector<vector<PListType>> consolodatedList(256);
+
 					for (PListType i = 0; i < prevPListArray->size(); i++)
 					{
 						if((*prevPListArray)[i] != nullptr && (*prevPListArray)[i]->size() > 0)
@@ -272,6 +293,10 @@ Forest::Forest(int argc, char **argv)
 								indexOfList = i;
 							}
 
+							
+							consolodatedList[i / config.numThreads].insert(consolodatedList[i / config.numThreads].end(), (*prevPListArray)[i]->begin(), (*prevPListArray)[i]->end());
+							
+
 							if((*prevPListArray)[i]->size() >= 1)
 							{
 								indexMap[config.files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)].push_back(i);
@@ -286,7 +311,53 @@ Forest::Forest(int argc, char **argv)
 							removedPatterns++;
 						}
 					}
+					
+					for( auto pList : consolodatedList)
+					{
+						if(pList.size() > 1)
+						{
+							pListLengths.push_back(pList.size());
+							linearList.insert(linearList.end(), pList.begin(), pList.end());
+						}
+					}
 
+					//Keeps track of the index in pListLengths vector
+					vector<PListType> positionsInLinearList(pListLengths.size());
+					PListType pos = 0;
+					for(PListType i = 0; i < positionsInLinearList.size(); i++)
+					{
+						positionsInLinearList[i] = pos;
+						pos += pListLengths[i];
+					}
+					PListType distances = 0;
+					for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
+					{
+						PListType index = positionsInLinearList[z];
+						PListType length = pListLengths[z];
+						//Calculate average distance between pattern instances
+						for(int i = index; i < index + length - 1; i++)
+						{
+							distances += linearList[i+1] - linearList[i];
+						}
+						PListType averageDistance = distances/(length - 1);
+						stringstream data;
+
+						//Struct used to contain detailed pattern information for one level
+						ProcessorStats::DisplayStruct outputData;
+						outputData.patternInstances = length;
+						outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
+						outputData.averagePatternDistance =  averageDistance;
+						outputData.firstIndexToPattern = linearList[index];
+				
+						//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+						if(!config.suppressStringOutput)
+						{
+							outputData.pattern = config.files[f]->fileString.substr(linearList[index] - levelInfo.currLevel, levelInfo.currLevel);
+						}
+						stats.detailedLevelInfo.push_back(outputData);
+					}
+
+					
 					stats.SetLevelRecording(levelInfo.currLevel, static_cast<PListType>(countMap.size() - removedPatterns));
 
 					//Coverage cannot overlap on the first level by definition
@@ -360,17 +431,40 @@ Forest::Forest(int argc, char **argv)
 				config.files[f]->copyBuffer->read( &config.files[f]->fileString[0], config.files[f]->fileString.size());
 			}
 
-			//If verbosity level is set to 1 then write all pattern information to the log file
-			if(Logger::verbosity)
+			
+			for(PListType j = 0; j < stats.GetLevelRecordingSize() && stats.GetLevelRecording(j + 1) != 0; j++)
 			{
-				for(PListType j = 0; j < stats.GetLevelRecordingSize() && stats.GetLevelRecording(j + 1) != 0; j++)
+				(*Logger::patternOutputFile) << "Level " << j + 1 << std::endl;
+
+				if(config.levelToOutput == j + 1)
+				{
+					vector<size_t> indexMap = sort_indexes(stats.detailedLevelInfo);
+					PListType distances = 0;
+					PListType number = 1;
+					stringstream buff;
+					string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
+					for(PListType z = 0; z < stats.detailedLevelInfo.size() && z < config.minimumFrequency; z++)
+					{
+						//Struct used to contain detailed pattern information for one level
+						ProcessorStats::DisplayStruct outputData = stats.detailedLevelInfo[indexMap[z]];
+						
+						buff.str("");
+						buff << number << ". " << outputData.pattern << ", " << outputData.patternInstances << ", " << outputData.patternCoveragePercentage << ", " << outputData.averagePatternDistance << ", " << outputData.firstIndexToPattern << endl;
+						(*Logger::patternOutputFile) << buff.str();
+						number++;
+					}
+				}
+				else
 				{
 					string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
 					stringstream buff;
-					buff << "Level " << j + 1 << " count is " << stats.GetLevelRecording(j + 1) << " with most common pattern being: \"" << pattern << "\"" << " occured " << stats.GetMostCommonPatternCount(j + 1) << " and coverage was " << stats.GetCoverage(j + 1) << "% " << "eradicated patterns " << stats.GetEradicationsPerLevel(j + 1) << endl;
-					Logger::WriteLog(buff.str());
+					buff << "1. " << pattern << ", " << stats.GetMostCommonPatternCount(j + 1) << 
+						", " << stats.GetCoverage(j + 1) << ", " << stats.GetDistance(j + 1) << ", " << 
+						stats.GetMostCommonPatternIndex(j + 1) << endl;
+					(*Logger::patternOutputFile) << buff.str();
 				}
 			}
+			
 
 			//Save pattern to csv format for matlab post processing scripts
 			Logger::fillPatternData(config.files[f]->fileString, stats.GetMostCommonPatternIndexVector(), stats.GetMostCommonPatternCountVector());
@@ -553,6 +647,7 @@ void Forest::MemoryQuery()
 		}
 	}
 }
+
 
 bool Forest::PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount, PListType sizeOfString)
 {
@@ -2896,6 +2991,46 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		//Populate level statistics including most common pattern and instance of that pattern and how many patterns were found
 		countMutex->lock();
 
+		//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
+		if(config.levelToOutput == 0 || config.levelToOutput == levelInfo.currLevel)
+		{
+			//Keeps track of the index in pListLengths vector
+			vector<PListType> positionsInLinearList(pListLengths.size());
+			PListType pos = 0;
+			for(PListType i = 0; i < positionsInLinearList.size(); i++)
+			{
+				positionsInLinearList[i] = pos;
+				pos += pListLengths[i];
+			}
+			PListType distances = 0;
+			for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
+			{
+				PListType index = positionsInLinearList[z];
+				PListType length = pListLengths[z];
+				//Calculate average distance between pattern instances
+				for(int i = index; i < index + length - 1; i++)
+				{
+					distances += linearList[i+1] - linearList[i];
+				}
+				PListType averageDistance = distances/(length - 1);
+				stringstream data;
+
+				//Struct used to contain detailed pattern information for one level
+				ProcessorStats::DisplayStruct outputData;
+				outputData.patternInstances = length;
+				outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
+				outputData.averagePatternDistance =  averageDistance;
+				outputData.firstIndexToPattern = linearList[index];
+				
+				//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+				if(!config.suppressStringOutput)
+				{
+					outputData.pattern = config.files[f]->fileString.substr(linearList[index] - levelInfo.currLevel, levelInfo.currLevel);
+				}
+				stats.detailedLevelInfo.push_back(outputData);
+			}
+		}
+
 		stats.SetEradicationsPerLevel(levelInfo.currLevel, stats.GetEradicationsPerLevel(levelInfo.currLevel) + totalTallyRemovedPatterns);
 		stats.SetEradicatedPatterns(stats.GetEradicatedPatterns() + totalTallyRemovedPatterns);
 		stats.SetLevelRecording(levelInfo.currLevel, stats.GetLevelRecording(levelInfo.currLevel) + static_cast<PListType>(pListLengths.size()));
@@ -2911,6 +3046,8 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		PListType indexOfList = 0;
 		bool chosen = false;
 		PListType unalteredCount = 0;
+		PListType indexToDistance = 0;
+		PListType distanceLength = 0;
 		for (PListType i = 0; i < pListLengths.size(); i++)
 		{
 			if(pListLengths[i] > 1)
@@ -2931,6 +3068,8 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				{
 					tempMostCommonPatternCount = tallyCount;
 					unalteredCount = pListLengths[i];
+					indexToDistance = countage;
+					distanceLength = pListLengths[i];
 					tempMostCommonPatternIndex = linearList[countage] - levelInfo.currLevel;
 					indexOfList = countage;
 					chosen = true;
@@ -2944,6 +3083,13 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		{
 			countMutex->lock();
 			stats.SetMostCommonPattern(levelInfo.currLevel, tempMostCommonPatternCount, tempMostCommonPatternIndex);
+			PListType distances = 0;
+			for(PListType j = indexToDistance; j < indexToDistance + distanceLength - 1; j++)
+			{
+				distances += linearList[j+1] - linearList[j];
+			}
+			PListType averageDistance = distances/(distanceLength - 1);
+			stats.SetDistance(levelInfo.currLevel, averageDistance);
 			countMutex->unlock();
 
 			//Monitor number of patterns that do not overlap ie coverage

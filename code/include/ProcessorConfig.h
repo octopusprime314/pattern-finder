@@ -24,7 +24,7 @@ struct ConfigurationParams
 	PatternDiscoveryType nonOverlappingPatternSearch;
 	PListType memoryBandwidthMB;
 	bool usingMemoryBandwidth;
-	unsigned int levelToOutput;
+	int levelToOutput;
 	string patternToSearchFor;
 	unsigned int testIterations;
 	PListType minOccurrence;
@@ -34,6 +34,8 @@ struct ConfigurationParams
 	int threadLimitation;
 	unsigned char lowRange;
 	unsigned char highRange;
+	bool suppressStringOutput;
+	unsigned int minimumFrequency;
 };
 class ProcessorConfig
 {

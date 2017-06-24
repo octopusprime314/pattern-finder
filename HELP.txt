@@ -17,6 +17,9 @@ USAGE:
 		   -his     [hd files]
 		   -lr      [low range pattern search]
 		   -hr		[high range pattern search]
+		   -pnoname 
+		   -plevel  [level to show detailed output]
+		   -ptop    [n most common patterns indicated by -plevel]
 Options:
 	-help                   Displays this help page 
 	/?                      Displays this help page    
@@ -35,7 +38,9 @@ Options:
 	-his					HD processing file history keeps all files or removes them level by level with a 1 or a 0
 	-lr  				    Search for patterns that begin with the value lr to 255 if hr isn't set, otherwise lr to hr range
 	-hr  				    Search for patterns that begin with the value hr to 0 if lr isn't set, otherwise lr to hr range 
-	
+	-pnoname 				Do not print pattern string data
+	-plevel					Sets the level the user wants to see detailed output for
+	-ptop					Display the top N most common patterns in detail for the level indicated by -plevel
 Examples:
 
 1) ./PatternFinder –f Database –v 1 –threads 4 –ram

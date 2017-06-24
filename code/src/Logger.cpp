@@ -12,10 +12,13 @@
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + GetPID() + ".csv", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternOutputFile = new ofstream(LOGGERPATH + "Output" + GetPID() + ".txt" , ios_base::in | ios_base::out | ios_base::trunc);
 #elif defined(__linux__)
 ofstream* Logger::outputFile = new ofstream(LOGGERPATH + "Log" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::patternDataFile = new ofstream(CSVPATH + "CollectivePatternData" + GetPID() + ".txt", ios_base::in | ios_base::out | ios_base::trunc);
 ofstream* Logger::coverageFile = new ofstream(CSVPATH + "PatternVsFileCoverage" + GetPID() + ".csv" , ios_base::in | ios_base::out | ios_base::trunc);
+ofstream* Logger::patternOutputFile = new ofstream(LOGGERPATH + "Output" + GetPID() + ".txt" , ios_base::in | ios_base::out | ios_base::trunc);
+
 #endif
 	
 
