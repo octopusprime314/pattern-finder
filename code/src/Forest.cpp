@@ -362,7 +362,7 @@ Forest::Forest(int argc, char **argv)
 							stats.detailedLevelInfo.push_back(outputData);
 						}
 					}
-					mostCommonPatternIndex /= 8;
+					mostCommonPatternIndex /= config.numThreads;
 					PListType distances = 0;
 					for(PListType j = 0; j < consolodatedList[mostCommonPatternIndex].size() - 1; j++)
 					{
