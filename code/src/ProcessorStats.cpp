@@ -44,7 +44,10 @@ void ProcessorStats::SetMostCommonPattern(PListType currLevel, PListType count, 
 	if(count > mostCommonPatternCount[currLevel - 1])
 	{
 		mostCommonPatternCount[currLevel - 1] = count;
-		mostCommonPatternIndex[currLevel - 1] = index;
+		if(mostCommonPatternIndex[currLevel - 1] == 0 || index < mostCommonPatternIndex[currLevel - 1])
+		{
+			mostCommonPatternIndex[currLevel - 1] = index;
+		}
 	}
 }
 

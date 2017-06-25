@@ -344,7 +344,7 @@ Forest::Forest(int argc, char **argv)
 							{
 								distances += linearList[i+1] - linearList[i];
 							}
-							PListType averageDistance = distances/(length - 1);
+							float averageDistance = ((float)distances)/((float)(length - 1));
 							stringstream data;
 
 							//Struct used to contain detailed pattern information for one level
@@ -368,7 +368,7 @@ Forest::Forest(int argc, char **argv)
 					{
 						distances += consolodatedList[mostCommonPatternIndex][j+1] - consolodatedList[mostCommonPatternIndex][j];
 					}
-					PListType averageDistance = distances/(consolodatedList[mostCommonPatternIndex].size() - 1);
+					float averageDistance = ((float)distances)/((float)(consolodatedList[mostCommonPatternIndex].size() - 1));
 					stats.SetDistance(levelInfo.currLevel, averageDistance);
 					
 					stats.SetLevelRecording(levelInfo.currLevel, static_cast<PListType>(countMap.size() - removedPatterns));
@@ -3016,7 +3016,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				pos += pListLengths[i];
 			}
 			PListType distances = 0;
-			for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
+			for(PListType z = 0; z < pListLengths.size(); z++)
 			{
 				PListType index = positionsInLinearList[z];
 				PListType length = pListLengths[z];
@@ -3025,14 +3025,14 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				{
 					distances += linearList[i+1] - linearList[i];
 				}
-				PListType averageDistance = distances/(length - 1);
+				float averageDistance = ((float)distances)/((float)(length - 1));
 				stringstream data;
 
 				//Struct used to contain detailed pattern information for one level
 				ProcessorStats::DisplayStruct outputData;
 				outputData.patternInstances = length;
 				outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
-				outputData.averagePatternDistance =  averageDistance;
+				outputData.averagePatternDistance = averageDistance;
 				outputData.firstIndexToPattern = linearList[index];
 				
 				//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
@@ -3101,7 +3101,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			{
 				distances += linearList[j+1] - linearList[j];
 			}
-			PListType averageDistance = distances/(distanceLength - 1);
+			float averageDistance = ((float)distances)/((float)(distanceLength - 1));
 			stats.SetDistance(levelInfo.currLevel, averageDistance);
 			countMutex->unlock();
 
