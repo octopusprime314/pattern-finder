@@ -277,6 +277,7 @@ Forest::Forest(int argc, char **argv)
 					vector<PListType> pListLengths;
 					vector<PListType> linearList;
 					vector<vector<PListType>> consolodatedList(256);
+					int mostCommonPatternIndex;
 
 					for (PListType i = 0; i < prevPListArray->size(); i++)
 					{
@@ -289,7 +290,7 @@ Forest::Forest(int argc, char **argv)
 								stats.SetMostCommonPattern(levelInfo.currLevel, 
 									countMap[config.files[f]->fileString.substr((*(*prevPListArray)[i])[0] - (levelInfo.currLevel), levelInfo.currLevel)],
 									(*(*prevPListArray)[i])[0] - (levelInfo.currLevel));
-
+								mostCommonPatternIndex = i;
 								indexOfList = i;
 							}
 
@@ -312,51 +313,63 @@ Forest::Forest(int argc, char **argv)
 						}
 					}
 					
-					for( auto pList : consolodatedList)
+					//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
+					if(config.levelToOutput == 0 || config.levelToOutput == levelInfo.currLevel)
 					{
-						if(pList.size() > 1)
-						{
-							pListLengths.push_back(pList.size());
-							linearList.insert(linearList.end(), pList.begin(), pList.end());
-						}
-					}
 
-					//Keeps track of the index in pListLengths vector
-					vector<PListType> positionsInLinearList(pListLengths.size());
-					PListType pos = 0;
-					for(PListType i = 0; i < positionsInLinearList.size(); i++)
-					{
-						positionsInLinearList[i] = pos;
-						pos += pListLengths[i];
-					}
-					PListType distances = 0;
-					for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
-					{
-						PListType index = positionsInLinearList[z];
-						PListType length = pListLengths[z];
-						//Calculate average distance between pattern instances
-						for(int i = index; i < index + length - 1; i++)
+						for( auto pList : consolodatedList)
 						{
-							distances += linearList[i+1] - linearList[i];
+							if(pList.size() > 1)
+							{
+								pListLengths.push_back(pList.size());
+								linearList.insert(linearList.end(), pList.begin(), pList.end());
+							}
 						}
-						PListType averageDistance = distances/(length - 1);
-						stringstream data;
 
-						//Struct used to contain detailed pattern information for one level
-						ProcessorStats::DisplayStruct outputData;
-						outputData.patternInstances = length;
-						outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
-						outputData.averagePatternDistance =  averageDistance;
-						outputData.firstIndexToPattern = linearList[index];
+						//Keeps track of the index in pListLengths vector
+						vector<PListType> positionsInLinearList(pListLengths.size());
+						PListType pos = 0;
+						for(PListType i = 0; i < positionsInLinearList.size(); i++)
+						{
+							positionsInLinearList[i] = pos;
+							pos += pListLengths[i];
+						}
+						PListType distances = 0;
+						for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
+						{
+							PListType index = positionsInLinearList[z];
+							PListType length = pListLengths[z];
+							//Calculate average distance between pattern instances
+							for(int i = index; i < index + length - 1; i++)
+							{
+								distances += linearList[i+1] - linearList[i];
+							}
+							PListType averageDistance = distances/(length - 1);
+							stringstream data;
+
+							//Struct used to contain detailed pattern information for one level
+							ProcessorStats::DisplayStruct outputData;
+							outputData.patternInstances = length;
+							outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
+							outputData.averagePatternDistance =  averageDistance;
+							outputData.firstIndexToPattern = linearList[index];
 				
-						//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
-						if(!config.suppressStringOutput)
-						{
-							outputData.pattern = config.files[f]->fileString.substr(linearList[index] - levelInfo.currLevel, levelInfo.currLevel);
+							//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+							if(!config.suppressStringOutput)
+							{
+								outputData.pattern = config.files[f]->fileString.substr(linearList[index] - levelInfo.currLevel, levelInfo.currLevel);
+							}
+							stats.detailedLevelInfo.push_back(outputData);
 						}
-						stats.detailedLevelInfo.push_back(outputData);
 					}
-
+					mostCommonPatternIndex /= 8;
+					PListType distances = 0;
+					for(PListType j = 0; j < consolodatedList[mostCommonPatternIndex].size() - 1; j++)
+					{
+						distances += consolodatedList[mostCommonPatternIndex][j+1] - consolodatedList[mostCommonPatternIndex][j];
+					}
+					PListType averageDistance = distances/(consolodatedList[mostCommonPatternIndex].size() - 1);
+					stats.SetDistance(levelInfo.currLevel, averageDistance);
 					
 					stats.SetLevelRecording(levelInfo.currLevel, static_cast<PListType>(countMap.size() - removedPatterns));
 
