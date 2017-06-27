@@ -313,18 +313,19 @@ Forest::Forest(int argc, char **argv)
 						}
 					}
 					
+					for( auto pList : consolodatedList)
+					{
+						if(pList.size() > 1)
+						{
+							pListLengths.push_back(pList.size());
+							linearList.insert(linearList.end(), pList.begin(), pList.end());
+							stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, pList.size());
+						}
+					}
+
 					//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
 					if(config.levelToOutput == 0 || config.levelToOutput == levelInfo.currLevel)
 					{
-
-						for( auto pList : consolodatedList)
-						{
-							if(pList.size() > 1)
-							{
-								pListLengths.push_back(pList.size());
-								linearList.insert(linearList.end(), pList.begin(), pList.end());
-							}
-						}
 
 						//Keeps track of the index in pListLengths vector
 						vector<PListType> positionsInLinearList(pListLengths.size());
@@ -449,6 +450,13 @@ Forest::Forest(int argc, char **argv)
 			{
 				(*Logger::patternOutputFile) << "Level " << j + 1 << std::endl;
 
+				string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
+					stringstream buff;
+					buff << "unique patterns = " << stats.GetLevelRecording(j+1) << 
+						", average occurrence frequency = " << ((double)stats.GetTotalOccurrenceFrequency(j+1))/((double)stats.GetLevelRecording(j+1)) << 
+						", frequency of top pattern: " << stats.GetMostCommonPatternCount(j + 1) << endl;
+					(*Logger::patternOutputFile) << buff.str();
+
 				if(config.levelToOutput == j + 1)
 				{
 					vector<size_t> indexMap = sort_indexes(stats.detailedLevelInfo);
@@ -462,19 +470,17 @@ Forest::Forest(int argc, char **argv)
 						ProcessorStats::DisplayStruct outputData = stats.detailedLevelInfo[indexMap[z]];
 						
 						buff.str("");
-						buff << number << ". " << outputData.pattern << ", " << outputData.patternInstances << ", " << outputData.patternCoveragePercentage << ", " << outputData.averagePatternDistance << ", " << outputData.firstIndexToPattern << endl;
+						if(config.suppressStringOutput)
+						{
+							buff << number << ". instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance << ", first occurrence index = " << outputData.firstIndexToPattern << endl;
+						}
+						else
+						{
+							buff << number << ". pattern = " << outputData.pattern << ", instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance << ", first occurrence index = " << outputData.firstIndexToPattern << endl;
+						}
 						(*Logger::patternOutputFile) << buff.str();
 						number++;
 					}
-				}
-				else
-				{
-					string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
-					stringstream buff;
-					buff << "1. " << pattern << ", " << stats.GetMostCommonPatternCount(j + 1) << 
-						", " << stats.GetCoverage(j + 1) << ", " << stats.GetDistance(j + 1) << ", " << 
-						stats.GetMostCommonPatternIndex(j + 1) << endl;
-					(*Logger::patternOutputFile) << buff.str();
 				}
 			}
 			
@@ -3004,6 +3010,12 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 		//Populate level statistics including most common pattern and instance of that pattern and how many patterns were found
 		countMutex->lock();
 
+		//Add all of the pattern counts
+		for(PListType i : pListLengths)
+		{
+			stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, i);
+		}
+
 		//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
 		if(config.levelToOutput == 0 || config.levelToOutput == levelInfo.currLevel)
 		{
@@ -3020,10 +3032,15 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 			{
 				PListType index = positionsInLinearList[z];
 				PListType length = pListLengths[z];
+				PListType coverageSubtraction = 0;
 				//Calculate average distance between pattern instances
 				for(int i = index; i < index + length - 1; i++)
 				{
 					distances += linearList[i+1] - linearList[i];
+					if(linearList[i+1] - linearList[i] < levelInfo.currLevel)
+					{
+						coverageSubtraction += levelInfo.currLevel - (linearList[i+1] - linearList[i]);
+					}
 				}
 				float averageDistance = ((float)distances)/((float)(length - 1));
 				stringstream data;
@@ -3031,7 +3048,7 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				//Struct used to contain detailed pattern information for one level
 				ProcessorStats::DisplayStruct outputData;
 				outputData.patternInstances = length;
-				outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel)/(float)config.files[f]->fileStringSize;
+				outputData.patternCoveragePercentage = (float)100.0f*(((length*levelInfo.currLevel) - coverageSubtraction))/(float)config.files[f]->fileStringSize;
 				outputData.averagePatternDistance = averageDistance;
 				outputData.firstIndexToPattern = linearList[index];
 				

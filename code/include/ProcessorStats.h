@@ -173,6 +173,21 @@ public:
 	 */
 	void ResetData();
 
+	/** @brief Sets average occurence frequency for a level
+	 *
+	 *  @param currLevel current level that has this average occurrence frequency
+	 *  @param cover coverage the pattern has throughout the file
+	 *  @return void
+	 */
+	void SetTotalOccurrenceFrequency(PListType currLevel, float aveOccurenceFreq);
+
+	/** @brief Sets average occurence frequency at a level
+	 *
+	 *  @param currLevel level coverage
+	 *  @return float returns average occurrence frequency at a level
+	 */
+	PListType GetTotalOccurrenceFrequency(PListType currLevel);
+
 	/** @brief Initializes some thread statistics
 	 *
 	 *  @param threadCount number of threads to be used for processing
@@ -226,5 +241,6 @@ private:
 	vector<PListType> mostCommonPatternCount;
 	vector<PListType> mostCommonPatternIndex;
 	PListType eradicatedPatterns;
+	vector<PListType> totalOccurrenceFrequency;
 };
 

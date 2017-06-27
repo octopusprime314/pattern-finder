@@ -150,6 +150,24 @@ float ProcessorStats::GetCoverage(PListType currLevel)
 	return coverage[currLevel - 1];
 }
 
+void ProcessorStats::SetTotalOccurrenceFrequency(PListType currLevel, float occurenceFreq)
+{
+	if(totalOccurrenceFrequency.size() < currLevel)
+	{
+		totalOccurrenceFrequency.resize(currLevel);
+	}
+	totalOccurrenceFrequency[currLevel - 1] += occurenceFreq;
+}
+
+PListType ProcessorStats::GetTotalOccurrenceFrequency(PListType currLevel)
+{
+	if(totalOccurrenceFrequency.size() < currLevel)
+	{
+		totalOccurrenceFrequency.resize(currLevel);
+	}
+	return totalOccurrenceFrequency[currLevel - 1];
+}
+
 void ProcessorStats::SetDistance(PListType currLevel, float distance)
 {
 	if(averageDistanceVector.size() < currLevel)
