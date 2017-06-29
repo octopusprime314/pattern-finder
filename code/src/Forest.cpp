@@ -335,9 +335,9 @@ Forest::Forest(int argc, char **argv)
 							positionsInLinearList[i] = pos;
 							pos += pListLengths[i];
 						}
-						PListType distances = 0;
-						for(PListType z = 0; z < pListLengths.size() && z < config.minimumFrequency; z++)
+						for(PListType z = 0; z < pListLengths.size(); z++)
 						{
+							PListType distances = 0;
 							PListType index = positionsInLinearList[z];
 							PListType length = pListLengths[z];
 							//Calculate average distance between pattern instances
@@ -1569,6 +1569,48 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 							currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 							interimCount++;
 							stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
+
+							//Record level statistics
+							countMutex->lock();
+							stats.SetTotalOccurrenceFrequency(currLevel, iterator->second->size());
+
+							//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
+							if(config.levelToOutput == 0 || config.levelToOutput == currLevel)
+							{
+								PListType distances = 0;
+								PListType index = 0;
+								PListType length = iterator->second->size();
+								PListType coverageSubtraction = 0;
+								//Calculate average distance between pattern instances
+								for(int i = index; i < index + length - 1; i++)
+								{
+									distances += (*iterator->second)[i+1] - (*iterator->second)[i];
+									if((*iterator->second)[i+1] - (*iterator->second)[i] < currLevel)
+									{
+										coverageSubtraction += currLevel - ((*iterator->second)[i+1] - (*iterator->second)[i]);
+									}
+								}
+
+								float averageDistance = ((float)distances)/((float)(length - 1));
+								stringstream data;
+
+								//Struct used to contain detailed pattern information for one level
+								ProcessorStats::DisplayStruct outputData;
+								outputData.patternInstances = length;
+								outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction))/(float)config.files[f]->fileStringSize;
+								outputData.averagePatternDistance = averageDistance;
+								outputData.firstIndexToPattern = (*iterator->second)[index];
+				
+								//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+								if(!config.suppressStringOutput)
+								{
+									outputData.pattern = config.files[f]->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
+								}
+								stats.detailedLevelInfo.push_back(outputData);
+							}
+
+							countMutex->unlock();
+
 						}
 						else
 						{
@@ -1752,7 +1794,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 		//Start writing the patterns in pattern map to disk for complete pattern pictures
 		PListArchive* currChunkFile = NULL;
 		bool notBegun = true;
-
+		
 		for(auto iterator = finalMetaDataMap.begin(); iterator != finalMetaDataMap.end(); iterator++)
 		{
 			if(notBegun)
@@ -1797,6 +1839,48 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
 				currChunkFile->WriteArchiveMapMMAP(*iterator->second);
 				interimCount++;
 				stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
+
+				//Record level statistics
+				countMutex->lock();
+				stats.SetTotalOccurrenceFrequency(currLevel, iterator->second->size());
+
+				//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
+				if(config.levelToOutput == 0 || config.levelToOutput == currLevel)
+				{
+					PListType index = 0;
+					PListType length = iterator->second->size();
+					PListType coverageSubtraction = 0;
+					PListType distances = 0;
+					//Calculate average distance between pattern instances
+					for(int i = index; i < index + length - 1; i++)
+					{
+						distances += (*iterator->second)[i+1] - (*iterator->second)[i];
+						if((*iterator->second)[i+1] - (*iterator->second)[i] < currLevel)
+						{
+							coverageSubtraction += currLevel - ((*iterator->second)[i+1] - (*iterator->second)[i]);
+						}
+					}
+
+					float averageDistance = ((float)distances)/((float)(length - 1));
+					stringstream data;
+
+					//Struct used to contain detailed pattern information for one level
+					ProcessorStats::DisplayStruct outputData;
+					outputData.patternInstances = length;
+					outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction))/(float)config.files[f]->fileStringSize;
+					outputData.averagePatternDistance = averageDistance;
+					outputData.firstIndexToPattern = (*iterator->second)[index];
+				
+					//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+					if(!config.suppressStringOutput)
+					{
+						outputData.pattern = config.files[f]->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
+					}
+					stats.detailedLevelInfo.push_back(outputData);
+				}
+
+				countMutex->unlock();
+
 			}
 			else
 			{
@@ -1898,6 +1982,9 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 		memoryOverflow = false;
 
 		vector<PListArchive*> archiveCollection;
+		
+		PListType distances[256] = {0};
+		PListType coverageSubtraction[256] = {0};
 
 		for(int a = 0; a < fileNamesBackup.size() - prevCurrentFile; a++)
 		{
@@ -1953,6 +2040,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			stringBuffer = stringBufferFile->GetPatterns(currLevel, packedPListSize);
 
 
+
 			PListType countAdded = 0;
 			//Write all patterns contained in the pattern map to complete pattern files
 			if(foundAHit)
@@ -1979,6 +2067,16 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 						{
 							patternCounts[pattern].first = static_cast<PListType>(packedPListArray[partialLists]->size());
 							patternCounts[pattern].second = (*(packedPListArray[partialLists]))[0];
+						}
+
+						unsigned char val = (unsigned char)pattern[0];
+						for(int i = 0; i < packedPListArray[partialLists]->size() - 1; i++)
+						{
+							distances[val] += (*(packedPListArray[partialLists]))[i+1] - (*(packedPListArray[partialLists]))[i];
+							if((*(packedPListArray[partialLists]))[i+1] - (*(packedPListArray[partialLists]))[i] < currLevel)
+							{
+								coverageSubtraction[val] += currLevel - ((*(packedPListArray[partialLists]))[i+1] - (*(packedPListArray[partialLists]))[i]);
+							}
 						}
 
 						currChunkFiles[pattern]->WriteArchiveMapMMAP(*(packedPListArray[partialLists]));
@@ -2024,12 +2122,41 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 			currChunkFiles[buff.str()]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 			bool empty = true;
 			PListType patterCount = (currChunkFiles[buff.str()]->prevMappingIndex/sizeof(PListType)) - sizeof(PListType);
+
+			//Keeps track of the index in pListLengths vector
+			vector<PListType> positionsInLinearList;
+
 			if(currChunkFiles[buff.str()]->mappingIndex > (2*sizeof(PListType)))
 			{
 				empty = false;
 				interimCount++;
 				stats.SetMostCommonPattern(currLevel, patternCounts[buff.str()].first, patternCounts[buff.str()].second - currLevel);
+
+				stats.SetTotalOccurrenceFrequency(currLevel, patternCounts[buff.str()].first);
+
+				//If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
+				if(config.levelToOutput == 0 || config.levelToOutput == currLevel)
+				{
+					PListType length = patternCounts[buff.str()].first;
+					
+					float averageDistance = ((float)distances[a])/((float)(length - 1));
+					stringstream data;
+
+					//Struct used to contain detailed pattern information for one level
+					ProcessorStats::DisplayStruct outputData;
+					outputData.patternInstances = length;
+					outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction[a]))/(float)config.files[f]->fileStringSize;
+					outputData.averagePatternDistance = averageDistance;
+					outputData.firstIndexToPattern = patternCounts[buff.str()].second - currLevel + 1;
 				
+					//If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
+					if(!config.suppressStringOutput)
+					{
+						outputData.pattern = config.files[f]->fileString.substr(patternCounts[buff.str()].second - currLevel, currLevel);
+					}
+					stats.detailedLevelInfo.push_back(outputData);
+				}
+
 			}
 			else if(currChunkFiles[buff.str()]->mappingIndex == (2*sizeof(PListType)))
 			{
@@ -3027,9 +3154,10 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				positionsInLinearList[i] = pos;
 				pos += pListLengths[i];
 			}
-			PListType distances = 0;
+			
 			for(PListType z = 0; z < pListLengths.size(); z++)
 			{
+				PListType distances = 0;
 				PListType index = positionsInLinearList[z];
 				PListType length = pListLengths[z];
 				PListType coverageSubtraction = 0;

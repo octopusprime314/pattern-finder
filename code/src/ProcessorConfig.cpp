@@ -88,9 +88,9 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			else if(fileTest.find('.') == string::npos && fileTest[0] != '-')
 			{
 			#if defined(_WIN64) || defined(_WIN32)
-				header = "../../Database/";
+				header = "../../";
 			#elif defined(__linux__)
-				header = "../Database/";
+				header = "../";
 			#endif
 				header.append(fileTest);
 				header.append("/");

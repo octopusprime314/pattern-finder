@@ -27,17 +27,20 @@ Place your file to be processed in the Database/Data folder
 
 
 EXAMPLE USES OF PATTERNFINDER:
-1) ./PatternFinder –f Database –v 1 –threads 4 –ram
+1) ./PatternFinder -f Database -threads 4 -ram
 Pattern searches all files recursively in directory using DRAM with 4 threads
 
-2) ./PatternFinder –f TaleOfTwoCities.txt –v 1 –c -ram
+2) ./PatternFinder -f TaleOfTwoCities.txt -c -ram
 Finds the most optimal thread usage for processing a file
 
-3) ./PatternFinder –f TaleOfTwoCities.txt –v 1
-Processes file using memory prediction per level for HD or DRAM processing
+3) ./PatternFinder -f TaleOfTwoCities.txt -plevel 3 -ptop 10
+Processes file using memory prediction per level for HD or DRAM processing and displays detailed information for level 3 patterns for the top 10 patterns found
 
-4) ./PatternFinder –f TaleOfTwoCities.txt –v 1 –mem 1000
-Processes file using memory prediction per level for HD or DRAM processing with a memory constraint of 1 GB
+4) ./PatternFinder -f TaleOfTwoCities.txt -plevel 3 -ptop 10 -pnoname
+Processes file using memory prediction per level for HD or DRAM processing and displays detailed information for level 3 patterns for the top 10 patterns found but doesn't print pattern string
+
+5) ./PatternFinder -f TaleOfTwoCities.txt -v 1 -mem 1000
+Processes file using memory prediction per level for HD or DRAM processing with a memory constraint of 1 GB and -v displays logging program information
 
 
 PYTHON RUN EXAMPLES:
