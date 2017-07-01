@@ -53,17 +53,76 @@ vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v) {
   return idx;
 }
 
+bool containsFile(string directory)
+{
+	bool foundFiles = false;
+#if defined(_WIN64) || defined(_WIN32)
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir (directory.c_str())) != NULL) 
+	{
+		Logger::WriteLog("Files to be processed: \n");
+		/* print all the files and directories within directory */
+		while ((ent = readdir (dir)) != NULL) 
+		{
+			if(*ent->d_name)
+			{
+				string fileName = string(ent->d_name);
+
+				if(!fileName.empty() && fileName.find("PList") != string::npos)
+				{
+					foundFiles = true;
+					break;
+				}
+			}
+		}
+		closedir (dir);
+	} else
+	{
+		//cout << "Problem reading from directory!" << endl;
+	}
+#elif defined(__linux__)
+	DIR *dir;
+	struct dirent *entry;
+
+	if (!(dir = opendir(directory.c_str())))
+		return false;
+
+	while((entry = readdir (dir)) != NULL)
+	{
+		string fileName = string(entry->d_name);
+
+		if(!fileName.empty() && fileName.find("PList") != string::npos)
+		{
+			foundFiles = true;
+			break;
+		}
+	} 
+	closedir(dir);
+#endif		
+	return foundFiles;
+}
+
 Forest::Forest(int argc, char **argv)
 {
 
+	if(config.usingPureHD || (!config.usingPureHD && !config.usingPureHD))
+	{
 #if defined(_WIN64) || defined(_WIN32)
-	//Hard code page size to 2 MB for windows
-	PListArchive::hdSectorSize = 2097152;//4096;
-	system("del ..\\..\\Log\\PList*.txt");
+		//Hard code page size to 2 MB for windows
+		PListArchive::hdSectorSize = 2097152;
+		if(containsFile("..\\..\\Log"))
+		{
+			system("del ..\\..\\Log\\PList*.txt");
+		}
 #elif defined(__linux__)
-	PListArchive::hdSectorSize = sysconf (_SC_PAGESIZE);
-	system("rm -r ../Log/PList*");
+		PListArchive::hdSectorSize = sysconf (_SC_PAGESIZE);
+		if(containsFile("../Log"))
+		{
+			system("rm -r ../Log/PList*");
+		}
 #endif
+	}
 
 	PListArchive::totalLoops = PListArchive::hdSectorSize/sizeof(PListType);
 	PListArchive::writeSize = PListArchive::hdSectorSize/8;
@@ -636,6 +695,7 @@ Forest::Forest(int argc, char **argv)
 	mem << "Most memory overflow was : " << mostMemoryOverflow << " MB\n";
 	Logger::WriteLog(mem.str());
 	cout << mem.str();
+
 }
 
 Forest::~Forest()

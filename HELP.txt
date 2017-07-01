@@ -41,6 +41,12 @@ Options:
 	-pnoname 				Do not print pattern string data
 	-plevel					Sets the level the user wants to see detailed output for
 	-ptop					Display the top N most common patterns in detail for the level indicated by -plevel
+
+
+ALL OUTPUT FILES GENERATED ARE LOCATED IN THE LOG FOLDER.  
+Log* files contain debug information and Output* files contain structured pattern information using -plevel and -ptop to increase pattern verbosity.
+
+
 Examples:
 
 1) ./PatternFinder -f Database -threads 4 -ram
@@ -55,5 +61,5 @@ Processes file using memory prediction per level for HD or DRAM processing and d
 4) ./PatternFinder -f TaleOfTwoCities.txt -plevel 3 -ptop 10 -pnoname
 Processes file using memory prediction per level for HD or DRAM processing and displays detailed information for level 3 patterns for the top 10 patterns found but doesn't print pattern string
 
-5) ./PatternFinder -f TaleOfTwoCities.txt –v 1 –mem 1000
+5) ./PatternFinder -f TaleOfTwoCities.txt -v 1 -mem 1000
 Processes file using memory prediction per level for HD or DRAM processing with a memory constraint of 1 GB and -v displays logging program information
