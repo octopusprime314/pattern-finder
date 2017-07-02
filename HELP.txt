@@ -46,6 +46,8 @@ Options:
 ALL OUTPUT FILES GENERATED ARE LOCATED IN THE LOG FOLDER.  
 Log* files contain debug information and Output* files contain structured pattern information using -plevel and -ptop to increase pattern verbosity.
 
+LOCATION OF FILES TO BE PROCESSED:
+Place your file to be processed in the Database/Data folder
 
 Examples:
 
