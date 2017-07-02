@@ -3304,14 +3304,33 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
 				PListType prevIndex = linearList[countage];
 				PListType tallyCount = 1;
 
-				for(PListType j = countage + 1; j < pListLengths[i] + countage; j++)
+				if(config.nonOverlappingPatternSearch == OVERLAP_PATTERNS)
 				{
-					PListType span = linearList[j] - prevIndex;
-					if(span >= levelInfo.currLevel)
+					for(PListType j = countage + 1; j < pListLengths[i] + countage; j++)
 					{
-						prevIndex = linearList[j];
-						tallyCount++;
+						PListType span = linearList[j] - prevIndex;
+						if(span < levelInfo.currLevel)
+						{
+							prevIndex = linearList[j];
+							tallyCount++;
+						}
 					}
+				}
+				else if(config.nonOverlappingPatternSearch == NONOVERLAP_PATTERNS)
+				{
+					for(PListType j = countage + 1; j < pListLengths[i] + countage; j++)
+					{
+						PListType span = linearList[j] - prevIndex;
+						if(span >= levelInfo.currLevel)
+						{
+							prevIndex = linearList[j];
+							tallyCount++;
+						}
+					}
+				}
+				else
+				{
+					tallyCount = pListLengths[i];
 				}
 				if( tallyCount > tempMostCommonPatternCount)
 				{
