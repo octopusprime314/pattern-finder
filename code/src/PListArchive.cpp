@@ -63,9 +63,9 @@ PListArchive::PListArchive(string fileName, bool create)
 		if(create)
 		{
 #if defined(_WIN64) || defined(_WIN32)
-			fd = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+			fd = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 #elif defined(__linux__)
-			fd = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+			fd = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
 #endif
 			if(fd == -1)
 			{
@@ -74,13 +74,13 @@ PListArchive::PListArchive(string fileName, bool create)
 				streaming << " and errno is "<< strerror(errno) << endl;
 				Logger::WriteLog(streaming.str());
 				cout << streaming.str() << endl;
-				fd = open(file.c_str(), O_RDWR | O_TRUNC);
+				fd = _open(file.c_str(), O_RDWR | O_TRUNC);
 			}
 		}
 		//Open existing file
 		else
 		{
-			fd = open(file.c_str(), O_RDONLY);
+			fd = _open(file.c_str(), O_RDONLY);
 		}
 
 		this->fileName = file;
@@ -122,7 +122,7 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	close(fileDescriptor);
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -137,7 +137,7 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 	handle << "end of file reached: " << endOfFileReached << endl;
 	Logger::WriteLog(handle.str());
 	cout << handle.str();
-	close(fileDescriptor);
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -145,7 +145,7 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -155,7 +155,7 @@ void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 
 void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	stringstream handle;
@@ -595,9 +595,9 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 		//Create file handle for memory map writing
 	#if defined(_WIN64) || defined(_WIN32)
-		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 	#elif defined(__linux__)
-		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
 	#endif
 
 		//Make sure the file is created
@@ -703,7 +703,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 		}
 		
-		close(mapFD);
+		_close(mapFD);
 	}
 	catch(exception e)
 	{
@@ -725,7 +725,7 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
-			close(fd);
+			_close(fd);
 		}
 	}
 	catch(exception e)

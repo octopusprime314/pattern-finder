@@ -18,7 +18,7 @@ Linux:
 Windows:
     create a build folder at root directory
     cd into build
-    cmake -G "Visual Studio 11 2012 Win64" ..   OR    cmake -G "visual Studio 14 2015 Win64" ..
+    cmake -G "Visual Studio 11 2012 Win64" ..   OR    cmake -G "Visual Studio 14 2015 Win64" ..
     cmake --build . --config Release
 	
 	

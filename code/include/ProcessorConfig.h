@@ -36,6 +36,7 @@ struct ConfigurationParams
 	unsigned char highRange;
 	bool suppressStringOutput;
 	unsigned int minimumFrequency;
+    bool processInts;
 };
 class ProcessorConfig
 {

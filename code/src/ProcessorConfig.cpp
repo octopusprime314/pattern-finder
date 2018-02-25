@@ -66,6 +66,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.lowRange = config.highRange = 0;
 	//-1 is the largest unsigned int value
 	config.minimumFrequency = -1;
+    config.processInts = false;
 
 	bool minEnter = false;
 	bool maxEnter = false;
@@ -220,13 +221,21 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		else if(arg.compare("-cov") == 0)
 		{
 			coverageTracking = true;
-			i++;
 		}
 		else if(arg.compare("-l") == 0)
 		{
 			config.threadLimitation = atoi(argv[i+1]);
 			i++;
 		}
+        else if (arg.compare("-l") == 0)
+        {
+            config.threadLimitation = atoi(argv[i + 1]);
+            i++;
+        }
+        else if (arg.compare("-int") == 0)
+        {
+            config.processInts = true;
+        }
 		else if(arg.compare("-help") == 0 || arg.compare("/?") == 0)
 		{
 			DisplayHelpMessage();
@@ -247,6 +256,11 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			exit(0);
 		}
 	}
+
+    if (config.levelToOutput != -1 && config.processInts) {
+        
+        config.levelToOutput *= 4; //Processing at the 4 byte level instead of the 1 byte level
+    }
 
 	//Make maximum the largest if not entered
 	if(!maxEnter)

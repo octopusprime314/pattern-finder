@@ -55,7 +55,6 @@ public:
 	double GetTime();
 
 private:
-	std::chrono::system_clock::time_point begin;
-	std::chrono::system_clock::time_point end;
+	std::chrono::steady_clock::time_point begin;
+	std::chrono::steady_clock::time_point end;
 };
-

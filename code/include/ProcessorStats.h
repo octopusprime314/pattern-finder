@@ -179,7 +179,7 @@ public:
 	 *  @param cover coverage the pattern has throughout the file
 	 *  @return void
 	 */
-	void SetTotalOccurrenceFrequency(PListType currLevel, float aveOccurenceFreq);
+	void SetTotalOccurrenceFrequency(PListType currLevel, PListType aveOccurenceFreq);
 
 	/** @brief Sets average occurence frequency at a level
 	 *

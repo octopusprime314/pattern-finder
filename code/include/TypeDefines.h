@@ -18,10 +18,10 @@ using namespace std;
 
 #if defined(_WIN64) || defined(_WIN32)
 #define HELPFILEPATH "../../HELP.txt"
-#define DATA_FOLDER "../../Database/Data/"
+#define DATA_FOLDER "../../database/data/"
 #elif defined(__linux__)
 #define HELPFILEPATH "../HELP.txt"
-#define DATA_FOLDER "../Database/Data/"
+#define DATA_FOLDER "../database/data/"
 #endif
 
 /** Defines the size of pattern index storage. 
