@@ -30,26 +30,39 @@ const bool disableLogging = false;
 class Logger
 {
 public:
-	/** @brief Writes a string of data to the logger file
-	 *  
-	 *  Appends a new string to the logging buffer and writes
-	 *  it out to the file
-	 *
-	 *  @param miniBuff string that contains logging information
-	 *  @return void
-	 */
-	static void WriteLog(string miniBuff);
+
+	template<typename T, typename... Args>
+	static void WriteLog(T streamable, Args... args) {
+		
+        return; //No logging for now.
+        if (!verbosity || disableLogging) {
+            return;
+        }
+        
+        streamer << streamable;
+		WriteLog(args...);
+		auto buffer = streamer.str();
+		dumpLog(buffer);
+        streamer.str("");
+	}
+	template<typename T>
+	static void WriteLog(T streamable) {
+		streamer << streamable << std::endl;
+		return;
+	}
+
+    static void dumpLog(const std::string& buffer);
 
 	/** @brief Flushes any logging data to file and clears the logging buffer
-	 *  
-	 *  Resets log buffer
 	 *
+	 *  Resets log buffer
+	 * 
 	 *  @return void
 	 */
 	static void ClearLog();
-	
+
 	/** @brief Closes log file by closing handle
-	 *  
+	 *
 	 *  Closes file
 	 *
 	 *  @return void
@@ -57,7 +70,7 @@ public:
 	static void CloseLog();
 
 	/** @brief Gets the formatted time in am/pm format
-	 *  
+	 *
 	 *  Generate am/pm time in string format
 	 *
 	 *  @return string am/pm time
@@ -65,7 +78,7 @@ public:
 	static string GetFormattedTime();
 
 	/** @brief Gets the time in military format
-	 *  
+	 *
 	 *  Generate military time in string format
 	 *
 	 *  @return string military time
@@ -76,7 +89,7 @@ public:
 	static int verbosity;
 
 	/** @brief Generates a csv file with the time taken to process a set of files
-	 *  
+	 *
 	 *  Processes a large data set and records the time taken and size of a processed file
 	 *  and is written to a csv formatted file to eventually be used by a matlab script
 	 *  to find large patterns in a file set.  If a file is small and it takes a long
@@ -91,23 +104,23 @@ public:
 	static void generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes);
 
 	/** @brief Generates a csv file with the most common patterns in a large data set
-	 *  
-	 *  Processes a large data set and records the most common patterns found for 
+	 *
+	 *  Processes a large data set and records the most common patterns found for
 	 *  all processed files and is written to a csv formatted file.
 	 *
-	 *  @param finalPattern map containing counts and the most common pattern 
+	 *  @param finalPattern map containing counts and the most common pattern
 	 *  found in a large data set
-	 *  
+	 *
 	 *  @return void
 	 */
 	static void generateFinalPatternVsCount(map<PListType, PListType> finalPattern);
 
 	/** @brief Generates a csv file with throughput improvements associated with threading
-	 *  
+	 *
 	 *  Processes a single file and records the times taken to process the file with
 	 *  a designated amount of threads.  Typically the -c argument tells the program to
 	 *  process the file first with one thread and then double the thread count each run until
-	 *  the thread count reaches the number of core's on the resident computer.  The matlab 
+	 *  the thread count reaches the number of core's on the resident computer.  The matlab
 	 *  script used to process and graph this data is called DRAMVsHardDiskPerformance.m
 	 *
 	 *  @param threadMap map containing times taken to process a file with a number of threads
@@ -117,7 +130,7 @@ public:
 	static void generateThreadsVsThroughput(vector<map<int, double>> threadMap);
 
 	/** @brief Generates a csv file with partial pattern data used when doing split processing
-	 *  
+	 *
 	 *  Processes a portion of the file and generates pattern data to be compiled together with
 	 *  other Pattern Finder processes that generate other portion data.  This csv generated data
 	 *  is used in the PatternProcessor.m matlab file when using the python splitFileForProcessing.py
@@ -131,7 +144,7 @@ public:
 	static void fillPatternData(const string &file, const vector<PListType> &patternIndexes, const vector<PListType> &patternCounts);
 
 	/** @brief Generates coverage information when comparing overlapping versus non overlapping searches
-	 *  
+	 *
 	 *  Processes a file in either overlapping or non overlapping mode and then compares the csv files
 	 *  patterns using the matlab script called Overlapping_NonOverlappingComparison.m script.
 	 *  The overlapping csv file contains 100% accurate pattern information and the non-overlapping csv
@@ -145,6 +158,8 @@ public:
 	static void fileCoverageCSV(const vector<float>& coverage);
 
 	static ofstream* patternOutputFile;
+
+	static std::stringstream streamer;
 
 private:
 	/** Streams used to write and read to files */

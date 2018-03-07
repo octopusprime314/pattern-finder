@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <vector>
 #define GREATERTHAN4GB 0
 using namespace std;
 
@@ -29,14 +30,15 @@ using namespace std;
  *  size has to be increased from 32 bit to 64 bit storage.
  */
 #if GREATERTHAN4GB
-typedef unsigned long long PListType;
-typedef signed long long PListSignedType;
+using PListType = unsigned long long;
+using PListSignedType = signed long long;
 #else
-typedef unsigned long PListType;
-typedef signed long PListSignedType;
+using PListType = unsigned long;
+using PListSignedType = signed long;
 #endif
 
-typedef string PatternType;
+using PatternType = string;
+using PatternData = vector<vector<PListType>*>;
 
 /** Level package keeps track of level processing information */
 struct LevelPackage
@@ -46,6 +48,7 @@ struct LevelPackage
 	unsigned int inceptionLevelLOL;
 	unsigned int coreIndex;
 	bool useRAM;
+    bool prevLevelProcType;
 };
 
 /** Pattern search methods */

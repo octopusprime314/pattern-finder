@@ -33,6 +33,7 @@
 #include "Forest.h"
 #include "MemoryUtils.h"
 #include "FileReader.h"
+
 using namespace std;
 
 
@@ -71,12 +72,7 @@ int main(int argc, char **argv)
 
 	//Get back the total memory used to see if there is left over memory in the program
 	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-	stringstream crappy;
-	crappy << "Errant memory after processing level " << threadMemoryConsumptionInMB - MemoryUsageAtInception << " in MB!\n";
-	Logger::WriteLog(crappy.str());
-	cout << crappy.str() << endl;
-	crappy.str("");
-
+	Logger::WriteLog("Errant memory after processing level " , threadMemoryConsumptionInMB - MemoryUsageAtInception , " in MB!\n");
 	Logger::CloseLog();
 
 	//Dump memory leaks if in debug

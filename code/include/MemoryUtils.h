@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "TypeDefines.h"
+#include "ProcessorStats.h"
+#include "ProcessorConfig.h"
 using namespace std;
 
 static bool init = false;
@@ -97,7 +99,7 @@ public:
 		int result = -1;
 		char line[128];
     
-		while (fgets(line, 128, file) != NULL){
+		while (fgets(line, 128, file) != nullptr){
 			if (strncmp(line, "VmRSS:", 6) == 0){
 				result = parseLine(line);
 				break;
@@ -122,8 +124,8 @@ public:
 		return (size_t)info.WorkingSetSize;
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		long rss = 0L;
-		FILE* fp = NULL;
-		if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
+		FILE* fp = nullptr;
+		if ( (fp = fopen( "/proc/self/statm", "r" )) == nullptr )
 			return (size_t)0L;      /* Can't open? */
 		if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
 		{
@@ -215,7 +217,7 @@ public:
 
 		file = fopen("/proc/cpuinfo", "r");
 		numProcessors = 0;
-		while(fgets(line, 128, file) != NULL){
+		while(fgets(line, 128, file) != nullptr){
 			if (strncmp(line, "processor", 9) == 0) numProcessors++;
 		}
 		fclose(file);
@@ -277,5 +279,76 @@ public:
 		return static_cast<PListType>(fileSize);
 	}
 
+    static bool DiskOrSysMemProcessing(LevelPackage levelInfo,
+        PListType sizeOfPrevPatternCount,
+        PListType sizeOfString,
+        const ConfigurationParams& config,
+        ProcessorStats& stats)
+    {
+        //Break early if memory usage is predetermined by command line arguments
+        if (config.usingPureRAM)
+        {
+            return false;
+        }
+        if (config.usingPureHD)
+        {
+            return true;
+        }
+
+        //POTENTIAL PATTERNS equals the previous list times 256 possible byte values but this value can't exceed the file size minus the current level
+        PListType potentialPatterns = sizeOfPrevPatternCount * 256;
+
+        if (potentialPatterns > config.currentFile->fileStringSize - stats.GetEradicatedPatterns())
+        {
+            //Factor in eradicated patterns because those places no longer need to be checked in the file
+            potentialPatterns = config.currentFile->fileStringSize - stats.GetEradicatedPatterns();
+        }
+
+        PListType linearListPListLengthsContainerSizesForPrevAndNext = (sizeof(PListType)*(sizeOfString) * 2) + (potentialPatterns * sizeof(PListType) * 2);  //Predication for containers just predict they will be the same size thus * 2
+
+        PListType sizeOfProcessedFile = 0;
+        if (levelInfo.currLevel <= 2)
+        {
+            sizeOfProcessedFile = config.currentFile->fileStringSize;
+        }
+        else
+        {
+            sizeOfProcessedFile = config.currentFile->fileStringSize / config.numThreads;
+        }
+
+        PListType sizeOfGlobalStringConstruct = sizeOfString;
+        PListType totalStorageNeeded = (linearListPListLengthsContainerSizesForPrevAndNext + sizeOfProcessedFile + sizeOfGlobalStringConstruct) / 1000000;
+
+        PListType previousLevelMemoryMB = 0;
+
+        double prevMemoryMB = MemoryUtils::GetProgramMemoryConsumption() - config.memoryUsageAtInception;
+        if (prevMemoryMB > 0.0f)
+        {
+            previousLevelMemoryMB = (PListType)prevMemoryMB / config.numThreads;
+        }
+
+        double memoryAllowance = 0;
+        if (levelInfo.currLevel <= 2)
+        {
+            memoryAllowance = config.memoryBandwidthMB;
+        }
+        else
+        {
+            memoryAllowance = config.memoryBandwidthMB / config.numThreads;
+        }
+
+        if (totalStorageNeeded > memoryAllowance)
+        {
+            Logger::WriteLog("Using HARD DISK! Total size for level ", levelInfo.currLevel, " processing is ", totalStorageNeeded, " MB");
+            return true;
+        }
+        else
+        {
+            Logger::WriteLog("Using DRAM! Total size for level ", levelInfo.currLevel, " processing is ", totalStorageNeeded, " MB");
+            return false;
+        }
+    }
+
 	#pragma endregion MemoryUtilities
 };
+
