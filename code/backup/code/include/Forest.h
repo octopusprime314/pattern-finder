@@ -23,8 +23,6 @@
 #include "ChunkFactory.h"
 #include "ProcessorConfig.h"
 #include "ProcessorStats.h"
-#include "SysMemProc.h"
-#include "DiskProc.h"
 
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
@@ -89,7 +87,56 @@ public:
     *  @return void
     */
     void PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatternIndex, PListType numPatternsToSearch, unsigned int threadNum);
-  
+
+    /** @brief Preps pattern data for processing level 2 to infinity
+    *
+    *  Preps data distribution for threaded processing
+    *
+    *  @param level level to begin processing
+    *  @return bool indicates if more processing is necessary
+    */
+    bool NextLevelTreeSearch(unsigned int level);
+
+    /** @brief Takes in pattern data and creates new threads to dispatch
+    *
+    *  Recursively generates new threads for processing the file data
+    *
+    *  @param patterns set of patterns to process from
+    *  @param patternIndexList which patterns to search for within the large pattern set in patterns
+    *  @param fileList hark disk processing data
+    *  @param levelInfo current level processing information
+    *  @return void
+    */
+    void ThreadedLevelTreeSearchRecursionList(vector<vector<PListType>*>* patterns, vector<PListType> patternIndexList, vector<string> fileList, LevelPackage levelInfo);
+
+    /** @brief Algorithm that computes whether the next level uses hd or ram
+    *
+    *  Factors in the previous level's mode of processing and the current level's
+    *  intended mode of process and computes the resources needed to process within
+    *  the computer's limited ram
+    *
+    *  @param levelInfo current level processing information
+    *  @param sizeOfPrevPatternCount number of patterns found from the previous level
+    *  @param sizeOfString size of the patterns for the level
+    *  @return bool indicating whether ram or hd is used, true is hd, false is ram
+    */
+    bool PredictHardDiskOrRAMProcessing(LevelPackage levelInfo, PListType sizeOfPrevPatternCount, PListType sizeOfString = 0);
+
+    /** @brief Processes all of the partial pattern data files when using hd processing
+    *
+    *  Compiles all of the partial pattern files and creates one cohesive pattern collection
+    *
+    *  @param fileNamesToReOpen partial pattern files to be processed into one big pattern collection
+    *  @param newFileNames new files generated containing complete pattern information
+    *  @param memDivisor memory that can be used for this thread
+    *  @param threadNum thread used for this process
+    *  @param currLevel current level being processed
+    *  @param coreIndex core being used
+    *  @param firstLevel indicates whether this is first level processing or not
+    *  @return PListType returns number of patterns found
+    */
+    PListType ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex, bool firstLevel = false);
+
     /** @brief Processes all of the first level partial pattern data files when using hd processing
     *
     *  Compiles all of the first level partial pattern files and creates one cohesive pattern collection
@@ -104,6 +151,31 @@ public:
     */
     PListType ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, bool firstLevel = false);
 
+    /** @brief Processes patterns using a combination of ram and hard disk
+    *
+    *  Hard disk processing which is much slower than using ram
+    *
+    *  @param levelInfo current level processing information
+    *  @param fileList hark disk processing data
+    *  @param isThreadDefuncted indicates if the thread is deactivated
+    *  and there has been recursively spawned threads to improve processing
+    *  @return PListType indicating the number of patterns found for the level
+    */
+    PListType ProcessHD(LevelPackage& levelInfo, vector<string>& fileList, bool &isThreadDefuncted);
+
+    /** @brief Processes patterns using ram
+    *
+    *  RAM processing is much faster than HD processing
+    *
+    *  @param prevLocalPListArray previous level ram processing data
+    *  @param globalLocalPListArray current level ram processing data
+    *  @param levelInfo current level processing information
+    *  @param isThreadDefuncted indicates if the thread is deactivated
+    *  and there has been recursively spawned threads to improve processing
+    *  @return PListType indicating the number of patterns found for the level
+    */
+    PListType ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, vector<vector<PListType>*>* globalLocalPListArray, LevelPackage& levelInfo, bool& isThreadDefuncted);
+
     /** @brief Switches pattern data for either ram or hd processing on the first level
     *
     *  If the prediction determines that the upcoming level can be processed
@@ -115,8 +187,8 @@ public:
     *  @param fileList hark disk processing data
     *  @param prevLocalPListArray ram processing data
     *  @return void
-    *
-    void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = nullptr);
+    */
+    void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL);
 
     /** @brief Switches pattern data for either ram or hd processing on levels after the first
     *
@@ -131,7 +203,7 @@ public:
     *  @param prevLocalPListArray ram processing data
     *  @return void
     */
-    void PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray = nullptr);
+    void PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray = NULL);
 
     /** @brief Evenly distributes ram vector data among the threads to be dispatched for the first level
     *
@@ -142,6 +214,16 @@ public:
     *  @return vector<vector<PListType>> returns distributed ram vector pattern loads
     */
     vector<vector<PListType>> ProcessThreadsWorkLoadRAMFirstLevel(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
+
+    /** @brief Evenly distributes ram vector data among the threads to be dispatched
+    *
+    *  Distributes pattern vector information among the threads.
+    *
+    *  @param threadsToDispatch number of threads that need distributed pattern data
+    *  @param patterns vector containing pattern data
+    *  @return vector<vector<PListType>> returns distributed ram vector pattern loads
+    */
+    vector<vector<PListType>> ProcessThreadsWorkLoadRAM(unsigned int threadsToDispatch, vector<vector<PListType>*>* patterns);
 
     /** @brief Evenly distributes hd pattern file data among the threads to be dispatched
     *
@@ -172,10 +254,44 @@ public:
     */
     void WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive = false, unsigned int thread = 0);
 
+    /** @brief Evenly distributes pattern data among multiple threads for hd processing
+    *
+    *  This algorithm looks for available processing threads and if there are enough
+    *  patterns to distribute and available threads then new threads are recursively
+    *  dispatched and the current thread just listens and waits for the dispatched
+    *  threads to finish processing.
+    *
+    *  @param newPatternCount number of patterns found in the current level search
+    *  @param morePatternsToFind boolean indicating patterns have been found or not
+    *  @param fileList hark disk processing data
+    *  @param levelInfo current level processing information
+    *  @param isThreadDefuncted indicates if the thread is deactivated
+    *  and there has been recursively spawned threads to improve processing
+    *  @return bool indicating the threads have been dispatched or not
+    */
+    bool DispatchNewThreadsHD(PListType newPatternCount, bool& morePatternsToFind, vector<string> fileList, LevelPackage levelInfo, bool& isThreadDefuncted);
+
+    /** @brief Evenly distributes pattern data among multiple threads for ram processing
+    *
+    *  This algorithm looks for available processing threads and if there are enough
+    *  patterns to distribute and available threads then new threads are recursively
+    *  dispatched and the current thread just listens and waits for the dispatched
+    *  threads to finish processing.
+    *
+    *  @param newPatternCount number of patterns found in the current level search
+    *  @param morePatternsToFind PListType indicating the number of patterns found at this level
+    *  @param linearList linear vector of all pattern indexes
+    *  @param pListLengths the lengths of each pattern index list for accessing linearList
+    *  @param levelInfo current level processing information
+    *  @param isThreadDefuncted indicates if the thread is deactivated
+    *  and there has been recursively spawned threads to improve processing
+    *  @return bool indicating the threads have been dispatched or not
+    */
+    bool DispatchNewThreadsRAM(PListType newPatternCount, PListType& morePatternsToFind, vector<PListType> &linearList, vector<PListType> &pListLengths, LevelPackage levelInfo, bool& isThreadDefuncted);
+
+
 
 private:
-
-	void inteTochar(FileReader * files);
 
     //Indicates whether memory usage is over the limit
     static bool overMemoryCount;
@@ -186,18 +302,21 @@ private:
     StopWatch initTime;
 
     //Memory management
+    PListType memoryCeiling;
     double mostMemoryOverflow;
     double currMemoryOverflow;
+    double MemoryUsageAtInception;
     double MemoryUsedPriorToThread;
 
     //Thread management
     mutex *countMutex;
     int threadsDefuncted;
     int threadsDispatched;
-
+    PListType memoryPerThread;
     vector<future<void>> *threadPool;
-  
+
     //Random flags
+    int f;
     bool writingFlag;
     bool processingFinished;
     bool firstLevelProcessedHD;

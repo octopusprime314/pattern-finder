@@ -141,6 +141,8 @@ void Forest::inteTochar(FileReader * files)
 Forest::Forest(int argc, char **argv)
 {
 
+    config = ProcessorConfig::GetConfig(argc, argv);
+
     if (config.usingPureHD || (!config.usingPureHD && !config.usingPureHD))
     {
 #if defined(_WIN64) || defined(_WIN32)
@@ -173,8 +175,6 @@ Forest::Forest(int argc, char **argv)
 
     chunkFactorio = ChunkFactory::instance();
 
-
-    config = ProcessorConfig::GetConfig(argc, argv);
 
     config.memoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
     MemoryUsedPriorToThread = MemoryUtils::GetProgramMemoryConsumption();
