@@ -7,7 +7,9 @@
 #include "Logger.h"
 #include "TypeDefines.h"
 #include "FileReader.h"
-
+#include "MemoryUtils.h"
+#include <mutex>
+#include <algorithm/string.hpp>
 /** @brief Configuration parameters struct
  *  
  *  Includes whether the file will be processed with ram or hd, threads to use,
@@ -36,7 +38,8 @@ struct ConfigurationParams
 	unsigned char highRange;
 	bool suppressStringOutput;
 	unsigned int minimumFrequency;
-    bool processInts;
+	bool chsymbol;
+	bool ing;
 };
 class ProcessorConfig
 {
@@ -66,6 +69,9 @@ private:
 
 	/** Displays the help message if a bad command line argument is found */
 	static void DisplayHelpMessage();
-	
+	/**  Split the input file to stream file                */
+    static void strPatterfile(string &fileInput);
+
+    static void outputPatter(string &fileInput, vector<string> &strInput);
 };
 

@@ -64,7 +64,12 @@ int main(int argc, char **argv)
 	//Grab program memory at inception of program
 	double MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
 
-	
+	printf("argc value:%d\n", argc);
+	cout << *argv << endl;
+
+	char* testa = "34560";
+	int testb  = atoi(testa);
+	printf("integer testa:%d\n", testb);
 
 	//Kick of the pattern searching program
 	Forest *Ent = new Forest(argc, argv);

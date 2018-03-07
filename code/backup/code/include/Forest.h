@@ -293,8 +293,6 @@ public:
 
 private:
 
-	void inteTochar(FileReader * files);
-
     //Indicates whether memory usage is over the limit
     static bool overMemoryCount;
 

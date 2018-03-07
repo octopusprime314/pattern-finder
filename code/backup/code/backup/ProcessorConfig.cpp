@@ -40,12 +40,55 @@
 
 ConfigurationParams ProcessorConfig::config;
 
+
 ProcessorConfig::ProcessorConfig(void)
 {
 }
 
 ProcessorConfig::~ProcessorConfig(void)
 {
+}
+
+
+void ProcessorConfig::outputPatter(string &fileInput, vector<string> &strInput)
+{  
+   ofstream offstr(fileInput);
+   printf("size:%lu\n", strInput.size());
+   for (size_t i = 0; i < strInput.size(); i++)
+   {
+        offstr << strInput[i];
+    }
+   cout << "writing data to the file is done" << endl;
+ }
+
+
+
+void ProcessorConfig::strPatterfile(string &fileInput)
+{
+	vector<string> strInput;
+	unsigned long filesize;
+	cout << "URI:Rhody" << endl;
+	ifstream fstream(fileInput);
+
+	filesize = MemoryUtils::FileSize(fileInput);
+	printf("the value of filesize:%lu\n", filesize);
+
+	char * preStr = new char[filesize + 1];
+	fstream.read(preStr, filesize);
+	if (fstream)
+	{
+		cout << "all characters read successfully" << endl;
+	}
+	else
+	{
+		cout << "error:only" << fstream.gcount() << "could be read" << endl;
+	}
+	fstream.close();
+
+	boost::algorithm::split(strInput, preStr, boost::algorithm::is_any_of(","));
+
+	delete[] preStr;
+	outputPatter(fileInput, strInput);
 }
 
 ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
@@ -66,7 +109,10 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.lowRange = config.highRange = 0;
 	//-1 is the largest unsigned int value
 	config.minimumFrequency = -1;
-    config.processInts = false;
+
+	// char input data
+	config.chsymbol = false;
+	config.ing = false;
 
 	bool minEnter = false;
 	bool maxEnter = false;
@@ -78,7 +124,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 
 	for (int i = 1; i < argc; i++)
 	{
-		string arg(argv[i]);
+        string arg(argv[i]);
 		locale loc;
 		for (std::string::size_type j = 0; j < arg.length(); ++j)
 		{
@@ -105,13 +151,18 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			string header = DATA_FOLDER;
 			tempFileName.append(argv[i + 1]);
 			string fileTest = argv[i + 1];
-
+                                       
 			if(fileTest.find('.') != string::npos && fileTest[0] != '-') 
 			{
 				
 				if(fileTest.find(':') != string::npos || fileTest[0] == '/')
 				{
 					tempFileName = argv[i + 1];
+				}
+				cout << "search file:" << tempFileName << endl;
+				if (config.chsymbol)
+				{
+					strPatterfile(tempFileName);
 				}
 				config.files.push_back(new FileReader(tempFileName, isFile));
 				config.fileSizes.push_back(config.files.back()->fileStringSize);
@@ -141,6 +192,14 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 				FindFiles(header);	
 			}
 			fileEnter = true;
+		}
+		else if (arg.compare("-ch") == 0)
+		{
+			config.chsymbol = true;
+		}
+		else if (arg.compare("-int") == 0)
+		{
+			config.ing = true;
 		}
 		else if (arg.compare("-v") == 0)
 		{
@@ -221,21 +280,13 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		else if(arg.compare("-cov") == 0)
 		{
 			coverageTracking = true;
+			i++;
 		}
 		else if(arg.compare("-l") == 0)
 		{
 			config.threadLimitation = atoi(argv[i+1]);
 			i++;
 		}
-        else if (arg.compare("-l") == 0)
-        {
-            config.threadLimitation = atoi(argv[i + 1]);
-            i++;
-        }
-        else if (arg.compare("-int") == 0)
-        {
-            config.processInts = true;
-        }
 		else if(arg.compare("-help") == 0 || arg.compare("/?") == 0)
 		{
 			DisplayHelpMessage();
@@ -257,11 +308,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		}
 	}
 
-    if (config.levelToOutput != -1 && config.processInts) {
-        
-        config.levelToOutput *= 4; //Processing at the 4 byte level instead of the 1 byte level
-    }
-
 	//Make maximum the largest if not entered
 	if(!maxEnter)
 	{
@@ -275,7 +321,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	}
 
 	unsigned long concurentThreadsSupported = std::thread::hardware_concurrency();
-
+	printf("concurentThreadsSupported:%lu\n", concurentThreadsSupported);
 	stringstream buff;
 	buff << "Number of threads on machine: " << concurentThreadsSupported << endl;
 	Logger::WriteLog(buff.str());
@@ -333,6 +379,10 @@ void ProcessorConfig::FindFiles(string directory)
 					//cout << name << endl;
 					string tempName = directory;
 					tempName.append(ent->d_name);
+					if (config.chsymbol)
+					{
+						strPatterfile(tempName);  // add split file function
+					}			
 					FileReader* file = new FileReader(tempName, isFile);
 					if(isFile)
 					{
@@ -374,7 +424,12 @@ void ProcessorConfig::FindFiles(string directory)
 			//cout << name << endl;
 			string tempName = directory;
 			tempName.append(entry->d_name);
-
+                        
+            cout<<"search file by traversing the directories"<<endl;
+			if (config.chsymbol)
+			{
+				strPatterfile(tempName);  // add split file function
+			}
 			FileReader* file = new FileReader(tempName, isFile);
 			if(isFile)
 			{
@@ -400,7 +455,17 @@ void ProcessorConfig::DisplayHelpMessage()
 {
 	//Displays the help file if command line arguments are stinky
 	bool isFile;
-	FileReader tempHelpFile(HELPFILEPATH, isFile, true);
-	tempHelpFile.LoadFile();
-	cout << tempHelpFile.fileString << endl;
+//	FileReader tempHelpFile(HELPFILEPATH, isFile, true);
+	FileReader * tempHelpFile = new FileReader(HELPFILEPATH, isFile, true);
+	if (isFile)
+	{
+		tempHelpFile->LoadFile();
+		cout << tempHelpFile->fileString << endl;
+	}
+	else
+	{
+		cout << "Opening files fails" << endl;
+
+	}
+	delete tempHelpFile;
 }

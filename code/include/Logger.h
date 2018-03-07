@@ -17,8 +17,8 @@ using namespace std;
 
 /** Paths to logger and csv files are different based on OS */
 #if defined(_WIN64) || defined(_WIN32)
-const string LOGGERPATH = "../../Log/";
-const string CSVPATH = "../../Runs/";
+const string LOGGERPATH = "../Log/";
+const string CSVPATH = "../Runs/";
 #elif defined(__linux__)
 const string LOGGERPATH = "../Log/";
 const string CSVPATH = "../Runs/";

@@ -40,7 +40,6 @@
 
 bool Forest::overMemoryCount = false;
 
-ofstream outfileIndex;
 
 vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v) {
 
@@ -106,78 +105,6 @@ bool containsFile(string directory)
     return foundFiles;
 }
 
-void Forest::inteTochar(FileReader * files)
-{
-	std::string tempString;
-	tempString.resize(files->fileStringSize);
-	files->copyBuffer->read(&tempString[0], files->fileStringSize);
-
-	std::size_t intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
-	unsigned int stringIndex = 0;
-	while (intEndPosition != std::string::npos) {
-
-		unsigned int data = std::stoul(tempString.substr(0, intEndPosition)); //parse the numerical string to an unsigned int
-
-																			  //Convert to from string representation of a number to unsigned int and then finally back to a 4 byte string
-		files->fileString.push_back((data >> 24) & 0xFF);
-		files->fileString.push_back((data >> 16) & 0xFF);
-		files->fileString.push_back((data >> 8) & 0xFF);
-		files->fileString.push_back((data) & 0xFF);
-
-		tempString = tempString.substr(intEndPosition + 1); //truncate previous string data
-		intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
-
-
-	}
-
-	files->fileStringSize = files->fileString.size();
-
-	files->fileName += "tmp";
-
-	std::ofstream output = ofstream(files->fileName, ios::binary);
-
-	output.write(files->fileString.c_str(), files->fileString.length());
-
-	output.close();
-
-
-
-}
-
-/*void Forest::inteTochar(FileReader * files)
-{
-	std::string tempString;
-	tempString.resize(files->fileStringSize);
-	files->copyBuffer->read(&tempString[0], files->fileStringSize);
-
-	std::size_t intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
-	int stringIndex = 0;
-	while (intEndPosition != std::string::npos) {
-		std::string value = tempString.substr(stringIndex, intEndPosition - stringIndex);
-		unsigned int data = std::stoul(value); //parse the numerical string to an unsigned int
-											   //Convert to from string representation of a number to unsigned int and then finally back to a 4 byte string
-		files->fileString.push_back((data >> 24) & 0xFF);
-		files->fileString.push_back((data >> 16) & 0xFF);
-		files->fileString.push_back((data >> 8) & 0xFF);
-		files->fileString.push_back((data) & 0xFF);
-
-		stringIndex = intEndPosition + 1;
-		intEndPosition = tempString.find_first_of(",", stringIndex); //Find first instancee of a comma because data is comma seperated
-	}
-
-	files->fileStringSize = files->fileString.size();
-
-	files->fileName += "tmp";
-
-	std::ofstream output = ofstream(files->fileName, ios::binary);
-
-	output.write(files->fileString.c_str(), files->fileString.length());
-
-	output.close();
-}
-
-*/
-
 Forest::Forest(int argc, char **argv)
 {
 
@@ -210,24 +137,11 @@ Forest::Forest(int argc, char **argv)
     mostMemoryOverflow = 0;
     currMemoryOverflow = 0;
 
-	int level = 0;
-
     firstLevelProcessedHD = false;
 
     chunkFactorio = ChunkFactory::instance();
-	
 
     config = ProcessorConfig::GetConfig(argc, argv);
-	if (config.processInts)
-	{
-		level = config.levelToOutput / 4;
-	}
-	else
-	{
-		level = config.levelToOutput;
-	}
-	string filelevel = "level" + std::to_string(level) + "outIndex.txt";
-	outfileIndex.open(filelevel, ios::out);
 
     MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
     MemoryUsedPriorToThread = MemoryUtils::GetProgramMemoryConsumption();
@@ -265,23 +179,15 @@ Forest::Forest(int argc, char **argv)
 
     threadPool = new vector<future<void>>();
 
-	
     //Search through a list of files or an individual file
     for (f = 0; f < config.files.size(); f++)
     {
         const char * c = config.files[f]->fileName.c_str();
 
-
         // Open the file for the shortest time possible.
 
         config.files[f]->copyBuffer = new ifstream(c, ios::binary);
 
-		config.files[f]->fileString.clear();
-		if (config.processInts)
-		{
-			inteTochar(config.files[f]);
-
-		}
         //If file is not opened then delete copy buffer and discard this file and continue processing with the next file
         if (!config.files[f]->copyBuffer->is_open())
         {
@@ -297,11 +203,33 @@ Forest::Forest(int argc, char **argv)
         //If the file has not been read in and we are processing only with ram then read in the entire file
         if (config.files[f]->fileString.size() == 0 && config.usingPureRAM)
         {
-           // config.files[f]->fileString.clear();
-			
-			if (!config.processInts)
-		 
-			{
+            config.files[f]->fileString.clear();
+
+            if (config.processInts) {
+                std::string tempString;
+                tempString.resize(config.files[f]->fileStringSize);
+                config.files[f]->copyBuffer->read(&tempString[0], config.files[f]->fileStringSize);
+
+                std::size_t intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
+                unsigned int stringIndex = 0;
+                while (intEndPosition != std::string::npos) {
+                    
+                    unsigned int data = std::stoul(tempString.substr(0, intEndPosition)); //parse the numerical string to an unsigned int
+                    
+                    //Convert to from string representation of a number to unsigned int and then finally back to a 4 byte string
+                    config.files[f]->fileString.push_back((data >> 24) & 0xFF);
+                    config.files[f]->fileString.push_back((data >> 16) & 0xFF);
+                    config.files[f]->fileString.push_back((data >>  8) & 0xFF);
+                    config.files[f]->fileString.push_back((data      ) & 0xFF);
+
+                    tempString = tempString.substr(intEndPosition + 1); //truncate previous string data
+                    intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
+                }
+
+                config.files[f]->fileStringSize = config.files[f]->fileString.size();
+
+            }
+            else {
                 config.files[f]->fileString.resize(config.files[f]->fileStringSize);
                 config.files[f]->copyBuffer->read(&config.files[f]->fileString[0], config.files[f]->fileString.size());
             }
@@ -421,13 +349,9 @@ Forest::Forest(int argc, char **argv)
                 if (!config.usingPureRAM)
                 {
                     //new way to read in file
-	                
-					if (!config.processInts)
-					{
-						config.files[f]->fileString.clear();
-						config.files[f]->fileString.resize(patternCount);
-						config.files[f]->copyBuffer->read(&config.files[f]->fileString[0], config.files[f]->fileString.size());
-					}
+                    config.files[f]->fileString.clear();
+                    config.files[f]->fileString.resize(patternCount);
+                    config.files[f]->copyBuffer->read(&config.files[f]->fileString[0], config.files[f]->fileString.size());
                 }
 
                 //Calculate the number of indexes each thread will process
@@ -548,7 +472,7 @@ Forest::Forest(int argc, char **argv)
                             outputData.patternInstances = length;
                             outputData.patternCoveragePercentage = (float)100.0f*(length*levelInfo.currLevel) / (float)config.files[f]->fileStringSize;
                             outputData.averagePatternDistance = averageDistance;
-                            outputData.firstIndexToPattern = linearList[index] -1;
+                            outputData.firstIndexToPattern = linearList[index];
 
                             //If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
                             if (!config.suppressStringOutput)
@@ -640,22 +564,19 @@ Forest::Forest(int argc, char **argv)
                 config.files[f]->copyBuffer->read(&config.files[f]->fileString[0], config.files[f]->fileString.size());
             }
 
-            int iterator = sizeof(unsigned char);
+            int iterator = 1;
             if (config.processInts) {
-                iterator = sizeof(unsigned int);
+                iterator = 4;
             }
-            for (PListType j = iterator - 1; j < stats.GetLevelRecordingSize() && stats.GetLevelRecording(j + 1) != 0; j += iterator)
+            for (PListType j = iterator - 1; j < stats.GetLevelRecordingSize() && stats.GetLevelRecording(j + 1) != 0; j+=iterator)
             {
                 (*Logger::patternOutputFile) << "Level " << (j + 1) / iterator << std::endl;
 
+                string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
                 stringstream buff;
-                //Only process byte data as integers and process every 4 bytes of data because that is how an integer is encoded
-                //Also the position of a pattern has to be divisible by 4 because patterns can only be in segments of 4 bytes i.e. integer encoding again
-                //if (!config.processInts) {
-                    buff << "unique patterns = " << stats.GetLevelRecording(j + 1) <<
-                        ", average occurrence frequency = " << ((double)stats.GetTotalOccurrenceFrequency(j + 1)) / ((double)stats.GetLevelRecording(j + 1)) <<
-                        ", frequency of top pattern: " << stats.GetMostCommonPatternCount(j + 1) << endl;
-                //}
+                buff << "unique patterns = " << stats.GetLevelRecording(j + 1) <<
+                    ", average occurrence frequency = " << ((double)stats.GetTotalOccurrenceFrequency(j + 1)) / ((double)stats.GetLevelRecording(j + 1)) <<
+                    ", frequency of top pattern: " << stats.GetMostCommonPatternCount(j + 1) << endl;
                 (*Logger::patternOutputFile) << buff.str();
 
                 if (config.levelToOutput == j + 1)
@@ -665,12 +586,12 @@ Forest::Forest(int argc, char **argv)
                     PListType number = 1;
                     stringstream buff;
                     string pattern = config.files[f]->fileString.substr(stats.GetMostCommonPatternIndex(j + 1), j + 1);
-                    stringstream tempBuff;
                     for (PListType z = 0; z < stats.detailedLevelInfo.size() && z < config.minimumFrequency; z++)
                     {
                         //Struct used to contain detailed pattern information for one level
                         ProcessorStats::DisplayStruct outputData = stats.detailedLevelInfo[indexMap[z]];
 
+                        buff.str("");
                         if (config.suppressStringOutput)
                         {
                             buff << number << ". instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance << ", first occurrence index = " << outputData.firstIndexToPattern << endl;
@@ -679,12 +600,12 @@ Forest::Forest(int argc, char **argv)
                         {
                             //Only process byte data as integers and process every 4 bytes of data because that is how an integer is encoded
                             //Also the position of a pattern has to be divisible by 4 because patterns can only be in segments of 4 bytes i.e. integer encoding again
-                            if (config.processInts) {
+                            if (config.processInts){
                                 if (outputData.firstIndexToPattern % iterator == 0) {
 
                                     buff << number << ". pattern = ";
-								
-                                    for (int it = 0; it < pattern.size(); it += iterator) {
+
+                                    for (int it = 0; it < pattern.size(); it+=iterator) {
                                         std::string pattern = outputData.pattern;
                                         unsigned int intData = 0;
                                         intData += static_cast<unsigned char>(pattern[it]) << 24;
@@ -694,7 +615,8 @@ Forest::Forest(int argc, char **argv)
 
                                         buff << intData << ",";
                                     }
-                                    buff << " instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance/4 << ", first occurrence index = " << outputData.firstIndexToPattern/4 << endl;
+
+                                    buff << " instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance << ", first occurrence index = " << outputData.firstIndexToPattern << endl;
                                     number++;
                                 }
                             }
@@ -704,20 +626,11 @@ Forest::Forest(int argc, char **argv)
                                 number++;
                             }
                         }
-                       
+                        (*Logger::patternOutputFile) << buff.str();
+                        
                     }
-                    /*tempBuff << "unique patterns = " << number - 1 <<
-                        ", average occurrence frequency = " << ((double)stats.GetTotalOccurrenceFrequency(j + 1)) / ((double)(number - 1)) <<
-                        ", frequency of top pattern: " << stats.GetMostCommonPatternCount(j + 1) << endl;*/
-
-                    (*Logger::patternOutputFile) << tempBuff.str();
-
-                    (*Logger::patternOutputFile) << buff.str();
                 }
             }
-
-            //Linux logger fix
-            (*Logger::patternOutputFile).close();
 
 
             //Save pattern to csv format for matlab post processing scripts
@@ -749,34 +662,12 @@ Forest::Forest(int argc, char **argv)
 
             //File processing validation to make sure every index is processed and eliminated 
             //If we aren't doing a deep search in levels then there isn't a need to check that pattern finder is properly functioning..it's impossible
-			if (config.processInts)
-			{
-				if (config.files[f]->fileStringSize / 4 != stats.GetEradicatedPatterns() && config.maximum == -1)
-				{
-					cout << "Houston we are not processing Integer patterns properly!" << endl;
-					Logger::WriteLog("Houston we are not processing Interger patterns properly!");
-				}
-				else
-				{
-					cout << "Houston we are  processing Integer patterns properly!" << endl;
-					Logger::WriteLog("Houston we are processing Integer patterns properly!");
-				}
-			}
-			else 
-			{
-				if (config.files[f]->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
-				{
-					cout << "Houston we are not processing patterns properly!" << endl;
-					Logger::WriteLog("Houston we are not processing patterns properly!");
-					//exit(0);
-				}
-				else
-				{
-					cout << "Houston we are  processing patterns properly!" << endl;
-					Logger::WriteLog("Houston we are processing patterns properly!");
-				}
-			}
-			
+            if (config.files[f]->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
+            {
+                cout << "Houston we are not processing patterns properly!" << endl;
+                Logger::WriteLog("Houston we are not processing patterns properly!");
+                //exit(0);
+            }
 
             //Clean up memory watch dog thread
             if (memoryQueryThread != NULL)
@@ -862,7 +753,6 @@ Forest::Forest(int argc, char **argv)
     mem << "Most memory overflow was : " << mostMemoryOverflow << " MB\n";
     Logger::WriteLog(mem.str());
     cout << mem.str();
-	outfileIndex.close();
 
 }
 
@@ -2053,7 +1943,7 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
         //Start writing the patterns in pattern map to disk for complete pattern pictures
         PListArchive* currChunkFile = NULL;
         bool notBegun = true;
-	
+
         for (auto iterator = finalMetaDataMap.begin(); iterator != finalMetaDataMap.end(); iterator++)
         {
             if (notBegun)
@@ -2110,47 +2000,15 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
                     PListType length = iterator->second->size();
                     PListType coverageSubtraction = 0;
                     PListType distances = 0;
-					
-					string pattern = config.files[f]->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
                     //Calculate average distance between pattern instances
                     for (int i = index; i < index + length - 1; i++)
                     {
-					
-
-						PListType indexPattern;
-						if (config.processInts)
-						{
-							indexPattern = (((*iterator->second)[i] / 4) - currLevel / 4);
-							outfileIndex << indexPattern << ",";
-							if ((i + 1) == (index + length - 1))
-							{
-								PListType indexlast;
-								indexlast = (((*iterator->second)[i + 1] / 4) - currLevel / 4);
-								outfileIndex << indexlast << ",";
-							}
-						}
-						else
-						{
-							indexPattern = ((*iterator->second)[i] - currLevel);
-							outfileIndex << indexPattern << ",";
-							if ((i + 1) == (index + length - 1))
-							{
-								PListType indexlast;
-								indexlast = ((*iterator->second)[i + 1]  - currLevel);
-								outfileIndex << indexlast << ",";
-							}
-						}
-						
-
-						distances += (*iterator->second)[i + 1] - (*iterator->second)[i];
-
-
+                        distances += (*iterator->second)[i + 1] - (*iterator->second)[i];
                         if ((*iterator->second)[i + 1] - (*iterator->second)[i] < currLevel)
                         {
                             coverageSubtraction += currLevel - ((*iterator->second)[i + 1] - (*iterator->second)[i]);
                         }
                     }
-                    outfileIndex << endl;
 
                     float averageDistance = ((float)distances) / ((float)(length - 1));
                     stringstream data;
@@ -2160,14 +2018,13 @@ PListType Forest::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vec
                     outputData.patternInstances = length;
                     outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction)) / (float)config.files[f]->fileStringSize;
                     outputData.averagePatternDistance = averageDistance;
-                    outputData.firstIndexToPattern = (*iterator->second)[index] - currLevel;
+                    outputData.firstIndexToPattern = (*iterator->second)[index];
 
                     //If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
                     if (!config.suppressStringOutput)
                     {
                         outputData.pattern = config.files[f]->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
                     }
-					
                     stats.detailedLevelInfo.push_back(outputData);
                 }
 
@@ -3435,7 +3292,6 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
             stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, i);
         }
 
-
         //If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
         if (config.levelToOutput == 0 || config.levelToOutput == levelInfo.currLevel)
         {
@@ -3454,107 +3310,37 @@ PListType Forest::ProcessRAM(vector<vector<PListType>*>* prevLocalPListArray, ve
                 PListType index = positionsInLinearList[z];
                 PListType length = pListLengths[z];
                 PListType coverageSubtraction = 0;
-                PListType instances = 1;
-
-
                 //Calculate average distance between pattern instances
                 for (int i = index; i < index + length - 1; i++)
                 {
-				 	PListType indexPattern;
-					if (config.processInts)
-					{
-						indexPattern = ((linearList[i] / 4) - levelInfo.currLevel / 4);
-						outfileIndex << indexPattern << ",";
-						if ((i + 1) == (index + length - 1))
-						{
-							PListType indexlast;
-							indexlast = ((linearList[i + 1] / 4) - levelInfo.currLevel / 4);
-							outfileIndex << indexlast << ",";
-						}
-					}
-					else
-					{
-						indexPattern = (linearList[i] - levelInfo.currLevel);
-						outfileIndex << indexPattern << ",";
-						if ((i + 1) == (index + length - 1))
-						{
-							PListType indexlast;
-							indexlast = (linearList[i + 1] - levelInfo.currLevel);
-							outfileIndex << indexlast << ",";
-						}
-					}
-				
-
-                    //Processing ints need to do a different calculation
-                    if (!config.processInts || (config.processInts && (linearList[i] - levelInfo.currLevel) % sizeof(unsigned int) == 0)){
-                        distances += linearList[i + 1] - linearList[i];
-
-                        if (linearList[i + 1] - linearList[i] < levelInfo.currLevel)
-                        {
-                            coverageSubtraction += levelInfo.currLevel - (linearList[i + 1] - linearList[i]);
-                        }
-                        instances++;
+                    distances += linearList[i + 1] - linearList[i];
+                    if (linearList[i + 1] - linearList[i] < levelInfo.currLevel)
+                    {
+                        coverageSubtraction += levelInfo.currLevel - (linearList[i + 1] - linearList[i]);
                     }
                 }
-				outfileIndex << endl;
-                float averageDistance = ((float)distances) / ((float)(instances - 1));
+                float averageDistance = ((float)distances) / ((float)(length - 1));
                 stringstream data;
 
                 //Struct used to contain detailed pattern information for one level
                 ProcessorStats::DisplayStruct outputData;
-                outputData.patternInstances = instances;
+                outputData.patternInstances = length;
                 outputData.patternCoveragePercentage = (float)100.0f*(((length*levelInfo.currLevel) - coverageSubtraction)) / (float)config.files[f]->fileStringSize;
                 outputData.averagePatternDistance = averageDistance;
-                outputData.firstIndexToPattern = linearList[index] - levelInfo.currLevel;
+                outputData.firstIndexToPattern = linearList[index];
 
                 //If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
                 if (!config.suppressStringOutput)
                 {
                     outputData.pattern = config.files[f]->fileString.substr(linearList[index] - levelInfo.currLevel, levelInfo.currLevel);
-					
                 }
                 stats.detailedLevelInfo.push_back(outputData);
             }
         }
-	
-        if (config.processInts) {
-            int patterns = 0;
-            //Keeps track of the index in pListLengths vector
-            vector<PListType> positionsInLinearList(pListLengths.size());
-            PListType pos = 0;
-            for (PListType i = 0; i < positionsInLinearList.size(); i++)
-            {
-                positionsInLinearList[i] = pos;
-                pos += pListLengths[i];
-            }
-
-            for (PListType z = 0; z < pListLengths.size(); z++)
-            {
-                PListType distances = 0;
-                PListType index = positionsInLinearList[z];
-                PListType length = pListLengths[z];
-                PListType coverageSubtraction = 0;
-                PListType instances = 0;
-                //Calculate average distance between pattern instances
-                for (int i = index; i < index + length; i++)
-                {
-                    //Processing ints need to do a different calculation
-                    if (((linearList[i] - levelInfo.currLevel) % sizeof(unsigned int) == 0)) {
-                        instances++;
-                    }
-                }
-                if (instances > 1) {
-                    patterns++;
-                }
-            }
-            stats.SetLevelRecording(levelInfo.currLevel, stats.GetLevelRecording(levelInfo.currLevel) + static_cast<PListType>(patterns));
-        }
-        else {
-            stats.SetLevelRecording(levelInfo.currLevel, stats.GetLevelRecording(levelInfo.currLevel) + static_cast<PListType>(pListLengths.size()));
-        }
 
         stats.SetEradicationsPerLevel(levelInfo.currLevel, stats.GetEradicationsPerLevel(levelInfo.currLevel) + totalTallyRemovedPatterns);
         stats.SetEradicatedPatterns(stats.GetEradicatedPatterns() + totalTallyRemovedPatterns);
+        stats.SetLevelRecording(levelInfo.currLevel, stats.GetLevelRecording(levelInfo.currLevel) + static_cast<PListType>(pListLengths.size()));
 
         PListType tempMostCommonPatternCount = stats.GetMostCommonPatternCount(levelInfo.currLevel);
         PListType tempMostCommonPatternIndex = 0;
@@ -3852,18 +3638,8 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
         uint8_t tempIndex = (uint8_t)config.files[f]->fileString[i];
         if (config.patternToSearchFor.size() == 0 || config.files[f]->fileString[i] == config.patternToSearchFor[0])
         {
-			//Only search in memory locations that are divisible by four to prevent incorrect patterns
-			//that could exist between integer encodings
-			if (config.processInts && (i + positionInFile) % 4 == 0) {
-				leaves[tempIndex]->push_back(temp);
-				
-			}
-
-			else if (!config.processInts) {	
-					leaves[tempIndex]->push_back(temp);
-					
-			}     
-			counting++;
+            leaves[tempIndex]->push_back(temp);
+            counting++;
         }
         //If RAM memory is allocated over the limit then dump the patterns to file
         if (overMemoryCount && counting >= PListArchive::hdSectorSize)
@@ -3906,19 +3682,11 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
         int temp = i + positionInFile + 1;
         uint8_t tempIndex = (uint8_t)config.files[f]->fileString[i];
 
-		//Only search in memory locations that are divisible by four to prevent incorrect patterns
-		//that could exist between integer encodings
-		if (config.processInts && (i + positionInFile) % 4 == 0) {
-			leaves[tempIndex]->push_back(temp);
-		}
-	
-  	    else if (!config.processInts) {
-			//If ranges are set only search for patterns in the specified range
-			if (config.lowRange == config.highRange || tempIndex >= config.lowRange && tempIndex <= config.highRange)
-			{
-				leaves[tempIndex]->push_back(temp);
-			}
-		}
+        //If ranges are set only search for patterns in the specified range
+        if (config.lowRange == config.highRange || tempIndex >= config.lowRange && tempIndex <= config.highRange)
+        {
+            leaves[tempIndex]->push_back(temp);
+        }
     }
 
     //Push new patterns into the shared vector that will be pulled together with the other processing threads
