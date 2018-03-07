@@ -115,7 +115,7 @@ public:
     *  @param fileList hark disk processing data
     *  @param prevLocalPListArray ram processing data
     *  @return void
-    *
+    */
     void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = nullptr);
 
     /** @brief Switches pattern data for either ram or hd processing on levels after the first

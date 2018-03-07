@@ -62,6 +62,10 @@ void ProcessorStats::SetThreadStatistics(unsigned int threadCount)
 	}
 }
 
+void ProcessorStats::OpenValidationFile(std::string fileName) {
+    outfileIndex.open(fileName, ios::out);
+}
+
 void ProcessorStats::SetMostCommonPattern(PListType currLevel, PListType count, PListType index)
 {
 	if(mostCommonPatternCount.size() < currLevel)

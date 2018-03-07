@@ -662,6 +662,33 @@ void SysMemProc::_buildStats(const PListType removedPatterns,
             //Calculate average distance between pattern instances
             for (auto i = index; i < index + length - 1; i++)
             {
+                PListType indexPattern;
+                std::stringstream stream;
+                if (_config.processInts)
+                {
+                    indexPattern = ((linearList[i] / 4) - _levelInfo.currLevel / 4);
+                    stream << indexPattern << ",";
+                    if ((i + 1) == (index + length - 1))
+                    {
+                        PListType indexlast;
+                        indexlast = ((linearList[i + 1] / 4) - _levelInfo.currLevel / 4);
+                        stream << indexlast << ",";
+                    }
+                }
+                else
+                {
+                    indexPattern = (linearList[i] - _levelInfo.currLevel);
+                    stream << indexPattern << ",";
+                    if ((i + 1) == (index + length - 1))
+                    {
+                        PListType indexlast;
+                        indexlast = (linearList[i + 1] - _levelInfo.currLevel);
+                        stream << indexlast << ",";
+                    }
+                }
+                stream << std::endl;
+                _stats.WriteValidationFile(stream.str());
+
                 //Processing ints need to do a different calculation
                 if (!_config.processInts ||
                     (_config.processInts &&

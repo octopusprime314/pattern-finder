@@ -8,6 +8,7 @@
 #include <vector>
 #include <mutex>
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 class ProcessorStats
@@ -211,6 +212,14 @@ public:
 	 */
 	void SetUsingRAM(unsigned int thread, bool val){ usedRAM[thread] = val; }
 
+    void OpenValidationFile(std::string fileName);
+
+    void CloseValidationFile() { outfileIndex.close(); }
+
+    void WriteValidationFile(std::string data) { 
+        outfileIndex << data;
+    }
+
     void Lock() { lock.lock(); }
 
     void UnLock() { lock.unlock(); }
@@ -247,6 +256,7 @@ private:
 	vector<PListType> mostCommonPatternIndex;
 	PListType eradicatedPatterns;
 	vector<PListType> totalOccurrenceFrequency;
+    ofstream outfileIndex; //file to validate
     std::mutex lock;
 };
 

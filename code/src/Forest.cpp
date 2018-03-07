@@ -175,6 +175,16 @@ Forest::Forest(int argc, char **argv)
 
     chunkFactorio = ChunkFactory::instance();
 
+    int level = 0;
+    if (config.processInts)
+    {
+        level = config.levelToOutput / 4;
+    }
+    else
+    {
+        level = config.levelToOutput;
+    }
+    stats.OpenValidationFile("level" + std::to_string(level) + "outIndex.txt");
 
     config.memoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
     MemoryUsedPriorToThread = MemoryUtils::GetProgramMemoryConsumption();
@@ -229,7 +239,6 @@ Forest::Forest(int argc, char **argv)
             // config.currentFile->fileString.clear();
 
             if (!config.processInts)
-
             {
                 config.currentFile->fileString.resize(config.currentFile->fileStringSize);
                 config.currentFile->copyBuffer->read(&config.currentFile->fileString[0], config.currentFile->fileString.size());
@@ -825,6 +834,8 @@ Forest::Forest(int argc, char **argv)
     threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
     Logger::WriteLog("Errant memory after processing level " , threadMemoryConsumptionInMB - config.memoryUsageAtInception, " in MB!\n");
     Logger::WriteLog("Most memory overflow was : " , mostMemoryOverflow , " MB\n");
+
+    stats.CloseValidationFile();
 }
 
 Forest::~Forest()
