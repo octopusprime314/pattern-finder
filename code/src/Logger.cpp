@@ -55,34 +55,9 @@ ofstream* Logger::patternOutputFile = new ofstream(LOGGERPATH + "Output" + GetPI
 
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
-int Logger::verbosity = 0;
-void Logger::WriteLog(string miniBuff)
-{
-	if(verbosity)
-	{
-		if(!disableLogging )
-		{
-			logMutex->lock();
+int Logger::verbosity = 1;
+std::stringstream Logger::streamer;
 
-			//String gets written live to log while 
-			//log.txt gets written to at certain hard disk size blocks
-			if(cmdEnabled)
-			{
-				cout << miniBuff;
-			}
-
-			stringBuffer.append(miniBuff);
-			(*outputFile) << stringBuffer;
-			stringBuffer.clear();
-
-			//refresh
-			(*outputFile).flush();
-			(*outputFile).clear();
-		
-			logMutex->unlock();
-		}
-	}
-}
 string Logger::GetPID()
 {
 	//Return the program PID to generate unique log files
@@ -150,7 +125,7 @@ string Logger::GetFormattedTime()
 		timeBuff << "0";	
 	}
 	timeBuff << now.tm_sec;
-	srand ((unsigned int)(time(NULL)));
+	srand ((unsigned int)(time(nullptr)));
 	timeBuff << rand();
 
 	return timeBuff.str();
@@ -176,6 +151,20 @@ string Logger::GetTime()
 	timeBuff << now.tm_sec;
 
 	return timeBuff.str();
+}
+
+void Logger::dumpLog(const std::string& buffer) {
+
+    if (cmdEnabled)
+    {
+        cout << buffer;
+    }
+
+    (*outputFile) << buffer;
+
+    //refresh
+    (*outputFile).flush();
+    (*outputFile).clear();
 }
 
 void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes)

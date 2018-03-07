@@ -30,6 +30,7 @@
  */
 
 #include "ProcessorConfig.h"
+#include "MemoryUtils.h"
 #include <locale>
 #if defined(_WIN64) || defined(_WIN32)
 #include "Dirent.h"
@@ -115,6 +116,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 				}
 				config.files.push_back(new FileReader(tempFileName, isFile));
 				config.fileSizes.push_back(config.files.back()->fileStringSize);
+                config.currentFile = config.files.front();
 				i++;
 			}
 			else if(fileTest.find('.') == string::npos && fileTest[0] != '-')
@@ -134,11 +136,13 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 					header.append("/");
 				}
 				FindFiles(header);
+                config.currentFile = config.files.front();
 				i++;
 			}
 			else
 			{
 				FindFiles(header);	
+                config.currentFile = config.files.front();
 			}
 			fileEnter = true;
 		}
@@ -227,11 +231,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			config.threadLimitation = atoi(argv[i+1]);
 			i++;
 		}
-        else if (arg.compare("-l") == 0)
-        {
-            config.threadLimitation = atoi(argv[i + 1]);
-            i++;
-        }
         else if (arg.compare("-int") == 0)
         {
             config.processInts = true;
@@ -276,11 +275,8 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 
 	unsigned long concurentThreadsSupported = std::thread::hardware_concurrency();
 
-	stringstream buff;
-	buff << "Number of threads on machine: " << concurentThreadsSupported << endl;
-	Logger::WriteLog(buff.str());
-	cout << buff.str();
-
+	Logger::WriteLog("Number of threads on machine: " , concurentThreadsSupported , "\n");
+	
 	//If min not specified then make the smallest pattern of 0
 	if (!minEnter)
 	{
@@ -291,6 +287,27 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	{
 		config.numThreads = concurentThreadsSupported;
 	}
+
+    //main thread is a hardware thread so dispatch threads requested minus 1
+    if (config.findBestThreadNumber)
+    {
+        config.numThreads = 1;
+    }
+
+    PListType memoryCeiling = (PListType)MemoryUtils::GetAvailableRAMMB() - 1000;
+
+    //If memory bandwidth not an input
+    if (!config.usingMemoryBandwidth)
+    {
+
+        //Leave 1 GB to spare for operating system 
+        config.memoryBandwidthMB = memoryCeiling - 1000;
+    }
+
+    config.memoryPerThread = config.memoryBandwidthMB / config.numThreads;
+    if (config.memoryPerThread == 0) {
+        config.memoryPerThread = 1;
+    }
 
 	int bestThreadCount = 0;
 	double fastestTime = 1000000000.0f;
@@ -316,11 +333,11 @@ void ProcessorConfig::FindFiles(string directory)
 #if defined(_WIN64) || defined(_WIN32)
 	DIR *dir;
 	struct dirent *ent;
-	if ((dir = opendir (directory.c_str())) != NULL) 
+	if ((dir = opendir (directory.c_str())) != nullptr) 
 	{
 		Logger::WriteLog("Files to be processed: \n");
 		/* print all the files and directories within directory */
-		while ((ent = readdir (dir)) != NULL) 
+		while ((ent = readdir (dir)) != nullptr) 
 		{
 			if(*ent->d_name)
 			{
@@ -329,7 +346,7 @@ void ProcessorConfig::FindFiles(string directory)
 				if(!fileName.empty() && fileName != "." && fileName !=  ".." && fileName.find(".") != std::string::npos && fileName.find(".ini") == std::string::npos)
 				{
 					string name = string(ent->d_name);
-					Logger::WriteLog(name + "\n");
+					Logger::WriteLog(name , "\n");
 					//cout << name << endl;
 					string tempName = directory;
 					tempName.append(ent->d_name);
@@ -370,7 +387,7 @@ void ProcessorConfig::FindFiles(string directory)
 		if(!fileName.empty() && fileName != "." && fileName !=  ".." && fileName.find(".") != std::string::npos && fileName.find(".ini") == std::string::npos)
 		{
 			string name = string(entry->d_name);
-			Logger::WriteLog(name + "\n");
+			Logger::WriteLog(name, "\n");
 			//cout << name << endl;
 			string tempName = directory;
 			tempName.append(entry->d_name);

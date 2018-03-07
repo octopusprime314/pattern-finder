@@ -181,7 +181,7 @@ float ProcessorStats::GetCoverage(PListType currLevel)
 	return coverage[currLevel - 1];
 }
 
-void ProcessorStats::SetTotalOccurrenceFrequency(PListType currLevel, float occurenceFreq)
+void ProcessorStats::SetTotalOccurrenceFrequency(PListType currLevel, PListType occurenceFreq)
 {
 	if(totalOccurrenceFrequency.size() < currLevel)
 	{

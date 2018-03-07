@@ -48,7 +48,7 @@ PListArchive::PListArchive(string fileName, bool create)
 	try
 	{
 		totalWritten = 0;
-		mapper = NULL;
+		mapper = nullptr;
 		prevFileIndex = 0;
 
 		endOfFileReached = false;
@@ -63,35 +63,29 @@ PListArchive::PListArchive(string fileName, bool create)
 		if(create)
 		{
 #if defined(_WIN64) || defined(_WIN32)
-			fd = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+			fd = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 #elif defined(__linux__)
-			fd = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+			fd = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
 #endif
 			if(fd == -1)
 			{
-				stringstream streaming;
-				streaming << "Why are we truncating the file " << file << endl;
-				streaming << " and errno is "<< strerror(errno) << endl;
-				Logger::WriteLog(streaming.str());
-				cout << streaming.str() << endl;
-				fd = open(file.c_str(), O_RDWR | O_TRUNC);
+				Logger::WriteLog("Why are we truncating the file " , file ,
+					" and errno is " , strerror(errno), "\n");
+				fd = _open(file.c_str(), O_RDWR | O_TRUNC);
 			}
 		}
 		//Open existing file
 		else
 		{
-			fd = open(file.c_str(), O_RDONLY);
+			fd = _open(file.c_str(), O_RDONLY);
 		}
 
 		this->fileName = file;
 		//If file does not exist or could not be created then we return unhappy
 		if(fd < 0)
 		{
-			
-			stringstream stringbuilder;
-			stringbuilder << file.c_str() << " file not found!";
-			stringbuilder << " and errno is "<< strerror(errno) << endl;
-			Logger::WriteLog(stringbuilder.str());
+			Logger::WriteLog(file.c_str() , " file not found!", 
+			" and errno is " , strerror(errno), "\n");
 			endOfFileReached = true;
 			return;
 		}
@@ -103,10 +97,7 @@ PListArchive::PListArchive(string fileName, bool create)
 	}
 	catch(exception e)
 	{
-		string error("Exception occurred in method PListArchive Costructor -> ");
-		error.append(e.what());
-		Logger::WriteLog(error + "\n");
-		cout << error << endl;
+		Logger::WriteLog("Exception occurred in method PListArchive Costructor -> ", e.what(), "\n");
 	}
 }
 PListArchive::~PListArchive(void)
@@ -115,14 +106,11 @@ PListArchive::~PListArchive(void)
 //Writing to hd error handling methods
 void PListArchive::MappingError(int& fileDescriptor, string fileName)
 {
-	stringstream handle;
-	handle << " and errno is "<< strerror(errno) << endl;
-	handle << "error mapping the file " << fileName << endl;
-	handle << "file descriptor: " << fileDescriptor << endl;
-	handle << "end of file reached: " << endOfFileReached << endl;
-	Logger::WriteLog(handle.str());
-	cout << handle.str();
-	close(fileDescriptor);
+	Logger::WriteLog(" and errno is ", strerror(errno), "\n"
+	, "error mapping the file " , fileName , "\n"
+	, "file descriptor: " , fileDescriptor , "\n"
+	, "end of file reached: " , endOfFileReached, "\n");
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -130,14 +118,11 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 	
 void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 {
-	stringstream handle;
-	handle << " and errno is "<< strerror(errno) << endl;
-	handle << "error un-mapping the file " << fileName << endl;
-	handle << "file descriptor: " << fileDescriptor << endl;
-	handle << "end of file reached: " << endOfFileReached << endl;
-	Logger::WriteLog(handle.str());
-	cout << handle.str();
-	close(fileDescriptor);
+	Logger::WriteLog(" and errno is ", strerror(errno), "\n"
+		, "error un-mapping the file ", fileName, "\n"
+		, "file descriptor: ", fileDescriptor, "\n"
+		, "end of file reached: ", endOfFileReached, "\n");
+	_close(fileDescriptor);
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -145,22 +130,18 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
-	stringstream handle;
-	handle << "error calling lseek() to 'stretch' the file " << fileName << endl;
-	Logger::WriteLog(handle.str());
+	Logger::WriteLog("error calling lseek() to 'stretch' the file " , fileName, "\n");
 }
 
 void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
-	close(fileDescriptor);
+	_close(fileDescriptor);
 	fileDescriptor = -1;
 	endOfFileReached = true;
-	stringstream handle;
-	handle << "error writing last byte of the file " << fileName << endl;
-	Logger::WriteLog(handle.str());
+	Logger::WriteLog("error writing last byte of the file " , fileName , "\n");
 }
 
 void PListArchive::GetPListArchiveMMAP(vector<vector<PListType>*> &stuffedPListBuffer, double chunkSizeInMB)
@@ -314,7 +295,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 		if(flush)
 		{
 			//Kick off thread that flushes cached memory mapping to disk asynchronously and it may be bad 
-			if(mapper != NULL)
+			if(mapper != nullptr)
 			{
 				//Do not wait for all data to be written to file before executing next line of code
 				msync(mapper, hdSectorSize, MS_ASYNC);
@@ -324,7 +305,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 					UnMappingError(fd, this->fileName);
 					return;
 				}
-				mapper = NULL;
+				mapper = nullptr;
 			}
 			
 			totalWritten = 0;
@@ -381,9 +362,9 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 		PListType i;
 		for(i = 0; i < offset && !done && pListSize > 0; i++)
 		{
-			if(startPoint == 0 || mapper == NULL)
+			if(startPoint == 0 || mapper == nullptr)
 			{
-				if(mapper != NULL)
+				if(mapper != nullptr)
 				{
 					//Write back data to file asynchronously ie do not wait
 					msync(mapper, hdSectorSize, MS_ASYNC);
@@ -393,7 +374,7 @@ void PListArchive::WriteArchiveMapMMAP(const vector<PListType> &pListVector, con
 						UnMappingError(fd, this->fileName);
 						return;
 					}
-					mapper = NULL;
+					mapper = nullptr;
 				}
 
 				//Allocate a virtual page block of memory to write pattern data to
@@ -461,7 +442,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	//Gets only the pattern string information from file
 	if(fd == -1)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	PListType preservedFileIndex = fileIndex;
@@ -476,7 +457,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	{
 		totalReadsForPatterns++;
 	}
-	vector<string> *newStringBuffer = NULL;
+	vector<string> *newStringBuffer = nullptr;
 	PListType newStringBufferIndex = 0;
 	PListType offstep = 0;
 	unsigned int prevIndexForChar = 0;
@@ -484,7 +465,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 	PListType sizeToRead = 0;
 	if(count == 0)
 	{
-		return NULL;
+		return nullptr;
 	}
 	else
 	{
@@ -509,7 +490,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 			if (mapChar == MAP_FAILED) 
 			{
 				MappingError(fd, this->fileName);
-				return NULL;
+				return nullptr;
 			}
 			
 			PListType PListBuffSize = hdSectorSize/sizeof(char);
@@ -554,7 +535,7 @@ vector<string>* PListArchive::GetPatterns(unsigned int level, PListType count)
 				if (munmap(mapChar, PListBuffSize) == -1) 
 				{
 					UnMappingError(fd, this->fileName);
-					return NULL;
+					return nullptr;
 				}
 			}
 		
@@ -579,7 +560,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 	try
 	{
 		//Takes pattern buffer data and creates a pattern string file
-		char *mapForChars = NULL;  /* mmapped array of char's */
+		char *mapForChars = nullptr;  /* mmapped array of char's */
 
 		string file;
 	
@@ -595,18 +576,16 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 		//Create file handle for memory map writing
 	#if defined(_WIN64) || defined(_WIN32)
-		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
+		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 	#elif defined(__linux__)
-		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
+		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
 	#endif
 
 		//Make sure the file is created
 		if(mapFD < 0)
 		{
-			stringstream stringbuilder;
-			stringbuilder << file.c_str() << " map pattern file not found!";
-			stringbuilder << " and errno is "<< strerror(errno) << endl;
-			Logger::WriteLog(stringbuilder.str());
+			Logger::WriteLog(file.c_str() , " map pattern file not found!",
+			" and errno is " , strerror(errno) , "\n");
 			endOfFileReached = true;
 			return;
 		}
@@ -650,9 +629,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 
 			if (mapForChars == MAP_FAILED) 
 			{
-				stringstream uhoh;
-				uhoh << "fileIndex : " << fileIndex << endl;
-				Logger::WriteLog(uhoh.str());
+				Logger::WriteLog("fileIndex : " , fileIndex);
 				MappingError(mapFD, file);
 				return;
 			}
@@ -703,15 +680,11 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 		}
 		
-		close(mapFD);
+		_close(mapFD);
 	}
 	catch(exception e)
 	{
-		
-		string error("Exception occurred in method DumpPatternsToDisk -> ");
-		error.append(e.what());
-		Logger::WriteLog(error + "\n");
-		cout << error << endl;
+		Logger::WriteLog("Exception occurred in method DumpPatternsToDisk -> ", e.what(), "\n");
 	}
 }
 
@@ -725,16 +698,12 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
-			close(fd);
+			_close(fd);
 		}
 	}
 	catch(exception e)
 	{
-		
-		string error("Exception occurred in method CloseArchiveMMAP -> ");
-		error.append(e.what());
-		Logger::WriteLog(error + "\n");
-		cout << error << endl;
+		Logger::WriteLog("Exception occurred in method CloseArchiveMMAP -> ", e.what(), "\n");
 	}
 }
 

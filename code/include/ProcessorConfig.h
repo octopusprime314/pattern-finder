@@ -22,13 +22,14 @@ struct ConfigurationParams
 	bool findBestThreadNumber;
 	int history;
 	PatternDiscoveryType nonOverlappingPatternSearch;
-	PListType memoryBandwidthMB;
+	double memoryBandwidthMB;
 	bool usingMemoryBandwidth;
 	int levelToOutput;
 	string patternToSearchFor;
 	unsigned int testIterations;
 	PListType minOccurrence;
 	vector<FileReader*> files;
+    FileReader* currentFile;
 	int currentFileIndex;
 	vector<PListType> fileSizes;
 	int threadLimitation;
@@ -37,6 +38,8 @@ struct ConfigurationParams
 	bool suppressStringOutput;
 	unsigned int minimumFrequency;
     bool processInts;
+    double memoryUsageAtInception;
+    double memoryPerThread;
 };
 class ProcessorConfig
 {

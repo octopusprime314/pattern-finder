@@ -6,6 +6,7 @@
 #pragma once
 #include "TypeDefines.h"
 #include <vector>
+#include <mutex>
 #include <iostream>
 using namespace std;
 
@@ -179,7 +180,7 @@ public:
 	 *  @param cover coverage the pattern has throughout the file
 	 *  @return void
 	 */
-	void SetTotalOccurrenceFrequency(PListType currLevel, float aveOccurenceFreq);
+	void SetTotalOccurrenceFrequency(PListType currLevel, PListType aveOccurenceFreq);
 
 	/** @brief Sets average occurence frequency at a level
 	 *
@@ -209,6 +210,10 @@ public:
 	 *  @return void
 	 */
 	void SetUsingRAM(unsigned int thread, bool val){ usedRAM[thread] = val; }
+
+    void Lock() { lock.lock(); }
+
+    void UnLock() { lock.unlock(); }
 
 	//Struct used to store detailed pattern information when user indicates -plevel N
 	struct DisplayStruct
@@ -242,5 +247,6 @@ private:
 	vector<PListType> mostCommonPatternIndex;
 	PListType eradicatedPatterns;
 	vector<PListType> totalOccurrenceFrequency;
+    std::mutex lock;
 };
 
