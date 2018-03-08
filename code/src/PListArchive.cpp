@@ -65,19 +65,27 @@ PListArchive::PListArchive(string fileName, bool create)
 #if defined(_WIN64) || defined(_WIN32)
 			fd = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 #elif defined(__linux__)
-			fd = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
+			fd = open(file.c_str(), O_RDWR | O_CREAT, 0644);
 #endif
 			if(fd == -1)
 			{
 				Logger::WriteLog("Why are we truncating the file " , file ,
 					" and errno is " , strerror(errno), "\n");
+#if defined(_WIN64) || defined(_WIN32)
 				fd = _open(file.c_str(), O_RDWR | O_TRUNC);
+#elif defined(__linux__)
+                fd = open(file.c_str(), O_RDWR | O_TRUNC);
+#endif
 			}
 		}
 		//Open existing file
 		else
 		{
+#if defined(_WIN64) || defined(_WIN32)
 			fd = _open(file.c_str(), O_RDONLY);
+#elif defined(__linux__)
+            fd = open(file.c_str(), O_RDONLY);
+#endif
 		}
 
 		this->fileName = file;
@@ -110,7 +118,12 @@ void PListArchive::MappingError(int& fileDescriptor, string fileName)
 	, "error mapping the file " , fileName , "\n"
 	, "file descriptor: " , fileDescriptor , "\n"
 	, "end of file reached: " , endOfFileReached, "\n");
-	_close(fileDescriptor);
+
+#if defined(_WIN64) || defined(_WIN32)
+    _close(fileDescriptor);
+#elif defined(__linux__)
+    close(fileDescriptor);
+#endif
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -122,7 +135,12 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 		, "error un-mapping the file ", fileName, "\n"
 		, "file descriptor: ", fileDescriptor, "\n"
 		, "end of file reached: ", endOfFileReached, "\n");
-	_close(fileDescriptor);
+
+#if defined(_WIN64) || defined(_WIN32)
+    _close(fileDescriptor);
+#elif defined(__linux__)
+    close(fileDescriptor);
+#endif
 
 	fileDescriptor = -1;
 	endOfFileReached = true;
@@ -130,7 +148,12 @@ void PListArchive::UnMappingError(int& fileDescriptor, string fileName)
 
 void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 {
-	_close(fileDescriptor);
+#if defined(_WIN64) || defined(_WIN32)
+    _close(fileDescriptor);
+#elif defined(__linux__)
+    close(fileDescriptor);
+#endif
+
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	Logger::WriteLog("error calling lseek() to 'stretch' the file " , fileName, "\n");
@@ -138,7 +161,12 @@ void PListArchive::SeekingError(int& fileDescriptor, string fileName)
 
 void PListArchive::ExtendingFileError(int& fileDescriptor, string fileName)
 {
-	_close(fileDescriptor);
+#if defined(_WIN64) || defined(_WIN32)
+    _close(fileDescriptor);
+#elif defined(__linux__)
+    close(fileDescriptor);
+#endif
+
 	fileDescriptor = -1;
 	endOfFileReached = true;
 	Logger::WriteLog("error writing last byte of the file " , fileName , "\n");
@@ -578,7 +606,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 	#if defined(_WIN64) || defined(_WIN32)
 		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, _S_IREAD | _S_IWRITE);
 	#elif defined(__linux__)
-		int mapFD = _open(file.c_str(), O_RDWR | O_CREAT, 0644);
+		int mapFD = open(file.c_str(), O_RDWR | O_CREAT, 0644);
 	#endif
 
 		//Make sure the file is created
@@ -680,7 +708,11 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 			}
 		}
 		
-		_close(mapFD);
+#if defined(_WIN64) || defined(_WIN32)
+        _close(mapFD);
+#elif defined(__linux__)
+        close(mapFD);
+#endif
 	}
 	catch(exception e)
 	{
@@ -698,7 +730,11 @@ void PListArchive::CloseArchiveMMAP()
 		 */
 		if(fd != -1)
 		{
-			_close(fd);
+#if defined(_WIN64) || defined(_WIN32)
+            _close(fd);
+#elif defined(__linux__)
+            close(fd);
+#endif
 		}
 	}
 	catch(exception e)

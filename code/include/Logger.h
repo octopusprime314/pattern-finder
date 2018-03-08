@@ -31,25 +31,50 @@ class Logger
 {
 public:
 
-	template<typename T, typename... Args>
-	static void WriteLog(T streamable, Args... args) {
-		
-        return; //No logging for now.
+    //This is terrible logging because it logs the number of args - 1
+    //I needed a way to pass though variadic arguments and it turned out poorly
+    template<typename T, typename... Args>
+    static void WriteLog(T streamable, Args... args) {
+        
         if (!verbosity || disableLogging) {
             return;
         }
-        
-        streamer << streamable;
-		WriteLog(args...);
-		auto buffer = streamer.str();
-		dumpLog(buffer);
-        streamer.str("");
-	}
-	template<typename T>
-	static void WriteLog(T streamable) {
-		streamer << streamable << std::endl;
-		return;
-	}
+        std::stringstream stream;
+        writeLog(stream, streamable, args...);
+    }
+
+    template<typename T, typename... Args>
+    static void writeLog(std::stringstream& stream, T streamable, Args... args) {
+       
+        stream << streamable;
+        writeLog(stream, args...);
+        auto buffer = stream.str();
+        dumpLog(buffer);
+    }
+
+    template<typename T>
+    static void writeLog(std::stringstream& stream, T streamable) {
+        stream << streamable << std::endl;
+    }
+
+	//static void WriteLog(T streamable, Args... args) {
+	//	
+ //       return; //No logging for now.
+ //       if (!verbosity || disableLogging) {
+ //           return;
+ //       }
+ //       
+ //       streamer << streamable;
+	//	WriteLog(args...);
+	//	auto buffer = streamer.str();
+	//	dumpLog(buffer);
+ //       streamer.str("");
+	//}
+	//template<typename T>
+	//static void WriteLog(T streamable) {
+	//	streamer << streamable << std::endl;
+	//	return;
+	//}
 
     static void dumpLog(const std::string& buffer);
 
@@ -158,8 +183,6 @@ public:
 	static void fileCoverageCSV(const vector<float>& coverage);
 
 	static ofstream* patternOutputFile;
-
-	static std::stringstream streamer;
 
 private:
 	/** Streams used to write and read to files */

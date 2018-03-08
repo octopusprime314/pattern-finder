@@ -634,7 +634,7 @@ Forest::Forest(int argc, char **argv)
                 config.numThreads = (config.numThreads * 2);
             }
 
-            Logger::WriteLog("File Size ", config.currentFile->fileStringSize, " and eliminated patterns ", stats.GetEradicatedPatterns(), "\n\n\n");
+            Logger::WriteLog("File Size ", config.currentFile->fileStringSize, " and eliminated patterns ", stats.GetEradicatedPatterns());
 
             //File processing validation to make sure every index is processed and eliminated 
             //If we aren't doing a deep search in levels then there isn't a need to check that pattern finder is properly functioning..it's impossible
@@ -694,7 +694,7 @@ Forest::Forest(int argc, char **argv)
             Logger::WriteLog("Thread ", threadTime.first, " processed for ", threadTime.second, " milliseconds!");
         }
         //Log the percentage of files in folder that have been processed so far
-        Logger::WriteLog("File collection percentage completed: ", threadMap.size() * 100 / config.files.size(), "%\n");
+        Logger::WriteLog("File collection percentage completed: ", threadMap.size() * 100 / config.files.size(), "%");
 
         //Close file handle once and for all
         config.currentFile->copyBuffer->clear();

@@ -56,7 +56,6 @@ ofstream* Logger::patternOutputFile = new ofstream(LOGGERPATH + "Output" + GetPI
 string Logger::stringBuffer;
 mutex* Logger::logMutex = new mutex();
 int Logger::verbosity = 1;
-std::stringstream Logger::streamer;
 
 string Logger::GetPID()
 {
