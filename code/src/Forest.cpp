@@ -38,105 +38,9 @@
 #include <numeric>
 #include <iterator>
 
-bool Forest::overMemoryCount = false;
-
-
-vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v) {
-
-    // initialize original index locations
-    vector<size_t> idx(v.size());
-    iota(idx.begin(), idx.end(), 0);
-
-    // sort indexes based on comparing values in v
-    sort(idx.begin(), idx.end(),
-        [&v](size_t i1, size_t i2) {return v[i1].patternInstances > v[i2].patternInstances; });
-
-    return idx;
-}
-
-bool containsFile(string directory)
-{
-    bool foundFiles = false;
-#if defined(_WIN64) || defined(_WIN32)
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir(directory.c_str())) != nullptr)
-    {
-        Logger::WriteLog("Files to be processed: \n");
-        /* print all the files and directories within directory */
-        while ((ent = readdir(dir)) != nullptr)
-        {
-            if (*ent->d_name)
-            {
-                string fileName = string(ent->d_name);
-
-                if (!fileName.empty() && fileName.find("PList") != string::npos)
-                {
-                    foundFiles = true;
-                    break;
-                }
-            }
-        }
-        closedir(dir);
-    }
-    else
-    {
-        //cout << "Problem reading from directory!" << endl;
-    }
-#elif defined(__linux__)
-    DIR *dir;
-    struct dirent *entry;
-
-    if (!(dir = opendir(directory.c_str())))
-        return false;
-
-    while ((entry = readdir(dir)) != nullptr)
-    {
-        string fileName = string(entry->d_name);
-
-        if (!fileName.empty() && fileName.find("PList") != string::npos)
-        {
-            foundFiles = true;
-            break;
-        }
-    }
-    closedir(dir);
-#endif		
-    return foundFiles;
-}
-
-void Forest::inteTochar(FileReader * files)
-{
-    std::string tempString;
-    tempString.resize(files->fileStringSize);
-    files->copyBuffer->read(&tempString[0], files->fileStringSize);
-
-    size_t intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
-    size_t stringIndex = 0;
-    while (intEndPosition != std::string::npos) {
-
-        std::string value = tempString.substr(stringIndex, intEndPosition - stringIndex);
-        unsigned int data = std::stoul(value); //parse the numerical string to an unsigned int
-        //Convert to from string representation of a number to unsigned int and then finally back to a 4 byte string
-        files->fileString.push_back((data >> 24) & 0xFF);
-        files->fileString.push_back((data >> 16) & 0xFF);
-        files->fileString.push_back((data >> 8) & 0xFF);
-        files->fileString.push_back((data) & 0xFF);
-
-        stringIndex = intEndPosition + 1;
-        intEndPosition = tempString.find_first_of(",", stringIndex); //Find first instancee of a comma because data is comma seperated
-    }
-
-    files->fileStringSize = static_cast<PListType>(files->fileString.size());
-
-    files->fileName += "tmp";
-
-    std::ofstream output = ofstream(files->fileName, ios::binary);
-
-    output.write(files->fileString.c_str(), files->fileString.length());
-
-    output.close();
-}
+//Forward function decls
+vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v);
+bool           containsFile(string directory);
 
 Forest::Forest(int argc, char **argv)
 {
@@ -164,14 +68,8 @@ Forest::Forest(int argc, char **argv)
     PListArchive::totalLoops = PListArchive::hdSectorSize / sizeof(PListType);
     PListArchive::writeSize = PListArchive::hdSectorSize / 8;
 
-    writingFlag = false;
-
-    threadsDispatched = 0;
-    threadsDefuncted = 0;
     mostMemoryOverflow = 0;
     currMemoryOverflow = 0;
-
-    firstLevelProcessedHD = false;
 
     chunkFactorio = ChunkFactory::instance();
 
@@ -187,22 +85,26 @@ Forest::Forest(int argc, char **argv)
     stats.OpenValidationFile("level" + std::to_string(level) + "outIndex.txt");
 
     config.memoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
-    MemoryUsedPriorToThread = MemoryUtils::GetProgramMemoryConsumption();
+    memoryUsedPriorToThread = MemoryUtils::GetProgramMemoryConsumption();
     overMemoryCount = false;
     processingFinished = false;
 
-    countMutex = new mutex();
     prevPListArray = new vector<vector<PListType>*>();
 
     thread *memoryQueryThread = nullptr;
 
     double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-    Logger::WriteLog("Errant memory after processing level " , threadMemoryConsumptionInMB - config.memoryUsageAtInception, " in MB!\n");
+    Logger::WriteLog("Errant memory after processing level ", threadMemoryConsumptionInMB - config.memoryUsageAtInception, " in MB!\n");
 
     vector<map<int, double>> threadMap;
 
-    threadPool = new vector<future<void>>();
 
+    map<PListType, PListType> finalPattern;
+
+    //File statistics
+    vector<double> processingTimes;
+
+    vector<future<void>> *threadPool = new vector<future<void>>();
 
     //Search through a list of files or an individual file
     for (auto iterator : config.files)
@@ -218,7 +120,7 @@ Forest::Forest(int argc, char **argv)
         config.currentFile->fileString.clear();
         if (config.processInts)
         {
-            inteTochar(config.currentFile);
+            intTochar(config.currentFile);
 
         }
         //If file is not opened then delete copy buffer and discard this file and continue processing with the next file
@@ -256,8 +158,8 @@ Forest::Forest(int argc, char **argv)
             if (i != std::string::npos)
                 nameage.erase(i, sizeof(DATA_FOLDER) - 1);
 
-            Logger::WriteLog("\n" , Logger::GetTime() , " File processing starting for: " , nameage, "\n");
-            
+            Logger::WriteLog("\n", Logger::GetTime(), " File processing starting for: ", nameage, "\n");
+
             //Start the processing timer to keep track of how long processing takes
             initTime.Start();
 
@@ -265,11 +167,6 @@ Forest::Forest(int argc, char **argv)
             newFileNameList.clear();
             prevFileNameList.resize(config.numThreads);
             newFileNameList.resize(config.numThreads);
-
-            fileChunks.clear();
-            fileChunks.reserve(0);
-
-            chunkIndexToFileChunk.clear();
 
             //Kick off thread that processes how much memory the program uses at a certain interval
             memoryQueryThread = new thread(&Forest::MemoryQuery, this);
@@ -283,12 +180,6 @@ Forest::Forest(int argc, char **argv)
 
             stats.SetThreadStatistics(config.numThreads);
 
-            activeThreads.resize(config.numThreads);
-            for (unsigned int i = 0; i < config.numThreads; i++)
-            {
-                activeThreads[i] = false;
-            }
-
             cout << "Memory that can be used per thread: " << config.memoryPerThread << " MB." << endl;
 
             PListType overallFilePosition = 0;
@@ -301,7 +192,6 @@ Forest::Forest(int argc, char **argv)
             levelInfo.useRAM = stats.GetUsingRAM(0);
             levelInfo.coreIndex = 0;
             bool prediction = MemoryUtils::DiskOrSysMemProcessing(levelInfo, 1, config.currentFile->fileStringSize, config, stats);
-            firstLevelProcessedHD = prediction;
             for (unsigned int i = 0; i < config.numThreads; i++)
             {
                 stats.SetUsingRAM(i, !prediction);
@@ -337,9 +227,9 @@ Forest::Forest(int argc, char **argv)
             {
                 PListType position = 0;
                 PListType patternCount = 0;
-                if (config.currentFile->fileStringSize <= fileReadSize*z + fileReadSize)
+                if (config.currentFile->fileStringSize <= fileReadSize * z + fileReadSize)
                 {
-                    patternCount = config.currentFile->fileStringSize - fileReadSize*z;
+                    patternCount = config.currentFile->fileStringSize - fileReadSize * z;
                 }
                 else
                 {
@@ -355,13 +245,10 @@ Forest::Forest(int argc, char **argv)
                 if (!config.usingPureRAM)
                 {
                     //new way to read in file
-
-                    if (!config.processInts)
-                    {
-                        config.currentFile->fileString.clear();
-                        config.currentFile->fileString.resize(patternCount);
-                        config.currentFile->copyBuffer->read(&config.currentFile->fileString[0], config.currentFile->fileString.size());
-                    }
+                    config.currentFile->fileString.clear();
+                    config.currentFile->fileString.resize(patternCount);
+                    config.currentFile->copyBuffer->read(&config.currentFile->fileString[0], config.currentFile->fileString.size());
+                   
                 }
 
                 //Calculate the number of indexes each thread will process
@@ -397,7 +284,7 @@ Forest::Forest(int argc, char **argv)
                 WaitForThreads(localWorkingThreads, threadPool);
 
                 //If processing ram then all of the threads pattern vector must be pulled together
-                if (!prediction)
+                if (!prediction && !config.processInts)
                 {
                     PListType indexOfList = 0;
                     std::map<string, PListType> countMap;
@@ -580,7 +467,7 @@ Forest::Forest(int argc, char **argv)
             //use that one prediction
             if (!prediction)
             {
-                if (patterns->size() > 1) {
+                if (patterns->size() > 0) {
                     prevPListArray = patterns;
                 }
                 //Balance patterns across threads
@@ -588,16 +475,12 @@ Forest::Forest(int argc, char **argv)
                 vector<unsigned int> localWorkingThreads;
                 for (unsigned int i = 0; i < balancedTruncList.size(); i++)
                 {
-                    activeThreads[i] = true;
                     localWorkingThreads.push_back(i);
                 }
 
-                countMutex->lock();
+                threadMgr.Lock();
                 for (unsigned int i = 0; i < localWorkingThreads.size(); i++)
                 {
-                    //Spawn each ram processing thread with level state information
-                    threadsDispatched++;
-
                     PatternData* patternData = new PatternData();
                     for (auto index : balancedTruncList[i]) {
                         patternData->push_back((*prevPListArray)[index]);
@@ -607,7 +490,7 @@ Forest::Forest(int argc, char **argv)
                     }, new SysMemProc(patternData, data, testLevelInfo)));
 
                 }
-                countMutex->unlock();
+                threadMgr.UnLock();
                 WaitForThreads(localWorkingThreads, threadPool);
             }
             //HD processing
@@ -627,20 +510,19 @@ Forest::Forest(int argc, char **argv)
                 vector<unsigned int> localWorkingThreads;
                 for (unsigned int i = 0; i < balancedTruncList.size(); i++)
                 {
-                    activeThreads[i] = true;
                     localWorkingThreads.push_back(i);
                 }
-                countMutex->lock();
+                threadMgr.Lock();
                 for (unsigned int i = 0; i < localWorkingThreads.size(); i++)
                 {
                     //Spawn each hd processing thread with level state information
-                    
+
                     threadPool->push_back(std::async([]
                     (DiskProc * proc) {
                         proc->Process();
                     }, new DiskProc(balancedTruncList[i], data, testLevelInfo)));
                 }
-                countMutex->unlock();
+                threadMgr.UnLock();
                 WaitForThreads(localWorkingThreads, threadPool);
             }
 
@@ -650,7 +532,7 @@ Forest::Forest(int argc, char **argv)
             threadMap.back()[config.numThreads] = time.GetTime();
             processingTimes.push_back(threadMap.back()[config.numThreads]);
             time.Display();
-            Logger::WriteLog(config.numThreads , " threads were used to process file" , "\n");
+            Logger::WriteLog(config.numThreads, " threads were used to process file", "\n");
 
             //Load in the rest of the file if it has not been completely loaded
             if (config.currentFile->fileStringSize != config.currentFile->fileString.size())
@@ -716,7 +598,7 @@ Forest::Forest(int argc, char **argv)
                                         buff << intData << ",";
                                     }
 
-                                    buff << " instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance/4 << ", first occurrence index = " << outputData.firstIndexToPattern/4 << endl;
+                                    buff << " instances = " << outputData.patternInstances << ", coverage = " << outputData.patternCoveragePercentage << "%, average pattern distance = " << outputData.averagePatternDistance / 4 << ", first occurrence index = " << outputData.firstIndexToPattern / 4 << endl;
                                     number++;
                                 }
                             }
@@ -728,7 +610,7 @@ Forest::Forest(int argc, char **argv)
                         }
 
                     }
-                   
+
                     (*Logger::patternOutputFile) << tempBuff.str();
                     (*Logger::patternOutputFile) << buff.str();
                 }
@@ -752,15 +634,36 @@ Forest::Forest(int argc, char **argv)
                 config.numThreads = (config.numThreads * 2);
             }
 
-            Logger::WriteLog("File Size " , config.currentFile->fileStringSize , " and eliminated patterns " , stats.GetEradicatedPatterns() , "\n\n\n");
+            Logger::WriteLog("File Size ", config.currentFile->fileStringSize, " and eliminated patterns ", stats.GetEradicatedPatterns(), "\n\n\n");
 
             //File processing validation to make sure every index is processed and eliminated 
             //If we aren't doing a deep search in levels then there isn't a need to check that pattern finder is properly functioning..it's impossible
-            if (config.currentFile->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
+            if (config.processInts)
             {
-                cout << "Houston we are not processing patterns properly!" << endl;
-                Logger::WriteLog("Houston we are not processing patterns properly!");
-                //exit(0);
+                if (config.currentFile->fileStringSize / 4 != stats.GetEradicatedPatterns() && config.maximum == -1)
+                {
+                    cout << "Houston we are not processing Integer patterns properly!" << endl;
+                    Logger::WriteLog("Houston we are not processing Interger patterns properly!");
+                }
+                else
+                {
+                    cout << "Houston we are  processing Integer patterns properly!" << endl;
+                    Logger::WriteLog("Houston we are processing Integer patterns properly!");
+                }
+            }
+            else
+            {
+                if (config.currentFile->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
+                {
+                    cout << "Houston we are not processing patterns properly!" << endl;
+                    Logger::WriteLog("Houston we are not processing patterns properly!");
+                    //exit(0);
+                }
+                else
+                {
+                    cout << "Houston we are  processing patterns properly!" << endl;
+                    Logger::WriteLog("Houston we are processing patterns properly!");
+                }
             }
 
             //Clean up memory watch dog thread
@@ -784,14 +687,14 @@ Forest::Forest(int argc, char **argv)
         if (i != std::string::npos)
             nameage.erase(i, sizeof(DATA_FOLDER) - 1);
 
-        Logger::WriteLog("\n",  Logger::GetTime(), " Ended processing for: ", nameage);
+        Logger::WriteLog("\n", Logger::GetTime(), " Ended processing for: ", nameage);
 
         for (pair<uint32_t, double> threadTime : threadMap.back())
         {
-			Logger::WriteLog("Thread " , threadTime.first , " processed for " , threadTime.second , " milliseconds!");
+            Logger::WriteLog("Thread ", threadTime.first, " processed for ", threadTime.second, " milliseconds!");
         }
         //Log the percentage of files in folder that have been processed so far
-		Logger::WriteLog("File collection percentage completed: ", threadMap.size() * 100 / config.files.size(), "%\n");
+        Logger::WriteLog("File collection percentage completed: ", threadMap.size() * 100 / config.files.size(), "%\n");
 
         //Close file handle once and for all
         config.currentFile->copyBuffer->clear();
@@ -816,24 +719,15 @@ Forest::Forest(int argc, char **argv)
     {
         Logger::generateThreadsVsThroughput(threadMap);
     }
-
-    for (int i = 0; i < fileChunks.size(); i++)
-    {
-        fileChunks[i].resize(0);
-        fileChunks[i].shrink_to_fit();
-    }
-
     delete threadPool;
-
-    delete countMutex;
     delete prevPListArray;
 
     initTime.Stop();
     initTime.Display();
 
     threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-    Logger::WriteLog("Errant memory after processing level " , threadMemoryConsumptionInMB - config.memoryUsageAtInception, " in MB!\n");
-    Logger::WriteLog("Most memory overflow was : " , mostMemoryOverflow , " MB\n");
+    Logger::WriteLog("Errant memory after processing level ", threadMemoryConsumptionInMB - config.memoryUsageAtInception, " in MB!\n");
+    Logger::WriteLog("Most memory overflow was : ", mostMemoryOverflow, " MB\n");
 
     stats.CloseValidationFile();
 }
@@ -854,18 +748,18 @@ void Forest::MemoryQuery()
     {
         this_thread::sleep_for(std::chrono::milliseconds(1));
         double memoryOverflow = 0;
-        overMemoryCount = MemoryUtils::IsOverMemoryCount(MemoryUsedPriorToThread, (double)config.memoryBandwidthMB, memoryOverflow);
+        overMemoryCount = MemoryUtils::IsOverMemoryCount(memoryUsedPriorToThread, (double)config.memoryBandwidthMB, memoryOverflow);
 
         //Keep track of over memory usage 
-        if(overMemoryCount) {
+        if (overMemoryCount) {
             overMemoryCountCounter++;
         }
         //If memory has been overused for one second be nice and double memory size
-        if(overMemoryCountCounter == 1000) {
+        if (overMemoryCountCounter == 1000) {
             config.memoryBandwidthMB = 2 * config.memoryBandwidthMB;
             config.memoryPerThread = config.memoryBandwidthMB / config.numThreads;
             overMemoryCountCounter = 0;
-            Logger::WriteLog("Memory limit now doubled to: " , config.memoryBandwidthMB , "\n");
+            Logger::WriteLog("Memory limit now doubled to: ", config.memoryBandwidthMB, "\n");
         }
 
         currMemoryOverflow = memoryOverflow;
@@ -885,18 +779,18 @@ void Forest::MemoryQuery()
         {
             PListType timeStamp = static_cast<PListType>(swTimer.GetTime());
             swTimer.Start();
-			Logger::WriteLog("Thread level status...\n");
+            Logger::WriteLog("Thread level status...\n");
             for (PListType j = 0; j < stats.GetCurrentLevelSize(); j++)
             {
-				Logger::WriteLog("Thread " , j , " is at level: " , stats.GetCurrentLevel(j) , "\n");
+                Logger::WriteLog("Thread ", j, " is at level: ", stats.GetCurrentLevel(j), "\n");
             }
-           
-			Logger::WriteLog("Percentage of file processed is: " , (((double)stats.GetEradicatedPatterns()) / ((double)config.currentFile->fileStringSize))*100.0f , "%\n");
-			Logger::WriteLog("Percentage of cpu usage: " , MemoryUtils::CPULoad() , "%\n");
-			Logger::WriteLog("Approximate processing time left: " ,
-				((((double)(config.currentFile->fileStringSize - stats.GetEradicatedPatterns()))  * timeStamp) 
-					/ ((double)(stats.GetEradicatedPatterns() - previousEradicatedPatterns))) / 1000.0f , 
-				" seconds\n");
+
+            Logger::WriteLog("Percentage of file processed is: ", (((double)stats.GetEradicatedPatterns()) / ((double)config.currentFile->fileStringSize))*100.0f, "%\n");
+            Logger::WriteLog("Percentage of cpu usage: ", MemoryUtils::CPULoad(), "%\n");
+            Logger::WriteLog("Approximate processing time left: ",
+                ((((double)(config.currentFile->fileStringSize - stats.GetEradicatedPatterns()))  * timeStamp)
+                    / ((double)(stats.GetEradicatedPatterns() - previousEradicatedPatterns))) / 1000.0f,
+                " seconds\n");
             initTime.DisplayNow();
 
             previousEradicatedPatterns = stats.GetEradicatedPatterns();
@@ -1035,11 +929,9 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
             if (config.currentFile->fileString.size() != config.currentFile->fileStringSize)
             {
                 //new way to read in file
-                countMutex->lock();
                 config.currentFile->copyBuffer->seekg(0);
                 config.currentFile->fileString.resize(config.currentFile->fileStringSize);
                 config.currentFile->copyBuffer->read(&config.currentFile->fileString[0], config.currentFile->fileString.size());
-                countMutex->unlock();
             }
         }
     }
@@ -1051,96 +943,6 @@ void Forest::PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileLis
     }
 }
 
-void Forest::PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray)
-{
-    //If the upcoming level is going to be processed using the hard disk
-    if (prediction)
-    {
-        //If the previous level was processed using the hard disk then just distribute the pattern files across the threads
-        if (levelInfo.useRAM)
-        {
-            //chunk file
-            PListArchive* threadFile;
-            stringstream threadFilesNames;
-
-            fileList.clear();
-
-            threadFilesNames.str("");
-            threadFilesNames << "PListChunks" << chunkFactorio->GenerateUniqueID();
-
-            threadFile = new PListArchive(threadFilesNames.str(), true);
-            fileList.push_back(threadFilesNames.str());
-
-            for (PListType i = 0; i < prevLocalPListArray->size(); i++)
-            {
-                list<PListType> *sorting = new list<PListType>();
-                copy((*prevLocalPListArray)[i]->begin(), (*prevLocalPListArray)[i]->end(), std::back_inserter(*sorting));
-                ((*prevLocalPListArray)[i])->erase(((*prevLocalPListArray)[i])->begin(), ((*prevLocalPListArray)[i])->end());
-                sorting->sort();
-                std::copy(sorting->begin(), sorting->end(), std::back_inserter(*((*prevLocalPListArray)[i])));
-                sorting->clear();
-                delete sorting;
-
-                threadFile->WriteArchiveMapMMAP(*(*prevLocalPListArray)[i]);
-
-                delete (*prevLocalPListArray)[i];
-
-                if (threadFile->totalWritten >= PListArchive::writeSize)
-                {
-                    threadFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-                }
-
-            }
-            //Clear out the array also after deletion
-            prevLocalPListArray->clear();
-
-            threadFile->WriteArchiveMapMMAP(vector<PListType>(), "", true);
-            threadFile->CloseArchiveMMAP();
-            delete threadFile;
-        }
-    }
-    //If the upcoming level is going to be processed with ram
-    else if (!prediction)
-    {
-        //If the previous level using hard disk to process then read in pattern file data and convert to pattern vectors
-        if (!levelInfo.useRAM)
-        {
-            for (PListType prevChunkCount = 0; prevChunkCount < fileList.size(); prevChunkCount++)
-            {
-                PListArchive archive(fileList[prevChunkCount]);
-                while (archive.Exists() && !archive.IsEndOfFile())
-                {
-                    //Just use 100 GB to say we want the whole file for now
-                    vector<vector<PListType>*> packedPListArray;
-                    archive.GetPListArchiveMMAP(packedPListArray);
-                    prevLocalPListArray->insert(prevLocalPListArray->end(), packedPListArray.begin(), packedPListArray.end());
-
-                    packedPListArray.erase(packedPListArray.begin(), packedPListArray.end());
-                }
-                archive.CloseArchiveMMAP();
-            }
-            if (!config.history)
-            {
-                chunkFactorio->DeletePatternFiles(fileList, ARCHIVE_FOLDER);
-            }
-            fileList.clear();
-        }
-    }
-
-    levelInfo.useRAM = !prediction;
-    stats.SetUsingRAM(levelInfo.threadIndex, !prediction);
-
-    //Read in all file data back in if the level is using only ram
-    if (levelInfo.useRAM && config.currentFile->fileString.size() != config.currentFile->fileStringSize)
-    {
-        //new way to read in file
-        countMutex->lock();
-        config.currentFile->copyBuffer->seekg(0);
-        config.currentFile->fileString.resize(config.currentFile->fileStringSize);
-        config.currentFile->copyBuffer->read(&config.currentFile->fileString[0], config.currentFile->fileString.size());
-        countMutex->unlock();
-    }
-}
 void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<future<void>> *localThreadPool, bool recursive, unsigned int level)
 {
     PListType threadsFinished = 0;
@@ -1165,13 +967,9 @@ void Forest::WaitForThreads(vector<unsigned int> localWorkingThreads, vector<fut
                     (*localThreadPool)[localWorkingThreads[k]].get();
                     threadsFinished++;
 
-                    countMutex->lock();
-                    activeThreads[k] = false;
-                    countMutex->unlock();
-
                     if (level != 0)
                     {
-						Logger::WriteLog("Thread " , localWorkingThreads[k] , " finished all processing" , '\n');
+                        Logger::WriteLog("Thread ", localWorkingThreads[k], " finished all processing", '\n');
                     }
                 }
             }
@@ -1401,7 +1199,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
     {
         currPatternCount = 256 * stats.GetLevelRecording(currLevel);
     }
-    
+
     std::vector<std::string> fileNames;
     map<string, PListArchive*> currChunkFiles;
     for (PListType a = 0; a < currPatternCount; a++)
@@ -1458,11 +1256,11 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
             //Check for memory over usage
             if (overMemoryCount && !memoryOverflow)
             {
-				Logger::WriteLog("Overflow at Process Chunks And Generate of " , currMemoryOverflow , " in MB!\n");
+                Logger::WriteLog("Overflow at Process Chunks And Generate of ", currMemoryOverflow, " in MB!\n");
             }
             else if (overMemoryCount && memoryOverflow)
             {
-				Logger::WriteLog("Overflow at Process Chunks And Generate of " , currMemoryOverflow , " in MB!\n");
+                Logger::WriteLog("Overflow at Process Chunks And Generate of ", currMemoryOverflow, " in MB!\n");
             }
 
 
@@ -1499,7 +1297,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 
                         if (overMemoryCount && !memoryOverflow)
                         {
-                            Logger::WriteLog("Overflow at Process Chunks And Generate of " , currMemoryOverflow , " in MB!\n");
+                            Logger::WriteLog("Overflow at Process Chunks And Generate of ", currMemoryOverflow, " in MB!\n");
                         }
 
                         string pattern = (*stringBuffer)[partialLists];
@@ -1565,7 +1363,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
             stringstream buff;
             buff << (char)a;
 
-          
+
 
             currChunkFiles[buff.str()]->WriteArchiveMapMMAP(vector<PListType>(), "", true);
 
@@ -1575,7 +1373,7 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
 
             currChunkFiles[buff.str()] = new PListArchive(fileName);
 
-          
+
 
             //Just use 100 GB to say we want the whole file for now
             vector<vector<PListType>*> packedPListArray;
@@ -1655,16 +1453,18 @@ PListType Forest::ProcessChunksAndGenerateLargeFile(vector<string> fileNamesToRe
         }
     }
 
-    countMutex->lock();
+    stats.Lock();
 
     stats.SetEradicationsPerLevel(currLevel, stats.GetEradicationsPerLevel(currLevel) + removedPatterns);
     stats.SetEradicatedPatterns(stats.GetEradicatedPatterns() + removedPatterns);
 
-    stats.SetLevelRecording(currLevel, stats.GetLevelRecording(currLevel) + interimCount);
+    if (!config.processInts) {
+        stats.SetLevelRecording(currLevel, stats.GetLevelRecording(currLevel) + interimCount);
+    }
     stats.SetCoverage(currLevel, ((float)(interimCount)) / ((float)config.currentFile->fileStringSize));
     stats.SetCurrentLevel(threadNum, currLevel + 1);
 
-    countMutex->unlock();
+    stats.UnLock();
 
     return interimCount;
 }
@@ -1701,10 +1501,10 @@ void Forest::PlantTreeSeedThreadHD(PListType positionInFile, PListType startPatt
 
             }
 
-            else if (!config.processInts) {	
+            else if (!config.processInts) {
                 leaves[tempIndex]->push_back(temp);
 
-            }     
+            }
             counting++;
         }
         //If RAM memory is allocated over the limit then dump the patterns to file
@@ -1766,9 +1566,115 @@ void Forest::PlantTreeSeedThreadRAM(PListType positionInFile, PListType startPat
     //Push new patterns into the shared vector that will be pulled together with the other processing threads
     for (int i = 0; i < 256; i++)
     {
-        (*prevPListArray)[threadIndex + i*config.numThreads] = leaves[i];
+        (*prevPListArray)[threadIndex + i * config.numThreads] = leaves[i];
     }
 
     //Set level to 2 because level 1 processing is finished
     stats.SetCurrentLevel(threadIndex, 2);
+}
+
+vector<size_t> sort_indexes(const vector<ProcessorStats::DisplayStruct> &v) {
+
+    // initialize original index locations
+    vector<size_t> idx(v.size());
+    iota(idx.begin(), idx.end(), 0);
+
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(),
+        [&v](size_t i1, size_t i2) {return v[i1].patternInstances > v[i2].patternInstances; });
+
+    return idx;
+}
+
+bool containsFile(string directory)
+{
+    bool foundFiles = false;
+#if defined(_WIN64) || defined(_WIN32)
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(directory.c_str())) != nullptr)
+    {
+        Logger::WriteLog("Files to be processed: \n");
+        /* print all the files and directories within directory */
+        while ((ent = readdir(dir)) != nullptr)
+        {
+            if (*ent->d_name)
+            {
+                string fileName = string(ent->d_name);
+
+                if (!fileName.empty() && fileName.find("PList") != string::npos)
+                {
+                    foundFiles = true;
+                    break;
+                }
+            }
+        }
+        closedir(dir);
+    }
+    else
+    {
+        //cout << "Problem reading from directory!" << endl;
+    }
+#elif defined(__linux__)
+    DIR *dir;
+    struct dirent *entry;
+
+    if (!(dir = opendir(directory.c_str())))
+        return false;
+
+    while ((entry = readdir(dir)) != nullptr)
+    {
+        string fileName = string(entry->d_name);
+
+        if (!fileName.empty() && fileName.find("PList") != string::npos)
+        {
+            foundFiles = true;
+            break;
+        }
+    }
+    closedir(dir);
+#endif		
+    return foundFiles;
+}
+
+void Forest::intTochar(FileReader * files)
+{
+    std::string tempString;
+    tempString.resize(files->fileStringSize);
+    files->copyBuffer->read(&tempString[0], files->fileStringSize);
+
+    size_t intEndPosition = tempString.find_first_of(","); //Find first instancee of a comma because data is comma seperated
+    size_t stringIndex = 0;
+    while (intEndPosition != std::string::npos) {
+
+        std::string value = tempString.substr(stringIndex, intEndPosition - stringIndex);
+        unsigned int data = std::stoul(value); //parse the numerical string to an unsigned int
+                                               //Convert to from string representation of a number to unsigned int and then finally back to a 4 byte string
+        files->fileString.push_back((data >> 24) & 0xFF);
+        files->fileString.push_back((data >> 16) & 0xFF);
+        files->fileString.push_back((data >> 8) & 0xFF);
+        files->fileString.push_back((data) & 0xFF);
+
+        stringIndex = intEndPosition + 1;
+        intEndPosition = tempString.find_first_of(",", stringIndex); //Find first instancee of a comma because data is comma seperated
+    }
+
+    files->fileStringSize = static_cast<PListType>(files->fileString.size());
+
+    files->fileName += "tmp";
+
+    std::ofstream output = ofstream(files->fileName, ios::binary);
+
+    output.write(files->fileString.c_str(), files->fileString.length());
+
+    output.close();
+
+    files->copyBuffer->clear();
+    files->copyBuffer->close();
+    delete  files->copyBuffer;
+
+    //Reestablish new file
+    const char * c = files->fileName.c_str();
+    // Open the file for the shortest time possible.
+    files->copyBuffer = new ifstream(c, ios::binary);
 }

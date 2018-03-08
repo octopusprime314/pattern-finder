@@ -118,21 +118,6 @@ public:
     */
     void PrepDataFirstLevel(bool prediction, vector<vector<string>>& fileList, vector<vector<PListType>*>* prevLocalPListArray = nullptr);
 
-    /** @brief Switches pattern data for either ram or hd processing on levels after the first
-    *
-    *  If the prediction determines that the upcoming level can be processed
-    *  using ram and the previous level was processed with the hd then a data conversion
-    *  must happen.  The reverse data conversion must happen if ram was processed
-    *  previously and the current level needs to be processed using the hard disk
-    *
-    *  @param prediction boolean indicating the current level will be processed with ram or hd
-    *  @param levelInfo current level processing information
-    *  @param fileList hark disk processing data
-    *  @param prevLocalPListArray ram processing data
-    *  @return void
-    */
-    void PrepData(bool prediction, LevelPackage& levelInfo, vector<string>& fileList, vector<vector<PListType>*>* prevLocalPListArray = nullptr);
-
     /** @brief Evenly distributes ram vector data among the threads to be dispatched for the first level
     *
     *  Distributes pattern vector information among the threads for the first level.
@@ -175,10 +160,10 @@ public:
 
 private:
 
-	void inteTochar(FileReader * files);
+	void intTochar(FileReader * files);
 
     //Indicates whether memory usage is over the limit
-    static bool overMemoryCount;
+    bool overMemoryCount;
 
     ChunkFactory* chunkFactorio;
     ConfigurationParams config;
@@ -188,33 +173,15 @@ private:
     //Memory management
     double mostMemoryOverflow;
     double currMemoryOverflow;
-    double MemoryUsedPriorToThread;
+    double memoryUsedPriorToThread;
 
-    //Thread management
-    mutex *countMutex;
-    int threadsDefuncted;
-    int threadsDispatched;
-
-    vector<future<void>> *threadPool;
-  
     //Random flags
-    bool writingFlag;
     bool processingFinished;
-    bool firstLevelProcessedHD;
 
     //File handling
-    vector<string> fileChunks;
     vector<vector<string>> newFileNameList;
-    map<PListType, PListType> finalPattern;
     vector<vector<string>> prevFileNameList;
-    map<unsigned int, unsigned int> chunkIndexToFileChunk;
 
     //Global data collection
     vector<vector<PListType>*>* prevPListArray;
-
-    //File statistics
-    vector<bool> activeThreads;
-    vector<double> processingTimes;
-
-
 };

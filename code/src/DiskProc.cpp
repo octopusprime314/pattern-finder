@@ -19,16 +19,10 @@ DiskProc::DiskProc(std::vector<std::string>& fileList,
 void DiskProc::Process()
 {
     double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-
     int threadNum = _levelInfo.threadIndex;
-
     auto chunkFactorio = ChunkFactory::instance();
-
     PListType newPatternCount = 0;
-
     bool morePatternsToFind = true;
-
-   
     try
     {
         while (morePatternsToFind)
@@ -319,6 +313,7 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
     bool memoryOverflow = false;
     PListType interimCount = 0;
     unsigned int threadNumber = 0;
+    PListType levelCount = 0;
 
     //Grab all the partial pattern files to bring together into one coherent pattern file structure
     vector<string> fileNamesBackup;
@@ -475,6 +470,12 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                         {
                             currChunkFile->WriteArchiveMapMMAP(*iterator->second);
                             interimCount++;
+                            if (_config.processInts && (*iterator->second)[0] % sizeof(unsigned int) == 0) {
+                                levelCount++;
+                            }
+                            else if (!_config.processInts) {
+                                levelCount++;
+                            }
                             _stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
 
                             //Record level statistics
@@ -728,7 +729,15 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                 _stats.Lock();
 
                 currChunkFile->WriteArchiveMapMMAP(*iterator->second);
+
                 interimCount++;
+                if (_config.processInts && (*iterator->second)[0] % sizeof(unsigned int) == 0) {
+                    levelCount++;
+                }
+                else if (!_config.processInts) {
+                    levelCount++;
+                }
+
                 _stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
 
                 _stats.SetTotalOccurrenceFrequency(currLevel, static_cast<PListType>(iterator->second->size()));
@@ -835,7 +844,12 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
     _stats.SetEradicationsPerLevel(currLevel, _stats.GetEradicationsPerLevel(currLevel) + internalRemovedCount);
     _stats.SetEradicatedPatterns(_stats.GetEradicatedPatterns() + internalRemovedCount);
 
-    _stats.SetLevelRecording(currLevel, _stats.GetLevelRecording(currLevel) + interimCount);
+    if (_config.processInts && _config.levelToOutput % sizeof(unsigned int) == 0) {
+        _stats.SetLevelRecording(currLevel, _stats.GetLevelRecording(currLevel) + levelCount);
+    }
+    else {
+        _stats.SetLevelRecording(currLevel, _stats.GetLevelRecording(currLevel) + levelCount);
+    }
 
     _stats.SetCurrentLevel(threadNum, currLevel + 1);
     _stats.UnLock();

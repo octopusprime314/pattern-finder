@@ -65,8 +65,6 @@ int main(int argc, char **argv)
 	//Grab program memory at inception of program
 	double MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
 
-	
-
 	//Kick of the pattern searching program
 	Forest *Ent = new Forest(argc, argv);
 
