@@ -33,7 +33,7 @@ Options:
 	-hd                     Forces program to use Hard Disk based on -mem
 	-i [unsigned long]      Mimimum occurrences to consider a pattern (Default occurences will be 2)
 	-v [unsigned long] 		Verbosity level, turn logging and pattern generation on or off with 1 or 0
-	-n   					Only loook for patterns that do not overlap each other 
+	-n   					Only look for patterns that do not overlap each other 
     -o						Only look for patterns that overlap each other
 	-his					HD processing file history keeps all files or removes them level by level with a 1 or a 0
 	-lr  				    Search for patterns that begin with the value lr to 255 if hr isn't set, otherwise lr to hr range

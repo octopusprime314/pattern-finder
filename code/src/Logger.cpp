@@ -159,11 +159,7 @@ void Logger::dumpLog(const std::string& buffer) {
         cout << buffer;
     }
 
-    (*outputFile) << buffer;
-
-    //refresh
-    (*outputFile).flush();
-    (*outputFile).clear();
+    (*outputFile) << buffer.c_str();
 }
 
 void Logger::generateTimeVsFileSizeCSV(vector<double> processTimes, vector<PListType> fileSizes)
