@@ -180,8 +180,8 @@ void FileProcessor::memoryQuery()
         if (_config.overMemoryCount) {
             overMemoryCountCounter++;
         }
-        //If memory has been overused for one second be nice and double memory size
-        if (overMemoryCountCounter == 1000) {
+        //If memory has been overused for 5 milliseconds be nice and double memory size
+        if (overMemoryCountCounter == 5) {
             _config.memoryBandwidthMB = 2 * _config.memoryBandwidthMB;
             _config.memoryPerThread = _config.memoryBandwidthMB / _config.numThreads;
             overMemoryCountCounter = 0;

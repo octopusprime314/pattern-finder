@@ -60,6 +60,10 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 		count += static_cast<PListType>(iterator->leaves.size());
 	}
 
+    if (count == 0) {
+        return std::string("");
+    }
+
 	archiveName << archiveFileType << fileName << "_" << count;
 
 	//Create a new plist archive file to store pattern index information

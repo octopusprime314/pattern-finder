@@ -216,7 +216,10 @@ void DiskProc::Process()
                                 stringstream stringBuilder;
                                 PListType newID = chunkFactorio->GenerateUniqueID();
                                 stringBuilder << newID;
-                                fileNamesToReOpen.push_back(chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaflet, _levelInfo));
+                                std::string fileNameToUse = chunkFactorio->CreatePartialPatternFile(stringBuilder.str(), leaflet, _levelInfo);
+                                if (!fileNameToUse.empty()) {
+                                    fileNamesToReOpen.push_back(fileNameToUse);
+                                }
                             }
 
                         }
@@ -969,7 +972,6 @@ vector<vector<string>> DiskProc::BalanceWork(unsigned int threadsToDispatch,
     }
     else
     {
-
         //Distributing files
         for (unsigned int a = 0; a < threadsToDispatch; a++)
         {
