@@ -70,7 +70,7 @@ Forest::Forest(int argc, char **argv)
         }
 #elif defined(__linux__)
         PListArchive::hdSectorSize = sysconf(_SC_PAGESIZE);
-        if (containsFile("../log"))
+        if (FileReader::containsFile("../log"))
         {
             system("rm -r ../log/PList*");
         }
