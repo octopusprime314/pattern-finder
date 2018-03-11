@@ -18,22 +18,8 @@ public:
 
     /** @brief Processes patterns using ram
     *
-    *  RAM processing is much faster than HD processing
-    *
-    *  @param prevLocalPListArray previous level ram processing data
-    *  @param globalLocalPListArray current level ram processing data
-    *  @param levelInfo current level processing information
-    *  @param isThreadDefuncted indicates if the thread is deactivated
-    *  and there has been recursively spawned threads to improve processing
-    *  @return PListType indicating the number of patterns found for the level
+    *  sysmem processing is much faster than disk processing
     */
-    /*void Process(PatternData* prevPatterns,
-        const ConfigurationParams& config,
-        ProcessorStats& stats,
-        ThreadCoreMan* threadMgr,
-        LevelPackage& levelInfo
-    );*/
-
     void Process();
 
     /** @brief Evenly distributes pattern data among multiple threads for ram processing

@@ -29,7 +29,7 @@ void DiskProc::Process()
         {
 
             //Divide between file load and previous level pLists and leave some memory for new lists 
-            PListType memDivisor = (PListType)(((_config.memoryPerThread * 1000000) / 3.0f));
+            PListType memDivisor = (PListType)(((_config.memoryPerThread * 1000000.0f) / 3.0f));
 
             unsigned int fileIters = (unsigned int)(_config.currentFile->fileStringSize / memDivisor);
             if (_config.currentFile->fileStringSize%memDivisor != 0)
@@ -52,7 +52,7 @@ void DiskProc::Process()
                 {
                     //Pull in 1/3 of the memory bandwidth given for this thread
                     vector<vector<PListType>*> packedPListArray;
-                    archive.GetPListArchiveMMAP(packedPListArray, memDivisor / 1000000.0f);
+                    archive.GetPListArchiveMMAP(packedPListArray, static_cast<double>(memDivisor) / 1000000.0f);
 
                     if (packedPListArray.size() > 0)
                     {
@@ -233,7 +233,7 @@ void DiskProc::Process()
             }
 
             //Take all of the partial pattern files that were generated above and pull together all patterns to compile full pattern data
-            newPatternCount += ProcessChunksAndGenerate(fileNamesToReOpen, newFileNames, memDivisor, threadNum, currLevel, _levelInfo.coreIndex);
+            newPatternCount += ProcessChunksAndGenerate(fileNamesToReOpen, newFileNames, _levelInfo);
 
             //Delete processing files
             if (!_config.history)
@@ -305,7 +305,7 @@ void DiskProc::Process()
     }
 }
 
-PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, PListType memDivisor, unsigned int threadNum, unsigned int currLevel, unsigned int coreIndex)
+PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, vector<string>& newFileNames, LevelPackage& levelInfo)
 {
     auto chunkFactorio = ChunkFactory::instance();
     int currentFile = 0;
@@ -384,7 +384,7 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                 copyString.erase(k, 4);
                 std::string::size_type sz;   // alias of size_t
                 PListType sizeOfPackedPList = static_cast<PListType>(std::stoll(copyString, &sz));
-                stringBuffer = stringBufferFile->GetPatterns(currLevel, packedPListSize);
+                stringBuffer = stringBufferFile->GetPatterns(levelInfo.currLevel, packedPListSize);
 
             }
             else
@@ -406,7 +406,7 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                     copyString.erase(0, j + 1);
                     std::string::size_type sz;   // alias of size_t
                     PListType sizeOfPackedPList = static_cast<PListType>(std::stoll(copyString, &sz));
-                    vector<string> *stringBufferLocal = stringBufferFileLocal->GetPatterns(currLevel, sizeOfPackedPList);
+                    vector<string> *stringBufferLocal = stringBufferFileLocal->GetPatterns(levelInfo.currLevel, sizeOfPackedPList);
 
                     stringBufferFileLocal->CloseArchiveMMAP();
                     delete stringBufferFileLocal;
@@ -476,14 +476,14 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                             else if (!_config.processInts) {
                                 levelCount++;
                             }
-                            _stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
+                            _stats.SetMostCommonPattern(levelInfo.currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - levelInfo.currLevel);
 
                             //Record level statistics
                             _stats.Lock();
-                            _stats.SetTotalOccurrenceFrequency(currLevel, static_cast<PListType>(iterator->second->size()));
+                            _stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, static_cast<PListType>(iterator->second->size()));
 
                             //If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
-                            if (_config.levelToOutput == 0 || _config.levelToOutput == currLevel)
+                            if (_config.levelToOutput == 0 || _config.levelToOutput == levelInfo.currLevel)
                             {
                                 PListType distances = 0;
                                 PListType index = 0;
@@ -493,9 +493,9 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                                 for (auto i = index; i < index + length - 1; i++)
                                 {
                                     distances += (*iterator->second)[i + 1] - (*iterator->second)[i];
-                                    if ((*iterator->second)[i + 1] - (*iterator->second)[i] < currLevel)
+                                    if ((*iterator->second)[i + 1] - (*iterator->second)[i] < levelInfo.currLevel)
                                     {
-                                        coverageSubtraction += currLevel - ((*iterator->second)[i + 1] - (*iterator->second)[i]);
+                                        coverageSubtraction += levelInfo.currLevel - ((*iterator->second)[i + 1] - (*iterator->second)[i]);
                                     }
                                 }
 
@@ -505,14 +505,14 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                                 //Struct used to contain detailed pattern information for one level
                                 ProcessorStats::DisplayStruct outputData;
                                 outputData.patternInstances = static_cast<PListType>(length);
-                                outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction)) / (float)_config.currentFile->fileStringSize;
+                                outputData.patternCoveragePercentage = (float)100.0f*(((length*levelInfo.currLevel) - coverageSubtraction)) / (float)_config.currentFile->fileStringSize;
                                 outputData.averagePatternDistance = averageDistance;
                                 outputData.firstIndexToPattern = (*iterator->second)[index];
 
                                 //If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
                                 if (!_config.suppressStringOutput)
                                 {
-                                    outputData.pattern = _config.currentFile->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
+                                    outputData.pattern = _config.currentFile->fileString.substr((*iterator->second)[index] - levelInfo.currLevel, levelInfo.currLevel);
                                 }
                                 _stats.detailedLevelInfo.push_back(outputData);
                             }
@@ -567,7 +567,7 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                 std::string::size_type sz;   // alias of size_t
                 PListType sizeOfPackedPList = static_cast<PListType>(std::stoll(copyString, &sz));
                 stringBufferFile = new PListArchive(fileName);
-                stringBuffer = stringBufferFile->GetPatterns(currLevel, sizeOfPackedPList);
+                stringBuffer = stringBufferFile->GetPatterns(levelInfo.currLevel, sizeOfPackedPList);
                 packedPListSize = sizeOfPackedPList;
 
                 //If the remaining files have patterns that are contained in them that are contained in the final map then we need to hold onto those patterns for later
@@ -667,7 +667,7 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                             testCount++;
                         }
                     }
-                    archiveCollective->DumpPatternsToDisk(currLevel);
+                    archiveCollective->DumpPatternsToDisk(levelInfo.currLevel);
                     archiveCollective->WriteArchiveMapMMAP(vector<PListType>(), "", true);
                     archiveCollective->CloseArchiveMMAP();
 
@@ -738,12 +738,13 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                     levelCount++;
                 }
 
-                _stats.SetMostCommonPattern(currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - currLevel);
+                _stats.SetMostCommonPattern(levelInfo.currLevel, static_cast<PListType>(iterator->second->size()), (*iterator->second)[0] - levelInfo.currLevel);
 
-                _stats.SetTotalOccurrenceFrequency(currLevel, static_cast<PListType>(iterator->second->size()));
+                _stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, static_cast<PListType>(iterator->second->size()));
+                _stats.SetTotalOccurrenceFrequency(levelInfo.currLevel, static_cast<PListType>(iterator->second->size()));
 
                 //If levelToOutput is not selected but -Pall is set or if -Pall is set and -Plevel is set to output data only for a specific level
-                if (_config.levelToOutput == 0 || _config.levelToOutput == currLevel)
+                if (_config.levelToOutput == 0 || _config.levelToOutput == levelInfo.currLevel)
                 {
                     PListType index = 0;
                     auto length = iterator->second->size();
@@ -756,31 +757,31 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                         PListType indexPattern;
                         if (_config.processInts)
                         {
-                            indexPattern = (((*iterator->second)[i] / 4) - currLevel / 4);
+                            indexPattern = (((*iterator->second)[i] / 4) - levelInfo.currLevel / 4);
                             stream << indexPattern << ",";
                             if ((i + 1) == (index + length - 1))
                             {
                                 PListType indexlast;
-                                indexlast = (((*iterator->second)[i + 1] / 4) - currLevel / 4);
+                                indexlast = (((*iterator->second)[i + 1] / 4) - levelInfo.currLevel / 4);
                                 stream << indexlast << ",";
                             }
                         }
                         else
                         {
-                            indexPattern = ((*iterator->second)[i] - currLevel);
+                            indexPattern = ((*iterator->second)[i] - levelInfo.currLevel);
                             stream << indexPattern << ",";
                             if ((i + 1) == (index + length - 1))
                             {
                                 PListType indexlast;
-                                indexlast = ((*iterator->second)[i + 1] - currLevel);
+                                indexlast = ((*iterator->second)[i + 1] - levelInfo.currLevel);
                                 stream << indexlast << ",";
                             }
                         }
 
                         distances += (*iterator->second)[i + 1] - (*iterator->second)[i];
-                        if ((*iterator->second)[i + 1] - (*iterator->second)[i] < currLevel)
+                        if ((*iterator->second)[i + 1] - (*iterator->second)[i] < levelInfo.currLevel)
                         {
-                            coverageSubtraction += currLevel - ((*iterator->second)[i + 1] - (*iterator->second)[i]);
+                            coverageSubtraction += levelInfo.currLevel - ((*iterator->second)[i + 1] - (*iterator->second)[i]);
                         }
                     }
                     stream << std::endl;
@@ -792,14 +793,14 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                     //Struct used to contain detailed pattern information for one level
                     ProcessorStats::DisplayStruct outputData;
                     outputData.patternInstances = static_cast<PListType>(length);
-                    outputData.patternCoveragePercentage = (float)100.0f*(((length*currLevel) - coverageSubtraction)) / (float)_config.currentFile->fileStringSize;
+                    outputData.patternCoveragePercentage = (float)100.0f*(((length*levelInfo.currLevel) - coverageSubtraction)) / (float)_config.currentFile->fileStringSize;
                     outputData.averagePatternDistance = averageDistance;
-                    outputData.firstIndexToPattern = (*iterator->second)[index] - currLevel;
+                    outputData.firstIndexToPattern = (*iterator->second)[index] - levelInfo.currLevel;
 
                     //If pnoname is not selected then strings are written to log, this could be for reasons where patterns are very long
                     if (!_config.suppressStringOutput)
                     {
-                        outputData.pattern = _config.currentFile->fileString.substr((*iterator->second)[index] - currLevel, currLevel);
+                        outputData.pattern = _config.currentFile->fileString.substr((*iterator->second)[index] - levelInfo.currLevel, levelInfo.currLevel);
                     }
                     _stats.detailedLevelInfo.push_back(outputData);
                 }
@@ -841,17 +842,17 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
     //Record level statistics
     _stats.Lock();
 
-    _stats.SetEradicationsPerLevel(currLevel, _stats.GetEradicationsPerLevel(currLevel) + internalRemovedCount);
+    _stats.SetEradicationsPerLevel(levelInfo.currLevel, _stats.GetEradicationsPerLevel(levelInfo.currLevel) + internalRemovedCount);
     _stats.SetEradicatedPatterns(_stats.GetEradicatedPatterns() + internalRemovedCount);
 
     if (_config.processInts && _config.levelToOutput % sizeof(unsigned int) == 0) {
-        _stats.SetLevelRecording(currLevel, _stats.GetLevelRecording(currLevel) + levelCount);
+        _stats.SetLevelRecording(levelInfo.currLevel, _stats.GetLevelRecording(levelInfo.currLevel) + levelCount);
     }
     else {
-        _stats.SetLevelRecording(currLevel, _stats.GetLevelRecording(currLevel) + levelCount);
+        _stats.SetLevelRecording(levelInfo.currLevel, _stats.GetLevelRecording(levelInfo.currLevel) + levelCount);
     }
 
-    _stats.SetCurrentLevel(threadNum, currLevel + 1);
+    _stats.SetCurrentLevel(levelInfo.threadIndex, levelInfo.currLevel + 1);
     _stats.UnLock();
 
     return interimCount;

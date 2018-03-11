@@ -57,25 +57,6 @@ public:
         stream << streamable << std::endl;
     }
 
-	//static void WriteLog(T streamable, Args... args) {
-	//	
- //       return; //No logging for now.
- //       if (!verbosity || disableLogging) {
- //           return;
- //       }
- //       
- //       streamer << streamable;
-	//	WriteLog(args...);
-	//	auto buffer = streamer.str();
-	//	dumpLog(buffer);
- //       streamer.str("");
-	//}
-	//template<typename T>
-	//static void WriteLog(T streamable) {
-	//	streamer << streamable << std::endl;
-	//	return;
-	//}
-
     static void dumpLog(const std::string& buffer);
 
 	/** @brief Flushes any logging data to file and clears the logging buffer

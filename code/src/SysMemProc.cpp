@@ -13,7 +13,6 @@ SysMemProc::SysMemProc(PatternData* patterns,
 
 void SysMemProc::Process()
 {
-    
     //Keeps track of all pLists in one contiguous block of memory
     vector<PListType> linearList;
     //Keeps track of the length of each pList
@@ -30,93 +29,39 @@ void SysMemProc::Process()
     PListType fileSize = _config.currentFile->fileStringSize;
     PListType totalCount = 0;
 
-    //Process second level slightly differently than the other levels
-    if (_levelInfo.currLevel == 2)
+    //Get pattern total count
+    for (PListType i = 0; i < _patterns->size(); i++)
     {
-        //Take a tally of all the patterns from the previous level
-        int threadCountage = 0;
-        for (PListType i = 0; i < _patterns->size(); i++)
+        PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
+        if (pListLength > 0)
         {
-            PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
-            if (pListLength > 0)
-            {
-                totalCount += pListLength;
-            }
-        }
-        //Preallocate
-        prevLinearList.reserve(totalCount);
-
-        for (PListType i = 0; i < _patterns->size(); i++)
-        {
-            PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
-            //Greater than zero because we look at every thread's contribution to a pattern
-            if (pListLength > 0)
-            {
-                //Flatten out vector of pattern vectors into a flat vector of patterns 
-                threadCountage += pListLength;
-                prevLinearList.insert(prevLinearList.end(), 
-                    (*_patterns)[i]->begin(), 
-                    (*_patterns)[i]->end());
-                delete (*_patterns)[i];
-            }
-            else
-            {
-                delete (*_patterns)[i];
-            }
-
-            //If Hard Disk was processed for the first level then modulo length of pattern
-            //based on the number of threads
-            if (!_levelInfo.prevLevelProcType)
-            {
-                if (i % _config.numThreads == (_config.numThreads - 1) && threadCountage > 1)
-                {
-                    prevPListLengths.push_back(threadCountage);
-                    threadCountage = 0;
-                }
-            }
-            else
-            {
-                prevPListLengths.push_back(threadCountage);
-                threadCountage = 0;
-            }
+            totalCount += pListLength;
         }
     }
-    //Process if levels are 3 or greater which doesn't involve combining first level data
-    else
+
+    //Preallocate
+    prevLinearList.reserve(totalCount);
+
+    //Convert vector of pattern vectors into a flat vector with an associated vector of pattern lengths
+    for (PListType i = 0; i < _patterns->size(); i++)
     {
-        //Get pattern total count
-        for (PListType i = 0; i < _patterns->size(); i++)
+        PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
+        //This is the only pattern information to look at so it must be greater than one instance
+        //to be a pattern
+        if (pListLength > 0)
         {
-            PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
-            if (pListLength > 0)
-            {
-                totalCount += pListLength;
-            }
+            prevLinearList.insert(prevLinearList.end(), 
+                (*_patterns)[i]->begin(), 
+                (*_patterns)[i]->end());
+            prevPListLengths.push_back(pListLength);
+            delete (*_patterns)[i];
         }
-
-        //Preallocate
-        prevLinearList.reserve(totalCount);
-
-        //Convert vector of pattern vectors into a flat vector with an associated vector of pattern lengths
-        for (PListType i = 0; i < _patterns->size(); i++)
+        else
         {
-            PListType pListLength = static_cast<PListType>((*_patterns)[i]->size());
-            //This is the only pattern information to look at so it must be greater than one instance
-            //to be a pattern
-            if (pListLength > 1)
-            {
-                prevLinearList.insert(prevLinearList.end(), 
-                    (*_patterns)[i]->begin(), 
-                    (*_patterns)[i]->end());
-                prevPListLengths.push_back(pListLength);
-                delete (*_patterns)[i];
-            }
-            else
-            {
-                delete (*_patterns)[i];
-            }
+            delete (*_patterns)[i];
         }
     }
+
     //Now allocate memory to eventually load pattern information into a contiguous memory vector 
     //instead of hopping around the file by indexing into it
     //based on the patterns
@@ -132,14 +77,12 @@ void SysMemProc::Process()
 
     while (continueSearching > 0)
     {
-
         totalTallyRemovedPatterns = 0;
         PListType stringIndexer = 0;
 
         //Prep all pattern information for next level processing
         PListType linearListSize = static_cast<PListType>(prevLinearList.size());
-        if (linearListSize > 0 && _levelInfo.currLevel == 2 ||
-            linearListSize > 1 && _levelInfo.currLevel != 2)
+        if (linearListSize > 1)
         {
             for (PListType i = 0; i < linearListSize; i++)
             {
@@ -261,8 +204,6 @@ void SysMemProc::Process()
             }
         }
     }
-    //Return the number of patterns found at this level
-    //return continueSearching;
 }
 
 bool SysMemProc::SplitUpWork(PListType& morePatternsToFind, 

@@ -40,6 +40,7 @@ struct ConfigurationParams
     bool processInts;
     double memoryUsageAtInception;
     double memoryPerThread;
+    bool overMemoryCount; //Status to indicate if memory is being over utilized
 };
 class ProcessorConfig
 {

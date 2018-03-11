@@ -64,4 +64,10 @@ public:
 
 	/**File stream reader */
 	ifstream *copyBuffer;
+
+    //File converter from char to int storage
+    static void intToChar(FileReader * file);
+
+    //Test to see if a file exists in a folder directory
+    static bool containsFile(std::string directory);
 };

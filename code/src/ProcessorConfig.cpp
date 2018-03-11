@@ -68,6 +68,7 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	//-1 is the largest unsigned int value
 	config.minimumFrequency = -1;
     config.processInts = false;
+    config.overMemoryCount = false;
 
 	bool minEnter = false;
 	bool maxEnter = false;
