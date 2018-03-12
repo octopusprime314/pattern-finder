@@ -8,13 +8,8 @@
  */
 
 #pragma once
-#include <iostream>
-#include <vector>
-#include <map>
 #include <future>
 #include "TypeDefines.h"
-
-using namespace std;
 
 class FileReader
 {

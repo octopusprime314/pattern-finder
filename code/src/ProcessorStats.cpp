@@ -31,7 +31,6 @@
 
 #include "ProcessorStats.h"
 
-
 ProcessorStats::ProcessorStats(void)
 {
 	mostCommonPatternIndex.resize(1);

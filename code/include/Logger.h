@@ -7,13 +7,10 @@
  */
 #pragma once
 #include <iostream>
-#include <sstream>
 #include <fstream>
 #include <mutex>
 #include "TypeDefines.h"
-#include <vector>
 #include <map>
-using namespace std;
 
 /** Paths to logger and csv files are different based on OS */
 #if defined(_WIN64) || defined(_WIN32)

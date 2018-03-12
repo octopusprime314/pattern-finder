@@ -1,10 +1,5 @@
 #pragma once
 
-#include "TypeDefines.h"
-#include "FileReader.h"
-#include "ProcessorConfig.h"
-#include "ProcessorStats.h"
-#include "TypeDefines.h"
 #include "Proc.h"
 class DiskProc;
 

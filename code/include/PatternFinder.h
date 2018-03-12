@@ -12,33 +12,20 @@
 */
 
 #pragma once
-#include <iostream>
-#include <vector>
-#include <map>
-#include <future>
-#include "TreeHD.h"
-#include "FileReader.h"
-#include "PListArchive.h"
 #include "StopWatch.h"
 #include "ChunkFactory.h"
-#include "ProcessorConfig.h"
-#include "ProcessorStats.h"
-#include "SysMemProc.h"
-#include "DiskProc.h"
 
-using namespace std;
-
-class Forest
+class PatternFinder
 {
 public:
 
     /** @brief Constructor.
     */
-    Forest(int argc, char **argv);
+    PatternFinder(int argc, char **argv);
 
     /** @brief Destructor.
     */
-    ~Forest();
+    ~PatternFinder();
 
 private:
 

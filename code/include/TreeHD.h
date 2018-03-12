@@ -5,11 +5,8 @@
  */
 
 #pragma once
-#include <iostream>
-#include <vector>
 #include <map>
 #include "TypeDefines.h"
-using namespace std;
 
 class TreeHD
 {

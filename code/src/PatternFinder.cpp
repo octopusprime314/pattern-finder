@@ -29,15 +29,10 @@
 *
 */
 
-#include "Forest.h"
+#include "PatternFinder.h"
 #include "MemoryUtils.h"
-#include <locale>
-#include <list>
-#include <algorithm>
-#include <signal.h>
-#include <numeric>
-#include <iterator>
 #include "FileProcessor.h"
+#include <numeric>
 
 
 //Loose sorting function that will need to be placed in a class soon!
@@ -54,7 +49,7 @@ vector<size_t> sortIndexes(const vector<ProcessorStats::DisplayStruct> &v) {
     return idx;
 }
 
-Forest::Forest(int argc, char **argv)
+PatternFinder::PatternFinder(int argc, char **argv)
 {
     ConfigurationParams config = ProcessorConfig::GetConfig(argc, argv);
     ProcessorStats stats;
@@ -195,9 +190,7 @@ Forest::Forest(int argc, char **argv)
                                 number++;
                             }
                         }
-
                     }
-
                     (*Logger::patternOutputFile) << tempBuff.str();
                     (*Logger::patternOutputFile) << buff.str();
                 }
@@ -227,12 +220,12 @@ Forest::Forest(int argc, char **argv)
             {
                 if (config.currentFile->fileStringSize / 4 != stats.GetEradicatedPatterns() && config.maximum == -1)
                 {
-                    cout << "Houston we are not processing Integer patterns properly!" << endl;
+                    cout << "Houston we are NOT processing Integer patterns properly!" << endl;
                     Logger::WriteLog("Houston we are not processing Interger patterns properly!");
                 }
                 else
                 {
-                    cout << "Houston we are  processing Integer patterns properly!" << endl;
+                    cout << "Houston we are processing Integer patterns properly!" << endl;
                     Logger::WriteLog("Houston we are processing Integer patterns properly!");
                 }
             }
@@ -240,13 +233,13 @@ Forest::Forest(int argc, char **argv)
             {
                 if (config.currentFile->fileStringSize != stats.GetEradicatedPatterns() && config.maximum == -1)
                 {
-                    cout << "Houston we are not processing patterns properly!" << endl;
+                    cout << "Houston we are NOT processing patterns properly!" << endl;
                     Logger::WriteLog("Houston we are not processing patterns properly!");
                     //exit(0);
                 }
                 else
                 {
-                    cout << "Houston we are  processing patterns properly!" << endl;
+                    cout << "Houston we are processing patterns properly!" << endl;
                     Logger::WriteLog("Houston we are processing patterns properly!");
                 }
             }
@@ -298,7 +291,7 @@ Forest::Forest(int argc, char **argv)
     stats.CloseValidationFile();
 }
 
-Forest::~Forest()
+PatternFinder::~PatternFinder()
 {
 
 }

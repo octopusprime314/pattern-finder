@@ -8,11 +8,6 @@
  */
 
 #pragma once
-#include <iostream>
-#include <vector>
-#include <string>
-#include "TypeDefines.h"
-#include <thread>
 
 #if defined(_WIN64) || defined(_WIN32)
 #include "mman.h"
@@ -28,8 +23,6 @@
 #include <sys/stat.h>
 #include <math.h>
 #endif
-
-using namespace std;
 
 class PListArchive
 {

@@ -6,11 +6,7 @@
  *  @author Peter J. Morley (pmorley)
  */
 #pragma once
-#include <string.h>
 #include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 #include <vector>
 #define GREATERTHAN4GB 0
 using namespace std;

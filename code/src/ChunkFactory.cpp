@@ -30,7 +30,6 @@
  */
 
 #include "ChunkFactory.h"
-#include "Logger.h"
 
 PListType ChunkFactory::fileID = 0;
 mutex* ChunkFactory::fileIDMutex = new mutex();

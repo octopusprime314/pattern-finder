@@ -5,14 +5,9 @@
 */
 
 #pragma once
-#include <ctime>
-#include <chrono>
-#include <string>
-#include <sstream>
-#include <iostream>
 #include <iomanip>
 #include "Logger.h"
-using namespace std;
+
 class StopWatch
 {
 public:

@@ -30,12 +30,8 @@
  */
 
 
-#include "Forest.h"
+#include "PatternFinder.h"
 #include "MemoryUtils.h"
-#include "FileReader.h"
-
-using namespace std;
-
 
 #if defined(_WIN64) || defined(_WIN32)
 	/* Microsoft Windows (32-bit). or 64 bit ------------------------------ */
@@ -66,9 +62,7 @@ int main(int argc, char **argv)
 	double MemoryUsageAtInception = MemoryUtils::GetProgramMemoryConsumption();
 
 	//Kick of the pattern searching program
-	Forest *Ent = new Forest(argc, argv);
-
-	delete Ent;
+    PatternFinder finder(argc, argv);
 
 	//Get back the total memory used to see if there is left over memory in the program
 	double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();

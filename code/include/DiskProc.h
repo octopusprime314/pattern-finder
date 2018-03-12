@@ -1,5 +1,4 @@
 #pragma once
-#include "TypeDefines.h"
 #include "Proc.h"
 #include "ProcessorConfig.h"
 class SysMemProc;

@@ -5,11 +5,8 @@
  */
 #pragma once
 #include "TypeDefines.h"
-#include <vector>
 #include <mutex>
-#include <iostream>
 #include <fstream>
-using namespace std;
 
 class ProcessorStats
 {

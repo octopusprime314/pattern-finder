@@ -30,10 +30,6 @@
  */
 
 #include "FileReader.h"
-#include <sstream>
-#include <iostream>
-#include <sstream>
-#include <fstream>
 #include "MemoryUtils.h"
 
 #if defined(_WIN64) || defined(_WIN32)

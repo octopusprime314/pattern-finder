@@ -17,16 +17,8 @@
 	#include "sys/times.h"
 	#include "sys/vtimes.h"
 #endif
-#include <string.h>
-#include <sstream>
-#include "Logger.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include "TypeDefines.h"
 #include "ProcessorStats.h"
 #include "ProcessorConfig.h"
-using namespace std;
 
 static bool init = false;
 #if defined(_WIN64) || defined(_WIN32)

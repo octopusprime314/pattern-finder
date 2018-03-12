@@ -4,7 +4,6 @@
 #include "SysMemProc.h"
 #include "DiskProc.h"
 #include "ChunkFactory.h"
-#include <numeric>
 
 FileProcessor::FileProcessor(FileReader* file, 
     ConfigurationParams& _config,

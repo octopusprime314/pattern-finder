@@ -30,10 +30,7 @@
  */
 
 #include "PListArchive.h"
-#include "MemoryUtils.h"
-#include <exception>
-#include "Forest.h"
-#include <algorithm>
+#include "Logger.h"
 
 PListType PListArchive::hdSectorSize;
 PListType PListArchive::totalLoops;

@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <io.h>
 #include "stdio.h"
-//#include <iostream>
 #include "mman.h"
 
 #ifndef FILE_MAP_EXECUTE

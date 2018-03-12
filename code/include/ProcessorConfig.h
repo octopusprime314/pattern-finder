@@ -5,7 +5,6 @@
  */
 #pragma once
 #include "Logger.h"
-#include "TypeDefines.h"
 #include "FileReader.h"
 
 /** @brief Configuration parameters struct

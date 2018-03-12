@@ -8,9 +8,7 @@
  */
 
 #pragma once
-#include <string>
 #include "TreeHD.h"
-#include "TypeDefines.h"
 #include <vector>
 #include "PListArchive.h"
 #include <mutex>

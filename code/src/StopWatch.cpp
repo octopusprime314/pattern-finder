@@ -31,7 +31,6 @@
 
 #include "StopWatch.h"
 
-
 StopWatch::StopWatch(void)
 {
     //Initalize with a begin time when instantiated
