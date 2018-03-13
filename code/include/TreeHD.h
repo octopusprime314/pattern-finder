@@ -28,7 +28,7 @@ public:
 	 */
 	inline void setHeadLeaf(string headLeaf)
 	{
-		this->headLeaf = headLeaf;
+		this->_headLeaf = headLeaf;
 	}
 
 	/** @brief Adds a new pattern to the tree or increments the count in the map
@@ -39,20 +39,20 @@ public:
 	 */
 	inline void addLeaf(PListType pIndex, char uniquestring)
 	{
-		if (leaves.find(uniquestring) == leaves.end())
+		if (_leaves.find(uniquestring) == _leaves.end())
 		{
-			leaves[uniquestring] = vector<PListType>();
-			leaves[uniquestring].push_back(pIndex);
+			_leaves[uniquestring] = vector<PListType>();
+			_leaves[uniquestring].push_back(pIndex);
 		}
 		else
 		{
-			leaves[uniquestring].push_back(pIndex);
+			_leaves[uniquestring].push_back(pIndex);
 		}		
 	}
 
 	/** map that contains all the pattern information */
-	map<char, vector<PListType>> leaves;
+	map<char, vector<PListType>> _leaves;
 
 	/** head leaf to save on memory usage */
-	string headLeaf;
+	string _headLeaf;
 };

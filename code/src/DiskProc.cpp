@@ -16,8 +16,6 @@ DiskProc::DiskProc(std::vector<std::string>& fileList,
 
 void DiskProc::Process()
 {
-    double threadMemoryConsumptionInMB = MemoryUtils::GetProgramMemoryConsumption();
-    int threadNum = _levelInfo.threadIndex;
     auto chunkFactorio = ChunkFactory::instance();
     PListType newPatternCount = 0;
     bool morePatternsToFind = true;
@@ -59,7 +57,6 @@ void DiskProc::Process()
 
                         //Get minimum and maximum indexes so we can see if some chunks can be skipped from being loaded bam!
                         PListType minimum = -1;
-                        PListType maximum = 0;
                         for (int m = 0; m < packedPListArray.size(); m++)
                         {
                             for (int n = 0; n < packedPListArray[m]->size(); n++)
@@ -313,7 +310,6 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
     int prevCurrentFile = currentFile;
     bool memoryOverflow = false;
     PListType interimCount = 0;
-    unsigned int threadNumber = 0;
     PListType levelCount = 0;
 
     //Grab all the partial pattern files to bring together into one coherent pattern file structure
@@ -383,8 +379,6 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
                 copyString.erase(0, l + 1);
                 std::string::size_type k = copyString.find(".txt");
                 copyString.erase(k, 4);
-                std::string::size_type sz;   // alias of size_t
-                PListType sizeOfPackedPList = static_cast<PListType>(std::stoll(copyString, &sz));
                 stringBuffer = stringBufferFile->GetPatterns(levelInfo.currLevel, packedPListSize);
 
             }
@@ -432,7 +426,6 @@ PListType DiskProc::ProcessChunksAndGenerate(vector<string> fileNamesToReOpen, v
 
                 }
 
-                PListType patternsToDumpCount = totalPatterns - static_cast<PListType>(patternsThatCantBeDumped.size());
                 stringstream sizeDifference;
                 patternsThatCantBeDumped.unique();
 
@@ -881,7 +874,7 @@ bool DiskProc::SplitUpWork(PListType newPatternCount,
         if (spawnThreads)
         {
             vector<string> tempList = fileList;
-            vector<vector<string>> balancedTruncList = BalanceWork(unusedCores, levelInfo, tempList);
+            vector<vector<string>> balancedTruncList = BalanceWork(unusedCores, tempList);
             vector<unsigned int> localWorkingThreads;
             for (unsigned int i = 0; i < balancedTruncList.size(); i++)
             {
@@ -942,8 +935,7 @@ bool DiskProc::SplitUpWork(PListType newPatternCount,
     return dispatchedNewThreads;
 }
 
-vector<vector<string>> DiskProc::BalanceWork(unsigned int threadsToDispatch, 
-    LevelPackage levelInfo, 
+vector<vector<string>> DiskProc::BalanceWork(unsigned int threadsToDispatch,
     vector<string> prevFileNames)
 {
     ChunkFactory* chunkFactorio = ChunkFactory::instance();

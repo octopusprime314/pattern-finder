@@ -39,7 +39,6 @@ public:
         LevelPackage levelInfo);
 
     vector<vector<string>> BalanceWork(unsigned int threadsToDispatch,
-        LevelPackage levelInfo,
         vector<string> prevFileNames);
 
 private:

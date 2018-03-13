@@ -173,7 +173,7 @@ void FileProcessor::memoryQuery()
     {
         this_thread::sleep_for(std::chrono::milliseconds(1));
         double memoryOverflow = 0;
-        _config.overMemoryCount = MemoryUtils::IsOverMemoryCount(_config.memoryUsageAtInception, (double)_config.memoryBandwidthMB, memoryOverflow);
+        _config.overMemoryCount = MemoryUtils::IsOverMemoryCount((double)_config.memoryBandwidthMB, memoryOverflow);
 
         //Keep track of over memory usage 
         if (_config.overMemoryCount) {

@@ -11,12 +11,14 @@
     #include "psapi.h"
 #elif defined(__linux__)
 	#include "sys/types.h"
-    #include "sys/sysinfo.h"
+        #include "sys/sysinfo.h"
 	#include <sys/wait.h>
 	#include <unistd.h>
 	#include "sys/times.h"
 	#include "sys/vtimes.h"
+	#include <sys/stat.h>
 #endif
+#include <string.h>
 #include "ProcessorStats.h"
 #include "ProcessorConfig.h"
 
@@ -78,7 +80,7 @@ public:
 	 *
 	 *  @return double size of program's memory consumption in MB
 	 */
-	static double GetProgramMemoryConsumption(PListType level = 0)
+	static double GetProgramMemoryConsumption()
 	{
 #if defined(_WIN64) || defined(_WIN32)
 		PROCESS_MEMORY_COUNTERS pmc;
@@ -138,7 +140,7 @@ public:
 	 *  @param memoryOverflow refence of the amount of memory in MB that is over the limit
 	 *  @return bool true if the program is using too much memory
 	 */
-	static bool IsOverMemoryCount(double initialMemoryInMB, double memoryBandwidthInMB, double& memoryOverflow)
+	static bool IsOverMemoryCount(double memoryBandwidthInMB, double& memoryOverflow)
 	{
 		size_t usedMemory = getCurrentRSS()/1000000;
 		if(usedMemory >= memoryBandwidthInMB)

@@ -56,7 +56,7 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 	//Find out the number of patterns
 	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
-		count += static_cast<PListType>(iterator->leaves.size());
+		count += static_cast<PListType>(iterator->_leaves.size());
 	}
 
     if (count == 0) {
@@ -72,14 +72,14 @@ string ChunkFactory::CreatePartialPatternFile(string fileName, vector<TreeHD>& l
 	//Iterate through TreeHD vector and store all pattern vectors into a pattern file
 	for(auto iterator = leaf.begin(); iterator != leaf.end(); iterator++) 
 	{
-		for(auto iterator2 = iterator->leaves.begin(); iterator2 != iterator->leaves.end(); iterator2++) 
+		for(auto iterator2 = iterator->_leaves.begin(); iterator2 != iterator->_leaves.end(); iterator2++) 
 		{
-			string pattern = iterator->headLeaf + iterator2->first;
+			string pattern = iterator->_headLeaf + iterator2->first;
 			archiveCollective->WriteArchiveMapMMAP(iterator2->second, pattern, false);
 			(*iterator2).second.resize(0);
 			(*iterator2).second.shrink_to_fit();
 		}
-		iterator->leaves.clear();
+		iterator->_leaves.clear();
 	}
 
 	//Clear out data in vector by shoving it into a temp variable 

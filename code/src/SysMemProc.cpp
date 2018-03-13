@@ -69,8 +69,6 @@ void SysMemProc::Process()
     globalString.shrink_to_fit();
     linearList.reserve(totalCount);
 
-    PListType linearListIndex = 0;
-
     //We have nothing to process!
     if (totalCount == 0)
         return;
@@ -678,10 +676,8 @@ void SysMemProc::_buildStats(const PListType removedPatterns,
 
         for (PListType z = 0; z < pListLengths.size(); z++)
         {
-            PListType distances = 0;
             PListType index = positionsInLinearList[z];
             PListType length = pListLengths[z];
-            PListType coverageSubtraction = 0;
             PListType instances = 0;
             //Calculate average distance between pattern instances
             for (auto i = index; i < index + length; i++)

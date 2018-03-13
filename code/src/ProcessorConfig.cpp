@@ -51,7 +51,6 @@ ProcessorConfig::~ProcessorConfig(void)
 
 ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 {
-	config.findBestThreadNumber = false;
 	config.usingMemoryBandwidth = false;
 	config.memoryBandwidthMB = 0;
 	config.levelToOutput = 0;
@@ -63,7 +62,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 	config.minOccurrence = 2;
 	config.nonOverlappingPatternSearch = ANY_PATTERNS;
 	config.history = 0;
-	config.threadLimitation = 0;
 	config.lowRange = config.highRange = 0;
 	//-1 is the largest unsigned int value
 	config.minimumFrequency = -1;
@@ -152,10 +150,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 			Logger::verbosity = atoi(argv[i + 1]);
 			i++;
 		}
-		else if (arg.compare("-c") == 0)
-		{
-			config.findBestThreadNumber = true;
-		}
 		else if (arg.compare("-threads") == 0)
 		{
 			// We know the next argument *should* be the maximum pattern to display
@@ -227,11 +221,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		{
 			coverageTracking = true;
 		}
-		else if(arg.compare("-l") == 0)
-		{
-			config.threadLimitation = atoi(argv[i+1]);
-			i++;
-		}
         else if (arg.compare("-int") == 0)
         {
             config.processInts = true;
@@ -289,18 +278,11 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
 		config.numThreads = concurentThreadsSupported;
 	}
 
-    //main thread is a hardware thread so dispatch threads requested minus 1
-    if (config.findBestThreadNumber)
-    {
-        config.numThreads = 1;
-    }
-
     PListType memoryCeiling = (PListType)MemoryUtils::GetAvailableRAMMB() - 1000;
 
     //If memory bandwidth not an input
     if (!config.usingMemoryBandwidth)
     {
-
         //Leave 1 GB to spare for operating system 
         config.memoryBandwidthMB = memoryCeiling - 1000;
     }
@@ -310,21 +292,6 @@ ConfigurationParams ProcessorConfig::GetConfig(int argc, char **argv)
         config.memoryPerThread = 1;
     }
 
-	int bestThreadCount = 0;
-	double fastestTime = 1000000000.0f;
-	config.testIterations = 0;
-	if (config.findBestThreadNumber)
-	{
-		config.numThreads = 1;
-		if(config.threadLimitation != 0)
-		{
-			config.testIterations = config.threadLimitation;
-		}
-		else
-		{
-			config.testIterations = concurentThreadsSupported;
-		}
-	}
 	return config;
 }
 

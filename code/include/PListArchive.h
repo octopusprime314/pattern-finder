@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <string>
+#include "TypeDefines.h"
 #if defined(_WIN64) || defined(_WIN32)
 #include "mman.h"
 #include <io.h>
@@ -22,7 +24,10 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <string.h>
 #endif
+
+using namespace std;
 
 class PListArchive
 {
@@ -53,7 +58,7 @@ public:
 	 *  @param flush takes all pattern information previously stored and flushes to disk
 	 *  @param forceClose closes file stream after writing
 	 */
-	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false, bool forceClose = false);
+	void WriteArchiveMapMMAP(const vector<PListType> &pListVector, const PatternType &pattern = "", bool flush = false);
 
 	/** @brief Takes all the pattern content information and writes to disk
 	 *  
@@ -123,16 +128,16 @@ private:
 	void ExtendingFileError(int& fileDescriptor, string fileName);
 
 	/** Members related to pattern file construction */
-	vector<string> stringBuffer;
-	PListType fileIndex;
-	int fd;
-	PListType startingIndex;
-	bool endOfFileReached;
-	ofstream *outputFile;
-	PListType prevListIndex;
-	PListType prevStartingIndex;
-	PListType *mapper;
-	PListType prevFileIndex;
+	vector<string> _stringBuffer;
+	PListType  _fileIndex;
+	int        _fd;
+	PListType  _startingIndex;
+	bool       _endOfFileReached;
+	ofstream*  _outputFile;
+	PListType  _prevListIndex;
+	PListType  _prevStartingIndex;
+	PListType* _mapper;
+	PListType  _prevFileIndex;
 };
 
 
