@@ -625,6 +625,9 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		{
 			totalWritesForCharTypes = 1;
 		}
+
+		PListType finalWriteSize = (totalWritesForCharTypes)*hdSectorSize; 
+
 		//Reset final Index
 		_fileIndex = 0;
 
@@ -633,7 +636,7 @@ void PListArchive::DumpPatternsToDisk(unsigned int level)
 		PListType stringIndex = 0;
 
 	#if defined(__linux__)
-		lseek64(mapFD, fileIndex + finalWriteSize - 1, SEEK_SET);
+		lseek64(mapFD, _fileIndex + finalWriteSize - 1, SEEK_SET);
 		size_t writeSize = write(mapFD, "", 1);
 	#endif
 	
