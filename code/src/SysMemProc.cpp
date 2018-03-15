@@ -4,7 +4,7 @@
 
 SysMemProc::SysMemProc(PatternData* patterns,
     DataBundle& bundle,
-    LevelPackage _levelInfo) : 
+    LevelPackage _levelInfo) :
     Proc(bundle.config, bundle.stats, bundle.threadMgr),
     _patterns(patterns),
     _levelInfo(_levelInfo) {
@@ -50,8 +50,8 @@ void SysMemProc::Process()
         //to be a pattern
         if (pListLength > 0)
         {
-            prevLinearList.insert(prevLinearList.end(), 
-                (*_patterns)[i]->begin(), 
+            prevLinearList.insert(prevLinearList.end(),
+                (*_patterns)[i]->begin(),
                 (*_patterns)[i]->end());
             prevPListLengths.push_back(pListLength);
             delete (*_patterns)[i];
@@ -104,10 +104,10 @@ void SysMemProc::Process()
 
         //Build the tree patterns for each previous node
         totalTallyRemovedPatterns = _buildTree(globalString, prevLinearList,
-                                    prevPListLengths, linearList,
-                                    pListLengths);
+            prevPListLengths, linearList,
+            pListLengths);
 
-  
+
         //Record all data for post processing reasons
         _buildStats(totalTallyRemovedPatterns,
             linearList,
@@ -133,10 +133,10 @@ void SysMemProc::Process()
         else
         {
             //Have to add prediction here to see if RAM or HD could be used 
-            bool prediction = MemoryUtils::DiskOrSysMemProcessing(_levelInfo, 
-                static_cast<PListType>(pListLengths.size()), 
-                static_cast<PListType>(linearList.size()), 
-                _config, 
+            bool prediction = MemoryUtils::DiskOrSysMemProcessing(_levelInfo,
+                static_cast<PListType>(pListLengths.size()),
+                static_cast<PListType>(linearList.size()),
+                _config,
                 _stats);
 
             //If we need to switch gears and process using the hard disk for this proceeding level
@@ -147,7 +147,7 @@ void SysMemProc::Process()
                 _patterns->clear();
                 for (int i = 0; i < pListLengths.size(); i++)
                 {
-                    _patterns->push_back(new vector<PListType>(linearList.begin() + indexing, 
+                    _patterns->push_back(new vector<PListType>(linearList.begin() + indexing,
                         linearList.begin() + indexing + pListLengths[i]));
                     indexing += pListLengths[i];
                 }
@@ -160,7 +160,7 @@ void SysMemProc::Process()
                 pListLengths.reserve(0);
 
                 //Instead of breaking, build a disk processing object and start searching
-                std::vector<std::string> fileList;_levelInfo.useRAM = false;
+                std::vector<std::string> fileList; _levelInfo.useRAM = false;
                 _levelInfo.useRAM = true;
                 //Build up the files for processing using hd
                 PrepData(prediction, _levelInfo, fileList, _patterns);
@@ -178,8 +178,8 @@ void SysMemProc::Process()
             {
                 continueSearching = static_cast<PListType>(pListLengths.size());
 
-                SplitUpWork(continueSearching, 
-                    linearList, 
+                SplitUpWork(continueSearching,
+                    linearList,
                     pListLengths);
 
                 prevLinearList.clear();
@@ -204,8 +204,8 @@ void SysMemProc::Process()
     }
 }
 
-bool SysMemProc::SplitUpWork(PListType& morePatternsToFind, 
-    vector<PListType> &linearList, 
+bool SysMemProc::SplitUpWork(PListType& morePatternsToFind,
+    vector<PListType> &linearList,
     vector<PListType> &pListLengths)
 {
     bool dispatchedNewThreads = false;
@@ -234,7 +234,7 @@ bool SysMemProc::SplitUpWork(PListType& morePatternsToFind,
             PListType indexing = 0;
             for (auto index = 0; index < pListLengths.size(); index++)
             {
-                prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing, 
+                prevLocalPListArray->push_back(new vector<PListType>(linearList.begin() + indexing,
                     linearList.begin() + indexing + pListLengths[index]));
                 indexing += pListLengths[index];
             }
@@ -303,10 +303,10 @@ bool SysMemProc::SplitUpWork(PListType& morePatternsToFind,
                     _threadMgr.UnLock();
 
                     alreadyUnlocked = true;
-                    WaitOnThreads(localWorkingThreads, 
-                        localThreadPool, 
-                        true, 
-                        _levelInfo.threadIndex, 
+                    WaitOnThreads(localWorkingThreads,
+                        localThreadPool,
+                        true,
+                        _levelInfo.threadIndex,
                         _threadMgr);
 
                     localThreadPool->erase(localThreadPool->begin(), localThreadPool->end());
@@ -345,8 +345,8 @@ bool SysMemProc::SplitUpWork(PListType& morePatternsToFind,
     return dispatchedNewThreads;
 }
 
-void SysMemProc::BalanceWork(vector<vector<PListType>>& balancedTruncList, 
-    unsigned int threadsToDispatch, 
+void SysMemProc::BalanceWork(vector<vector<PListType>>& balancedTruncList,
+    unsigned int threadsToDispatch,
     PatternData* patterns)
 {
     //Evenly distribute pattern data by breaking down the pattern vector and adding
@@ -421,7 +421,7 @@ PListType SysMemProc::_buildTree(const std::string& globalString,
     PListType firstPatternIndex[256] = { 0 };
     int listLength = 0;
 
-    PListType stringIndexer = 0; 
+    PListType stringIndexer = 0;
     vector<PListType> newPList[256];
     PListType removedPatterns = 0;
 
@@ -598,11 +598,13 @@ void SysMemProc::_buildStats(const PListType removedPatterns,
             PListType length = pListLengths[z];
             PListType coverageSubtraction = 0;
             PListType instances = 1;
+
+            std::stringstream stream;
             //Calculate average distance between pattern instances
             for (auto i = index; i < index + length - 1; i++)
             {
                 PListType indexPattern;
-                std::stringstream stream;
+
                 if (_config.processInts)
                 {
                     indexPattern = ((linearList[i] / 4) - _levelInfo.currLevel / 4);
@@ -625,9 +627,6 @@ void SysMemProc::_buildStats(const PListType removedPatterns,
                         stream << indexlast << ",";
                     }
                 }
-                stream << std::endl;
-                _stats.WriteValidationFile(stream.str());
-
                 //Processing ints need to do a different calculation
                 if (!_config.processInts ||
                     (_config.processInts &&
@@ -640,7 +639,11 @@ void SysMemProc::_buildStats(const PListType removedPatterns,
                     }
                     instances++;
                 }
+
             }
+            stream << std::endl;
+            _stats.WriteValidationFile(stream.str());
+
             float averageDistance = ((float)distances) / ((float)(instances - 1));
             stringstream data;
 
